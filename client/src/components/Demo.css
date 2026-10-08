@@ -1,0 +1,224 @@
+/* The close: a full navy field, the plank the whole page stands on */
+.demo {
+  margin-top: clamp(112px, 14vw, 176px);
+  position: relative;
+  background: var(--navy);
+  color: var(--on-navy);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.demo__arcs {
+  z-index: -1;
+  width: 900px;
+  left: -300px;
+  bottom: -420px;
+}
+
+.demo__inner {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: clamp(72px, 10vw, 128px) var(--gutter);
+  display: grid;
+  grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+  gap: clamp(40px, 6vw, 96px);
+  align-items: start;
+}
+
+.demo h2 {
+  font-size: clamp(2.3rem, 4.6vw, 4.2rem);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  color: #fff;
+}
+
+.demo__copy > p {
+  margin-top: 22px;
+  max-width: 44ch;
+  color: var(--on-navy-2);
+  font-size: 1.06rem;
+}
+
+.demo__covers {
+  list-style: none;
+  margin: 36px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, max-content));
+  gap: 12px 32px;
+}
+
+.demo__covers li {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  font-weight: 500;
+  color: #e8eef2;
+}
+
+.demo__covers li::before {
+  content: '';
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+.demo__card {
+  background: #fff;
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: clamp(22px, 3vw, 36px);
+  box-shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.6);
+}
+
+.demo__card form {
+  display: grid;
+  gap: 16px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.field label {
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.field label span {
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+.field input,
+.field select {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 10px;
+  background: #fff;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.field select {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--ink-2) 50%),
+    linear-gradient(135deg, var(--ink-2) 50%, transparent 50%);
+  background-position:
+    calc(100% - 19px) 50%,
+    calc(100% - 14px) 50%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 36px;
+}
+
+.field input:hover,
+.field select:hover {
+  border-color: var(--ink-3);
+}
+
+.field input:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--green-deep);
+  box-shadow: 0 0 0 3px var(--green-wash);
+}
+
+.field [aria-invalid='true'] {
+  border-color: var(--red);
+}
+
+.field__error {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--red);
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.demo__error {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--red-wash);
+  color: #8a3222;
+  font-size: 0.88rem;
+}
+
+.demo__error svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.demo__submit {
+  width: 100%;
+  min-height: 52px;
+  margin-top: 4px;
+  font-size: 1rem;
+}
+
+.demo__fine {
+  font-size: 0.78rem;
+  color: var(--ink-3);
+  text-align: center;
+}
+
+.demo__done {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  padding: 12px 0;
+}
+
+.demo__done svg {
+  color: var(--green-deep);
+}
+
+.demo__done h3 {
+  font-size: 1.6rem;
+}
+
+.demo__done p {
+  color: var(--ink-2);
+}
+
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 900px) {
+  .demo__inner {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .field-row {
+    grid-template-columns: 1fr;
+  }
+
+  .demo__covers {
+    grid-template-columns: 1fr;
+  }
+}

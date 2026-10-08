@@ -1,0 +1,313 @@
+.roles {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: clamp(32px, 6vw, 96px);
+  align-items: center;
+}
+
+.roles__text h2 {
+  font-size: clamp(2rem, 3.8vw, 3.4rem);
+  font-weight: 680;
+  letter-spacing: -0.032em;
+}
+
+.roles__lede {
+  margin-top: 18px;
+  color: var(--ink-2);
+  max-width: 46ch;
+}
+
+.roles__list {
+  list-style: none;
+  margin: 36px 0 0;
+  padding: 0;
+}
+
+.roles__list li {
+  border-top: 1px solid var(--rule);
+}
+
+.roles__list li:last-child {
+  border-bottom: 1px solid var(--rule);
+}
+
+.roles__list button {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: 8px 28px;
+  width: 100%;
+  padding: 22px 16px;
+  margin: 0;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 200ms ease,
+    transform 160ms var(--ease-out);
+}
+
+.roles__list button:active {
+  transform: scale(0.99);
+}
+
+.roles__list button[aria-pressed='true'] {
+  background: var(--haze);
+}
+
+.roles__name {
+  font-family: var(--display);
+  font-size: 1.3rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--ink-3);
+  transition: color 200ms ease;
+}
+
+.roles__list button[aria-pressed='true'] .roles__name {
+  color: var(--ink);
+}
+
+.roles__body {
+  color: var(--ink-2);
+  font-size: 0.95rem;
+}
+
+/* The phone: drawn in CSS, screens crossfade with a touch of blur */
+.roles__device {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  padding: clamp(24px, 4vw, 48px) 0;
+  border-radius: 28px;
+  background: var(--haze);
+  position: relative;
+  overflow: hidden;
+}
+
+.roles__device::before {
+  content: '';
+  position: absolute;
+  width: 420px;
+  height: 420px;
+  border-radius: 50%;
+  border: 38px solid var(--kraft);
+  opacity: 0.35;
+  right: -190px;
+  top: -170px;
+}
+
+.phone {
+  position: relative;
+  width: 290px;
+  height: 560px;
+  border-radius: 44px;
+  background: var(--white);
+  border: 10px solid var(--navy);
+  box-shadow: 0 40px 70px -40px rgba(22, 34, 46, 0.6);
+  padding: 46px 18px 18px;
+  overflow: hidden;
+}
+
+.phone__notch {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  width: 92px;
+  height: 24px;
+  margin-left: -46px;
+  border-radius: 999px;
+  background: var(--navy);
+}
+
+.phone__bar-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.phone__screens {
+  display: grid;
+  margin-top: 16px;
+}
+
+.phone__screen {
+  grid-area: 1 / 1;
+  opacity: 0;
+  filter: blur(6px);
+  transform: translateY(6px);
+  transition:
+    opacity 240ms ease,
+    filter 240ms ease,
+    transform 240ms var(--ease-out);
+  pointer-events: none;
+}
+
+.phone__screen[data-active] {
+  opacity: 1;
+  filter: none;
+  transform: none;
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phone__screen {
+    filter: none;
+    transform: none;
+  }
+}
+
+.phone__greeting {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+
+.phone h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 2px 0 14px;
+}
+
+.phone__content {
+  display: grid;
+  gap: 8px;
+  font-size: 0.8rem;
+}
+
+.phone__row {
+  --tone: var(--green-deep);
+  --wash: var(--green-wash);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--mist);
+}
+
+.phone__row[data-tone='kraft'] {
+  --tone: var(--kraft-ink);
+  --wash: var(--kraft-wash);
+}
+
+.phone__row[data-tone='coral'] {
+  --tone: var(--coral-deep);
+  --wash: var(--coral-wash);
+}
+
+.phone__row[data-tone='navy'] {
+  --tone: var(--ink);
+  --wash: #dfe6ee;
+}
+
+.phone__icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--wash);
+  color: var(--tone);
+}
+
+.phone__label {
+  font-weight: 600;
+}
+
+.phone__value {
+  font-weight: 600;
+  color: var(--tone);
+  font-size: 0.74rem;
+  text-align: right;
+}
+
+.phone__lesson {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--mist);
+}
+
+.phone__lesson strong {
+  display: block;
+  font-weight: 650;
+}
+
+.phone__lesson span span {
+  color: var(--ink-3);
+  font-size: 0.74rem;
+}
+
+.phone__time {
+  font-family: var(--data);
+  font-size: 0.72rem;
+  color: var(--green-deep);
+  padding-top: 2px;
+}
+
+.phone__action {
+  grid-column: 2;
+  justify-self: start;
+  margin-top: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--green-deep);
+  color: #fff !important;
+  font-size: 0.74rem !important;
+  font-weight: 600;
+}
+
+.phone__bar {
+  padding: 12px 10px;
+  border-radius: 12px;
+  background: var(--mist);
+}
+
+.phone__bar span {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.phone__bar i {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--green) calc(var(--v) * 100%), var(--mist-deep) 0);
+}
+
+.roles__caption {
+  position: relative;
+  font-size: 0.8rem;
+  color: var(--ink-3);
+}
+
+@media (max-width: 960px) {
+  .roles {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .roles__list button {
+    grid-template-columns: 1fr;
+    padding: 18px 12px;
+  }
+
+  .phone {
+    width: 270px;
+    height: 530px;
+  }
+}

@@ -1,111 +1,346 @@
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  /* Ground: the brine-haze palette */
+  --white: #ffffff;
+  --haze: #eef1ea;
+  --mist: #f5f7f2;
+  --mist-deep: #e1e7dd;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  /* Ink: the logo navy, in steps */
+  --ink: #142a3d;
+  --ink-2: #45596c;
+  --ink-3: #66788a;
+  --rule: rgba(20, 42, 61, 0.1);
+  --rule-strong: rgba(20, 42, 61, 0.18);
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
+  /* Navy fields */
+  --navy: #142a3d;
+  --navy-2: #1d3850;
+  --on-navy: #e7eef3;
+  --on-navy-2: #a9b8c5;
+
+  /* Logo green: bright for fills on navy, deep for text and buttons on white */
+  --green: #1fb08b;
+  --green-deep: #0f7d5f;
+  --green-press: #0b664d;
+  --green-wash: #d9f2e8;
+
+  /* Warm accents */
+  --kraft: #dcb57f;
+  --kraft-deep: #b8945f;
+  --kraft-wash: #f3e9d8;
+  --kraft-ink: #5b4428;
+  --coral: #e8664c;
+  --coral-deep: #b64a35;
+  --coral-wash: #f9e0d9;
+
+  /* Status aliases */
+  --amber: var(--kraft-deep);
+  --amber-wash: var(--kraft-wash);
+  --red: var(--coral-deep);
+  --red-wash: var(--coral-wash);
+
+  --display: 'Bricolage Grotesque Variable', 'Hanken Grotesk Variable', sans-serif;
+  --sans: 'Hanken Grotesk Variable', system-ui, sans-serif;
+  --data: 'Martian Mono', ui-monospace, monospace;
+
+  --radius: 16px;
+  --gutter: clamp(16px, 4vw, 48px);
+  --max: 1240px;
+
+  /* Motion (Emil Kowalski's curves) */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+
+  --shadow-card: 0 1px 2px rgba(22, 34, 46, 0.06), 0 16px 36px -16px rgba(22, 34, 46, 0.28);
+
+  font: 400 17px/1.55 var(--sans);
+  color: var(--ink);
+  background: var(--haze);
+  color-scheme: light;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  accent-color: var(--green-deep);
+  caret-color: var(--green-deep);
+  scroll-behavior: smooth;
+  scroll-padding-top: 84px;
+}
 
-  @media (max-width: 1024px) {
+@media (max-width: 720px) {
+  :root {
     font-size: 16px;
   }
 }
 
-@media (prefers-color-scheme: dark) {
+@media (prefers-reduced-motion: reduce) {
   :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+    scroll-behavior: auto;
   }
+}
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
+  background: var(--haze);
+  min-width: 320px;
+  overflow-x: hidden;
 }
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+::selection {
+  background: var(--green-wash);
+  color: var(--ink);
 }
 
 h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+h2,
+h3,
+h4 {
+  font-family: var(--display);
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+  margin: 0;
+  text-wrap: balance;
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
 p {
   margin: 0;
+  text-wrap: pretty;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
+a {
+  color: inherit;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--green-deep);
+  outline-offset: 3px;
   border-radius: 4px;
-  color: var(--text-h);
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+html {
+  scrollbar-color: var(--rule-strong) var(--mist);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Shared layout */
+.container {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding-inline: var(--gutter);
+}
+
+.section {
+  padding-top: clamp(96px, 13vw, 160px);
+}
+
+.section-head {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: clamp(20px, 4vw, 64px);
+  align-items: end;
+  margin-bottom: clamp(36px, 5vw, 64px);
+}
+
+.section-head h2 {
+  font-size: clamp(2rem, 3.8vw, 3.4rem);
+  font-weight: 680;
+  letter-spacing: -0.032em;
+}
+
+.section-head p {
+  color: var(--ink-2);
+  max-width: 48ch;
+}
+
+@media (max-width: 900px) {
+  .section-head {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Buttons */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 22px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-weight: 600;
+  font-size: 0.98rem;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    transform 160ms var(--ease-out),
+    background-color 200ms ease,
+    border-color 200ms ease,
+    color 200ms ease;
+}
+
+.button:active {
+  transform: scale(0.97);
+}
+
+.button svg {
+  transition: transform 200ms var(--ease-out);
+}
+
+.button--primary {
+  background: var(--navy);
+  color: #fff;
+}
+
+.button--ghost {
+  background: transparent;
+  border-color: var(--rule-strong);
+  color: var(--ink);
+}
+
+.button--light {
+  background: #fff;
+  color: var(--ink);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .button--primary:hover {
+    background: var(--navy-2);
+  }
+
+  .button--ghost:hover {
+    border-color: var(--ink-3);
+    background: var(--mist);
+  }
+
+  .button--light:hover {
+    background: var(--mist);
+  }
+
+  .button:hover svg {
+    transform: translateX(2px);
+  }
+}
+
+.button[disabled] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* Bands: alternate haze and white to pace the scroll */
+.band-white {
+  --band: var(--white);
+  background: var(--white);
+}
+
+.band-navy {
+  --band: var(--navy);
+  background: var(--navy);
+  color: var(--on-navy);
+}
+
+.band-white.section,
+.band-navy.section {
+  padding-bottom: clamp(96px, 13vw, 160px);
+}
+
+/* Motion. Content is visible by default; only when JS marks the page .motion
+   and the visitor allows motion do elements start hidden and reveal on entry. */
+@media (prefers-reduced-motion: no-preference) {
+  .rise {
+    animation: rise 700ms var(--ease-out) both;
+    animation-delay: calc(var(--i, 0) * 70ms + 80ms);
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+      filter: blur(4px);
+    }
+  }
+
+  .motion [data-reveal] {
+    opacity: 0;
+    transform: translateY(18px);
+    filter: blur(4px);
+    transition:
+      opacity 700ms var(--ease-out),
+      transform 700ms var(--ease-out),
+      filter 700ms var(--ease-out);
+    transition-delay: calc(var(--i, 0) * 60ms);
+  }
+
+  .motion [data-reveal][data-inview] {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* Small shared pieces */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.chip--green {
+  background: var(--green-wash);
+  color: var(--green-deep);
+}
+
+.chip--kraft {
+  background: var(--kraft-wash);
+  color: var(--kraft-ink);
+}
+
+.chip--coral {
+  background: var(--coral-wash);
+  color: var(--coral-deep);
+}
+
+.chip--navy {
+  background: #dfe6ee;
+  color: var(--ink);
 }

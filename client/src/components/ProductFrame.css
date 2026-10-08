@@ -1,0 +1,463 @@
+/* The app frame */
+.app {
+  position: relative;
+  display: grid;
+  grid-template-columns: 208px minmax(0, 1fr);
+  background: #fff;
+  border-radius: 18px;
+  box-shadow:
+    0 0 0 1px var(--rule),
+    0 30px 60px -30px rgba(32, 46, 60, 0.35);
+  overflow: hidden;
+  font-size: 0.88rem;
+}
+
+.app__flag {
+  position: absolute;
+  z-index: 2;
+  top: 14px;
+  right: 16px;
+  font-family: var(--data);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  background: var(--mist);
+  padding: 4px 8px 3px;
+  border-radius: 4px;
+}
+
+.app__side {
+  background: var(--mist);
+  color: var(--ink-2);
+  padding: 18px 12px;
+  border-right: 1px solid var(--rule);
+}
+
+.app__brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 18px;
+  font-family: var(--display);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.app__brand img {
+  width: 24px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.app__side ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.app__side li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 8px;
+}
+
+.app__side li[data-active] {
+  background: #fff;
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(22, 34, 46, 0.08);
+}
+
+.app__side li[data-active] svg {
+  color: var(--green-deep);
+}
+
+.app__main {
+  padding: 18px 22px 24px;
+  min-width: 0;
+}
+
+.app__top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.app__crumbs {
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.app__crumbs strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.app__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  padding: 7px 12px;
+  width: 220px;
+  border-radius: 8px;
+  background: var(--mist);
+  color: var(--ink-3);
+}
+
+.app__day {
+  font-family: var(--data);
+  font-size: 0.7rem;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.app__day span {
+  color: var(--green-deep);
+  font-weight: 500;
+}
+
+.app__tabs {
+  display: flex;
+  gap: 6px;
+  margin: 18px 0 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.app__tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 0.84rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    color 0.2s,
+    border-color 0.2s;
+}
+
+.app__tabs button:hover {
+  border-color: var(--rule-strong);
+  color: var(--ink);
+}
+
+.app__tabs button[aria-selected='true'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+
+.app__tabs i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+.app__tabs [data-stage='Enrolling'] i {
+  background: var(--amber);
+}
+
+.app__tabs [data-stage='Assessing'] i {
+  background: #e4705a;
+}
+
+.app__tabs [data-stage='Reported'] i {
+  background: #9fb0c0;
+}
+
+.app__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.app__col {
+  display: grid;
+  gap: 14px;
+}
+
+.panel {
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: #fff;
+  min-width: 0;
+}
+
+.panel__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.panel__head h3 {
+  font-family: var(--sans);
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.panel__head p {
+  font-size: 0.76rem;
+  color: var(--ink-3);
+  text-align: right;
+}
+
+.panel__empty {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 28px 8px;
+  color: var(--ink-2);
+}
+
+.panel__empty svg {
+  flex: none;
+  color: var(--amber);
+}
+
+.panel__empty strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* Register */
+.register {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.register table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 420px;
+}
+
+.register th,
+.register td {
+  padding: 7px 6px;
+  border-bottom: 1px solid var(--rule);
+  text-align: center;
+}
+
+.register tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+.register thead th {
+  font-family: var(--data);
+  font-size: 0.62rem;
+  font-weight: 500;
+  color: var(--ink-2);
+  line-height: 1.2;
+}
+
+.register thead th span {
+  display: block;
+  color: var(--ink-3);
+}
+
+.register thead th:first-child,
+.register tbody th {
+  text-align: left;
+  padding-left: 0;
+}
+
+.register tbody th {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.register__avg {
+  font-family: var(--data);
+  font-size: 0.72rem;
+  color: var(--ink);
+}
+
+.tick {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  animation: stamp 0.45s var(--ease-out) both;
+}
+
+[data-mark='present'] .tick {
+  background: var(--green-wash);
+  color: var(--green-deep);
+}
+
+[data-mark='absent'] .tick {
+  background: var(--red-wash);
+  color: var(--red);
+}
+
+[data-mark='late'] .tick {
+  background: var(--amber-wash);
+  color: #7a4f10;
+}
+
+@keyframes stamp {
+  from {
+    transform: scale(1.35);
+    opacity: 0.3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tick {
+    animation: none;
+  }
+}
+
+/* Fees */
+.fees__bar {
+  display: flex;
+  gap: 3px;
+  height: 8px;
+}
+
+.fees__bar span {
+  border-radius: 4px;
+  flex-basis: 0;
+  transition: flex-grow 0.5s var(--ease-out);
+}
+
+.fees__bar [data-status='Paid'] {
+  background: var(--green);
+}
+
+.fees__bar [data-status='Due'] {
+  background: var(--amber);
+}
+
+.fees__bar [data-status='Overdue'] {
+  background: #e4705a;
+}
+
+.fees__tally {
+  margin-top: 8px;
+  font-size: 0.78rem;
+  color: var(--ink-2);
+}
+
+.fees__list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+
+.fees__list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-top: 1px solid var(--rule);
+}
+
+.fees__list em {
+  font-style: normal;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.fees__list [data-status='Paid'] {
+  background: var(--green-wash);
+  color: var(--green-deep);
+}
+
+.fees__list [data-status='Due'] {
+  background: var(--amber-wash);
+  color: #7a4f10;
+}
+
+.fees__list [data-status='Overdue'] {
+  background: var(--red-wash);
+  color: var(--red);
+}
+
+.messages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.messages li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  color: var(--ink-2);
+}
+
+.messages svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--green-deep);
+}
+
+@media (max-width: 1080px) {
+  .app__search {
+    display: none;
+  }
+
+  .app__day {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  .app__side {
+    display: none;
+  }
+
+  .app__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .app__main {
+    padding: 16px 14px 18px;
+  }
+
+  .app__top {
+    flex-wrap: wrap;
+    padding-right: 0;
+    padding-top: 22px;
+    row-gap: 4px;
+  }
+
+  .app__day {
+    margin-left: 0;
+  }
+
+  .app__flag {
+    top: 10px;
+    right: 12px;
+  }
+}

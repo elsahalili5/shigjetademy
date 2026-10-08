@@ -1,0 +1,97 @@
+{
+  "title": "Bolder hand: choose the visual world",
+  "question": "Foreign forms, fused with Shigjetademy. The Term Shelf was dealt first; the Step Sequencer beat it on both axes. Pick one, or re-roll.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Term Shelf",
+      "kicker": "THE ROLL",
+      "lineage": "A pickling-brine calendar: seasonal jars maturing on shelf lines",
+      "thesis": "Every class is a glass jar on the term's shelf, labelled with start date, stage and day count, maturing from enrolment to report.",
+      "palette": ["#EEF3EF", "#1E2A37", "#1FA37F", "#E2735F", "#C2A07A"],
+      "materials": ["clear glass cards", "kraft labels with stamped dates", "shelf lines", "clean brine-haze ground"],
+      "viewport": "A long shelf across the viewport holds cohort jars at different stages; the headline is the shelf label; 'Book a demo' is a kraft tag.",
+      "risk": "A food metaphor can feel whimsical to school directors unless every jar stays crisp.",
+      "raised": [
+        {"from": "challenger-cityscape", "raise": "Time bands stack in sync down the page, so every section shares the same term timeline."},
+        {"from": "challenger-cartoon", "raise": "One hub every section locks to, with a short bumper line announcing each section."},
+        {"from": "challenger-algorave", "raise": "What happens next is always shown before it happens: next session, next invoice, next report."}
+      ]
+    },
+    {
+      "id": "challenger-steprow",
+      "label": "Step Sequencer",
+      "verdict": "wins",
+      "lineage": "An early-80s rhythm machine step row with a running chase light",
+      "thesis": "The school day as a sixteen-step row: every period a key, a chase light marks now, lit keys are classes running.",
+      "palette": ["#1B232C", "#F4F5F2", "#1FA37F", "#E9B949", "#E2735F"],
+      "materials": ["precision hardware panel", "lit step keys", "silkscreen caps", "segmented time readout"],
+      "viewport": "A big headline above a panel whose sixteen step keys are today's periods; the chase light runs across while the dashboard updates attendance and payments; 'Book a demo' is the RUN key.",
+      "case": "Beats the leader on both axes: every school runs on periods and bells, and a chase light makes scheduling and attendance instantly legible.",
+      "risk": "If the hardware is overplayed it reads as a music toy instead of an operations platform."
+    },
+    {
+      "id": "challenger-angura",
+      "label": "Ray Poster",
+      "verdict": "competitive",
+      "lineage": "Underground theatre silkscreen posters",
+      "thesis": "Rays fire from the arrow's origin; the page border is the term's dates, and the active date floods with colour.",
+      "palette": ["#FFFFFF", "#1FA37F", "#E2452C", "#F2C230", "#1E2A37"],
+      "materials": ["flat silkscreen colour", "ray burst", "ruled date border"],
+      "viewport": "A ray burst from the logo's arrow fills the hero; a border of term dates frames it and doubles as navigation.",
+      "case": "Owns the arrow identity and makes the term calendar navigable, but its handmade clash undercuts 'premium'.",
+      "risk": "Loud; can feel like an event poster rather than software."
+    },
+    {
+      "id": "challenger-cityscape",
+      "label": "Rain-night City",
+      "verdict": "declined",
+      "lineage": "Blue-hour urban nocturnes",
+      "thesis": "Campus windows light up as classes run.",
+      "palette": ["#0E1B3D", "#E9A441", "#C9D3DE"],
+      "materials": ["neon", "wet reflections"],
+      "viewport": "A skyline of lit classrooms.",
+      "case": "Moody and indirect for a buying decision.",
+      "kept": "Synchronized time bands stacked down the page.",
+      "risk": "Dark and cinematic, not clean."
+    },
+    {
+      "id": "challenger-cartoon",
+      "label": "Saturday Title Card",
+      "verdict": "declined",
+      "lineage": "Cartoon title cards",
+      "thesis": "Starburst logotype with theme-song energy.",
+      "palette": ["#FFD23F", "#3FC1E8", "#111111"],
+      "materials": ["cel paint", "VHS patina"],
+      "viewport": "A bowed logotype on a starburst.",
+      "case": "Childish for school leadership.",
+      "kept": "One hub every section locks to, with bumper transitions.",
+      "risk": "Reads as a kids' product."
+    },
+    {
+      "id": "challenger-algorave",
+      "label": "Algorave Floor",
+      "verdict": "declined",
+      "lineage": "Live-coded music performances",
+      "thesis": "Projected code that changes the room.",
+      "palette": ["#000000", "#39FF88", "#FF3FB4"],
+      "materials": ["terminal type", "projector black"],
+      "viewport": "A code buffer at stage scale.",
+      "case": "Educators don't identify with live code.",
+      "kept": "Upcoming changes shown before they apply.",
+      "risk": "Developer-only feel."
+    }
+  ],
+  "reroll": { "registers": ["safer", "bolder"] },
+  "buildPath": { "value": "code" },
+  "canon": true,
+  "canonCard": {
+    "label": "The category standard",
+    "thesis": "The clean SaaS homepage, like Deel's, executed impeccably.",
+    "palette": ["#FFFFFF", "#15171C", "#1FA37F"],
+    "materials": ["clean grid", "product screenshots", "icon feature cards"],
+    "viewport": "Centered headline, two buttons, a big dashboard screenshot below.",
+    "risk": "Hard to tell apart from other SaaS by design."
+  },
+  "steer": true
+}

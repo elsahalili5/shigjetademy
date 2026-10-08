@@ -1,0 +1,124 @@
+{
+  "title": "Choose the visual world for Shigjetademy",
+  "question": "The roll landed on a world built from your own logo: the arc loop and the arrow. Keep it, take an alternate, or re-roll.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Arc & Arrow",
+      "kicker": "THE ROLL",
+      "lineage": "The Shigjetademy mark itself: a circle of arc segments cut by one arrow shaft",
+      "thesis": "The logo's circle is the school's operating loop; the arrow is every student moving through it.",
+      "palette": ["#F4F6F5", "#1E2A37", "#1FA37F", "#CFEDE2"],
+      "materials": ["precise arc strokes sharing one center", "one diagonal vector", "large flat navy and green fields", "crisp product UI"],
+      "viewport": "Big confident headline left; right, a live dashboard sits inside a giant logo-geometry ring whose six arc segments are labelled Enrol, Schedule, Attend, Pay, Grade, Report; an arrow sweeps through them. 'Book a demo' is the primary button under the headline.",
+      "risk": "If the arcs turn decorative instead of carrying the loop, it reads as a logo pasted large.",
+      "raised": [
+        {"from": "challenger-cracktro", "raise": "All motion runs off one shared clock (the arc sweep, scroll-driven), not scattered hover effects."},
+        {"from": "challenger-neubrutalist", "raise": "One strict rhythm: a single radius family and spacing grid as tokens; buttons settle physically on press."},
+        {"from": "challenger-screenprint", "raise": "Registration discipline: every arc on the page shares the logo's stroke weight and true center, so overlaps land exactly."},
+        {"from": "challenger-origami", "raise": "The workflow is a numbered sequence in a strict margin column; each step is a linkable, recoverable state."},
+        {"from": "challenger-daylight", "raise": "The dashboard preview runs one school day with tabular timestamps and a single moving 'now' line."}
+      ]
+    },
+    {
+      "id": "model-pick",
+      "label": "The Timetable",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "The weekly school timetable pinned in every staff room",
+      "thesis": "The whole page is laid on a Monday-to-Friday period grid; every feature is a coloured block in the week.",
+      "palette": ["#FFFFFF", "#1E2A37", "#1FA37F", "#F2C14E", "#7FA7E0"],
+      "materials": ["period grid lines", "coloured lesson blocks", "tabular times", "room codes"],
+      "viewport": "Headline sits in the Monday column; the rest of the viewport is this week's timetable filling in block by block, with 'Book a demo' as the free slot.",
+      "risk": "Familiar: timetable-grid heroes are where many education SaaS pages land."
+    },
+    {
+      "id": "challenger-splitflap",
+      "label": "Departures Board",
+      "verdict": "competitive",
+      "lineage": "Rail concourse split-flap boards",
+      "thesis": "Today's classes shown as a departures board: rooms, times and teachers flipping into place.",
+      "palette": ["#111316", "#F4F4F0", "#1FA37F", "#E7A53A"],
+      "materials": ["matte flap cells", "condensed caps", "brushed steel frame", "amber status lamps"],
+      "viewport": "A full-width board of today's sessions flips in; the headline is the board's title row; 'Book a demo' is the platform sign.",
+      "case": "Strong recognition for anyone who runs a timetable, but a dark, loud board fights the brief's clean, minimal and premium feel.",
+      "risk": "Can read as a gimmick rather than a serious operations platform."
+    },
+    {
+      "id": "challenger-cracktro",
+      "label": "Cracktro Scroller",
+      "verdict": "declined",
+      "lineage": "Demoscene title screens",
+      "thesis": "Bitmap text on a drifting black void.",
+      "palette": ["#000000", "#F2EEE3", "#E8A33A"],
+      "materials": ["bitmap type", "parallax dust"],
+      "viewport": "One ivory line of text on black.",
+      "case": "Schools don't identify with it and it hides the product.",
+      "kept": "One shared motion clock for the whole page.",
+      "risk": "Unreadable as an education product."
+    },
+    {
+      "id": "challenger-neubrutalist",
+      "label": "Neubrutalist",
+      "verdict": "declined",
+      "lineage": "Award-grade neubrutalist product sites",
+      "thesis": "Black outlines and hard offset shadows on clashing solids.",
+      "palette": ["#F7F4EC", "#000000", "#FFC93C", "#3A6FF7"],
+      "materials": ["heavy borders", "hard shadows"],
+      "viewport": "Bordered card grid with chunky buttons.",
+      "case": "Contradicts the premium, calm brief.",
+      "kept": "Strict token-encoded rhythm and physical button press.",
+      "risk": "Reads playful, not trustworthy."
+    },
+    {
+      "id": "challenger-screenprint",
+      "label": "Screenprint Overlap",
+      "verdict": "declined",
+      "lineage": "Transparent spot-colour screenprints",
+      "thesis": "Overlapping translucent inks.",
+      "palette": ["#F3EEE4", "#2BB5C9", "#F0A531", "#D33A2C"],
+      "materials": ["translucent ink", "registration marks"],
+      "viewport": "Layered ink figures.",
+      "case": "No link to running a school.",
+      "kept": "Exact registration: shared centers and stroke weights.",
+      "risk": "Art-print, not software."
+    },
+    {
+      "id": "challenger-origami",
+      "label": "Origami Sequence",
+      "verdict": "declined",
+      "lineage": "Numbered fold diagrams",
+      "thesis": "A sheet folding step by step.",
+      "palette": ["#D8432B", "#F4EFE6", "#1A1A1A"],
+      "materials": ["washi", "crease lines"],
+      "viewport": "A red square mid-fold.",
+      "case": "Metaphor is too distant from education operations.",
+      "kept": "Numbered steps in a strict margin column.",
+      "risk": "Feels craft-hobby."
+    },
+    {
+      "id": "challenger-daylight",
+      "label": "Daylight Section",
+      "verdict": "declined",
+      "lineage": "Architectural sun-path sections",
+      "thesis": "Sunlight moving through a building over a day.",
+      "palette": ["#F2EFE8", "#2A2A2E", "#E9B949", "#7C93B3"],
+      "materials": ["limewash", "section poche"],
+      "viewport": "A building section with a moving sunbeam.",
+      "case": "Beautiful but indirect for school admins.",
+      "kept": "A single day with tabular times and a moving 'now' line.",
+      "risk": "Too abstract for a buying decision."
+    }
+  ],
+  "reroll": { "registers": ["safer", "bolder"] },
+  "buildPath": { "value": "code" },
+  "canon": true,
+  "canonCard": {
+    "label": "The category standard",
+    "thesis": "The clean SaaS homepage, like Deel's, executed impeccably.",
+    "palette": ["#FFFFFF", "#15171C", "#1FA37F"],
+    "materials": ["clean grid", "product screenshots", "icon feature cards"],
+    "viewport": "Centered headline, two buttons, a big dashboard screenshot below.",
+    "risk": "Hard to tell apart from other SaaS by design."
+  },
+  "steer": true
+}

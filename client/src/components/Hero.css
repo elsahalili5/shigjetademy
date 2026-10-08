@@ -1,0 +1,223 @@
+.hero {
+  padding-top: clamp(40px, 7vh, 88px);
+}
+
+.hero__intro {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: clamp(24px, 4vw, 72px);
+  align-items: end;
+}
+
+.hero h1 {
+  font-size: clamp(2.6rem, 5.4vw, 5.2rem);
+  font-weight: 700;
+  line-height: 0.98;
+  letter-spacing: -0.038em;
+  max-width: 13ch;
+}
+
+.hero__aside p {
+  font-size: 1.08rem;
+  color: var(--ink-2);
+  max-width: 44ch;
+}
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 26px;
+}
+
+/* The stage: a navy field carrying the logo's arcs and the product */
+.stage {
+  position: relative;
+  margin-top: clamp(40px, 6vh, 72px);
+  padding: clamp(28px, 5vw, 64px) clamp(16px, 5vw, 64px) 0;
+  background: var(--navy);
+  border-radius: 28px;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.stage__arcs {
+  z-index: -1;
+  width: min(1100px, 110%);
+  right: -22%;
+  top: -34%;
+}
+
+.stage__frame {
+  position: relative;
+  margin-bottom: -48px;
+  max-width: 1040px;
+}
+
+.stage__frame .app {
+  box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.55);
+}
+
+/* Notifications: stacked like toasts over the frame's edge */
+.notes {
+  position: absolute;
+  right: clamp(16px, 3vw, 40px);
+  bottom: clamp(20px, 2.5vw, 32px);
+  z-index: 3;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+  width: 300px;
+}
+
+.notes li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(22, 34, 46, 0.1), 0 18px 40px -16px rgba(0, 0, 0, 0.45);
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.notes strong {
+  display: block;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.notes li > span:last-child > span {
+  color: var(--ink-3);
+}
+
+.notes__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--green-wash);
+  color: var(--green-deep);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .notes li {
+    animation: note-in 500ms var(--ease-out) both;
+    animation-delay: calc(var(--i) * 450ms + 1100ms);
+  }
+
+  @keyframes note-in {
+    from {
+      opacity: 0;
+      transform: translateY(16px) scale(0.96);
+    }
+  }
+}
+
+/* Built for */
+.built-for {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 32px;
+  padding: 28px 4px 0;
+}
+
+.built-for > p:first-child {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+
+.built-for ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+}
+
+.built-for li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.built-for li svg {
+  color: var(--green-deep);
+}
+
+.built-for__note {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--ink-3);
+}
+
+@media (max-width: 1080px) {
+  .hero__intro {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .hero h1 {
+    max-width: 16ch;
+  }
+
+  .notes {
+    width: 270px;
+  }
+}
+
+@media (max-width: 760px) {
+  .stage {
+    border-radius: 20px;
+    padding-bottom: 20px;
+  }
+
+  .stage__frame {
+    margin-bottom: 0;
+  }
+
+  .notes {
+    position: relative;
+    inset: auto;
+    width: auto;
+    margin-top: 14px;
+  }
+
+  .notes li:nth-child(n + 2) {
+    display: none;
+  }
+
+  .built-for__note {
+    margin-left: 0;
+  }
+}
+
+.notes li:nth-child(2) .notes__icon {
+  background: var(--kraft-wash);
+  color: var(--kraft-ink);
+}
+
+.notes li {
+  transition: transform 200ms var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .notes li:hover {
+    transform: translateY(-2px);
+  }
+}

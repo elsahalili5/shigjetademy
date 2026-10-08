@@ -1,0 +1,229 @@
+.day {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(28px, 5vw, 80px);
+  align-items: start;
+}
+
+.day__head {
+  position: sticky;
+  top: 110px;
+}
+
+.day__head h2 {
+  font-size: clamp(2rem, 3.8vw, 3.4rem);
+  font-weight: 680;
+  letter-spacing: -0.032em;
+}
+
+.day__head h2 {
+  color: #fff;
+}
+
+.day__head p {
+  margin-top: 18px;
+  color: var(--on-navy-2);
+  max-width: 42ch;
+}
+
+.day__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.moment {
+  --tone: var(--green);
+  --tone-wash: var(--green-wash);
+  --tone-ink: var(--green-deep);
+  display: grid;
+  grid-template-columns: 4.2rem 24px minmax(0, 1fr);
+  gap: 0 18px;
+  position: relative;
+  padding-bottom: 18px;
+}
+
+.moment[data-tone='navy'] {
+  --tone: #9fc3e6;
+  --tone-wash: #dfe9f4;
+  --tone-ink: var(--navy);
+}
+
+.moment[data-tone='coral'] {
+  --tone: var(--coral);
+  --tone-wash: var(--coral-wash);
+  --tone-ink: var(--coral-deep);
+}
+
+.moment[data-tone='kraft'] {
+  --tone: var(--kraft-deep);
+  --tone-wash: var(--kraft-wash);
+  --tone-ink: var(--kraft-ink);
+}
+
+.moment__time {
+  padding-top: 20px;
+  font-family: var(--data);
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--on-navy-2);
+  text-align: right;
+}
+
+/* The day's line: each connector fills as its moment enters */
+.moment__dot {
+  position: relative;
+  justify-self: center;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.moment__dot::before {
+  content: '';
+  position: absolute;
+  top: 22px;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  border-radius: 50%;
+  background: var(--tone);
+  box-shadow: 0 0 0 5px var(--band, var(--haze));
+  z-index: 1;
+}
+
+.moment__dot::after {
+  content: '';
+  position: absolute;
+  inset: 28px 0 -18px;
+  background: var(--green);
+  transform-origin: top;
+}
+
+.moment__dot[data-last]::after,
+.moment:last-child .moment__dot {
+  background: transparent;
+}
+
+.moment:last-child .moment__dot::after {
+  display: none;
+}
+
+.moment__card {
+  background: var(--navy-2);
+  color: var(--on-navy);
+  border-radius: 18px;
+  padding: 18px 22px 20px;
+  box-shadow: 0 1px 2px rgba(22, 34, 46, 0.05);
+  transition:
+    transform 200ms var(--ease-out),
+    box-shadow 200ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .moment__card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 40px -22px rgba(0, 0, 0, 0.6);
+  }
+}
+
+.moment__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.moment__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--tone-wash);
+  color: var(--tone-ink);
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.moment__meta {
+  font-family: var(--data);
+  font-size: 0.7rem;
+  color: var(--on-navy-2);
+}
+
+.moment h3 {
+  color: #fff;
+  font-size: 1.2rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.moment p {
+  margin-top: 6px;
+  color: var(--on-navy-2);
+  font-size: 0.95rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .motion .moment__dot::after {
+    transform: scaleY(0);
+    transition: transform 900ms var(--ease-in-out) 250ms;
+  }
+
+  .motion .moment[data-inview] .moment__dot::after {
+    transform: scaleY(1);
+  }
+
+  .motion .moment__dot::before {
+    transform: scale(0.6);
+    transition: transform 400ms var(--ease-out) 150ms;
+  }
+
+  .motion .moment[data-inview] .moment__dot::before {
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 900px) {
+  .day {
+    grid-template-columns: 1fr;
+  }
+
+  .day__head {
+    position: static;
+  }
+}
+
+@media (max-width: 520px) {
+  .moment {
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 0 14px;
+  }
+
+  .moment__time {
+    grid-column: 2;
+    grid-row: 1;
+    text-align: left;
+    padding-top: 0;
+    padding-bottom: 8px;
+  }
+
+  .moment__dot {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .moment__dot::before {
+    top: 4px;
+  }
+
+  .moment__dot::after {
+    inset: 10px 0 -18px;
+  }
+
+  .moment__card {
+    grid-column: 2;
+  }
+}

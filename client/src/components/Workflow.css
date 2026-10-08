@@ -1,0 +1,245 @@
+/* The term band: steps in a margin column, their spans laid on one shared week scale */
+.band {
+  --steps-col: minmax(0, 5fr);
+  --track-col: minmax(0, 7fr);
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--steps-col) var(--track-col);
+  column-gap: clamp(20px, 4vw, 56px);
+}
+
+.band__scale {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--ink);
+  font-family: var(--data);
+  font-size: 0.64rem;
+  color: var(--ink-3);
+}
+
+.band__label {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.band__scale ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+}
+
+.band__steps {
+  grid-column: 1 / -1;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: subgrid;
+}
+
+.band__steps > li {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
+  border-bottom: 1px solid var(--rule);
+}
+
+.band__step {
+  display: grid;
+  grid-template-columns: 2.6rem 1fr;
+  gap: 12px;
+  align-items: baseline;
+  padding: 18px 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.band__num {
+  font-family: var(--data);
+  font-size: 0.8rem;
+  color: var(--ink-3);
+  transition: color 0.3s;
+}
+
+.band__text strong {
+  display: block;
+  font-family: var(--display);
+  font-size: 1.35rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.band__text > span {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.92rem;
+  color: var(--ink-2);
+  max-width: 44ch;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .band__step:hover strong {
+    color: var(--green-deep);
+  }
+}
+
+.band__step {
+  transition: transform 160ms var(--ease-out);
+}
+
+.band__step:active {
+  transform: scale(0.99);
+}
+
+[data-active] .band__num {
+  color: var(--green-deep);
+}
+
+.band__track {
+  position: relative;
+  height: 100%;
+  min-height: 56px;
+  background: repeating-linear-gradient(90deg, var(--rule) 0 1px, transparent 1px calc(100% / 12));
+}
+
+.band__seg,
+.band__point {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  transition:
+    background-color 0.3s,
+    box-shadow 0.3s;
+}
+
+.band__seg {
+  height: 14px;
+  border-radius: 7px;
+  background: rgba(22, 34, 46, 0.12);
+  transform-origin: left;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .motion .band__seg {
+    transform: translateY(-50%) scaleX(0);
+    transition:
+      transform 900ms var(--ease-in-out),
+      background-color 300ms ease,
+      box-shadow 300ms ease;
+  }
+
+  .motion .band[data-inview] .band__seg {
+    transform: translateY(-50%) scaleX(1);
+  }
+
+  .motion .band__steps li:nth-child(2) .band__seg { transition-delay: 80ms, 0s, 0s; }
+  .motion .band__steps li:nth-child(3) .band__seg { transition-delay: 160ms, 0s, 0s; }
+  .motion .band__steps li:nth-child(5) .band__seg { transition-delay: 320ms, 0s, 0s; }
+  .motion .band__steps li:nth-child(6) .band__seg { transition-delay: 400ms, 0s, 0s; }
+}
+
+.band__seg[data-early] {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.band__point {
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  border-radius: 3px;
+  transform: translateY(-50%) rotate(45deg);
+  background: rgba(22, 34, 46, 0.14);
+}
+
+[data-active] .band__seg,
+[data-active] .band__point {
+  background: var(--green);
+  box-shadow: 0 4px 12px -4px rgba(34, 168, 135, 0.7);
+}
+
+/* The day marker shares the term clock with the hero shelf */
+.band__marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(5 / 12 * (100% - clamp(20px, 4vw, 56px)) + clamp(20px, 4vw, 56px));
+  right: 0;
+  pointer-events: none;
+}
+
+.band__marker::before {
+  content: '';
+  position: absolute;
+  top: 24px;
+  bottom: 0;
+  left: var(--marker);
+  width: 2px;
+  margin-left: -1px;
+  background: var(--navy);
+  transition: left 420ms var(--ease-in-out);
+}
+
+.band__marker span {
+  position: absolute;
+  top: -4px;
+  left: var(--marker);
+  transform: translateX(-50%);
+  padding: 3px 7px 2px;
+  border-radius: 4px;
+  background: var(--navy);
+  color: #fff;
+  font-family: var(--data);
+  font-size: 0.62rem;
+  white-space: nowrap;
+  transition: left 420ms var(--ease-in-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .band__marker::before,
+  .band__marker span {
+    transition: none;
+  }
+}
+
+/* Narrow screens: each step carries its own full-width track under the text */
+@media (max-width: 860px) {
+  .band {
+    grid-template-columns: 1fr;
+  }
+
+  .band__scale {
+    display: none;
+  }
+
+  .band__steps > li {
+    grid-template-columns: 1fr;
+    padding-bottom: 18px;
+  }
+
+  .band__step {
+    padding-bottom: 12px;
+  }
+
+  .band__track {
+    min-height: 22px;
+    margin-left: calc(2.6rem + 12px);
+  }
+
+  .band__marker {
+    display: none;
+  }
+
+  [data-active] .band__track {
+    box-shadow: inset 0 -2px 0 var(--green-wash);
+  }
+}

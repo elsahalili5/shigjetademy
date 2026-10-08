@@ -1,5 +1,9 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import '@fontsource-variable/bricolage-grotesque'
+import '@fontsource-variable/hanken-grotesk'
+import '@fontsource/martian-mono/400.css'
+import '@fontsource/martian-mono/500.css'
 import './index.css'
 import App from './App.tsx'
 
