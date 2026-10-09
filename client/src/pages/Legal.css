@@ -1,16 +1,99 @@
 .legal {
   padding-bottom: clamp(96px, 13vw, 160px);
+  display: grid;
+  grid-template-columns: minmax(200px, 3fr) minmax(0, 7fr);
+  gap: clamp(32px, 6vw, 96px);
+  align-items: start;
+}
+
+/* Contents list stays in view while reading */
+.legal__toc {
+  position: sticky;
+  top: calc(var(--nav-h) + 24px);
+}
+
+.legal__updated {
+  font-family: var(--data);
+  font-size: 0.8rem;
+  color: var(--ink-3);
+  margin-bottom: 16px;
+}
+
+.legal__toc ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-left: 1px solid var(--rule-strong);
+}
+
+.legal__toc a {
+  display: block;
+  padding: 7px 0 7px 16px;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+.legal__toc a:hover {
+  color: var(--green-deep);
 }
 
 .legal__body {
-  max-width: 64ch;
-  display: grid;
-  gap: 16px;
+  max-width: 68ch;
   font-size: 1.05rem;
   color: var(--ink-2);
+}
+
+.legal__body section {
+  padding-bottom: 36px;
+  scroll-margin-top: calc(var(--nav-h) + 24px);
+}
+
+.legal__body section + section {
+  padding-top: 36px;
+  border-top: 1px solid var(--rule);
+}
+
+.legal__body h2 {
+  font-size: clamp(1.35rem, 2vw, 1.65rem);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin-bottom: 14px;
+}
+
+.legal__body p + p,
+.legal__body p + ul,
+.legal__body ul + p {
+  margin-top: 12px;
+}
+
+.legal__body ul {
+  margin: 0;
+  padding-left: 1.2em;
+  display: grid;
+  gap: 8px;
+}
+
+.legal__body strong {
+  color: var(--ink);
 }
 
 .legal__body a {
   color: var(--green-deep);
   font-weight: 600;
+}
+
+.legal__more {
+  padding-top: 28px;
+  border-top: 1px solid var(--rule-strong);
+}
+
+@media (max-width: 860px) {
+  .legal {
+    grid-template-columns: 1fr;
+  }
+
+  .legal__toc {
+    position: static;
+  }
 }
