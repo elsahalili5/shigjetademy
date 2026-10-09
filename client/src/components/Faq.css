@@ -1,3 +1,18 @@
+/* A soft green field sets the questions apart from the white sections around them */
+.faq {
+  position: relative;
+  isolation: isolate;
+  padding-bottom: clamp(96px, 13vw, 160px);
+}
+
+.faq::before {
+  content: '';
+  position: absolute;
+  inset: 0 calc(50% - 50vw);
+  z-index: -1;
+  background: color-mix(in srgb, var(--kraft-wash) 70%, var(--haze));
+}
+
 .faq {
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
@@ -77,7 +92,7 @@
 
 .faq__list li[data-open] .faq__icon {
   transform: rotate(45deg);
-  background: var(--navy);
+  background: var(--coral-deep);
   color: #fff;
 }
 
@@ -87,7 +102,7 @@
   }
 
   .faq__list li[data-open] button:hover .faq__icon {
-    background: var(--navy-2);
+    background: #9c3f2d;
   }
 }
 

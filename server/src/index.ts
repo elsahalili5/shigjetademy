@@ -2,12 +2,14 @@ import express from 'express'
 import cors from 'cors'
 import { appendFile, mkdir } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
+import { auth } from './auth.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
 
 app.use(cors())
-app.use(express.json())
+app.use(express.json({ limit: '20kb' }))
+app.use('/api/auth', auth)
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() })

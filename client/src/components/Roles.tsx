@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { Bell, CalendarDays, Check, ClipboardCheck, FileText, MessageSquare, Wallet } from 'lucide-react'
-import mark from '../assets/brand/shigjetademy-mark.png'
+import wordmark from '../assets/brand/shigjetademy-wordmark.png'
 import './Roles.css'
 
 type Role = {
@@ -113,6 +113,14 @@ function Bar({ label, value }: { label: string; value: number }) {
   )
 }
 
+// One colour per role, from the brand palette: wash behind, ink for the name
+const ROLE_TONES = [
+  { wash: '#dfe6ee', ink: 'var(--navy)' },
+  { wash: 'var(--green-wash)', ink: 'var(--green-deep)' },
+  { wash: 'var(--kraft-wash)', ink: 'var(--kraft-ink)' },
+  { wash: 'var(--coral-wash)', ink: 'var(--coral-deep)' },
+]
+
 export function Roles() {
   const [active, setActive] = useState(0)
 
@@ -129,7 +137,11 @@ export function Roles() {
           </div>
           <ul className="roles__list">
             {ROLES.map((r, n) => (
-              <li key={r.role} data-reveal style={{ '--i': n } as CSSProperties}>
+              <li
+                key={r.role}
+                data-reveal
+                style={{ '--i': n, '--role-wash': ROLE_TONES[n].wash, '--role-ink': ROLE_TONES[n].ink } as CSSProperties}
+              >
                 <button
                   type="button"
                   aria-pressed={n === active}
@@ -145,12 +157,15 @@ export function Roles() {
           </ul>
         </div>
 
-        <div className="roles__device" data-reveal style={{ '--i': 2 } as CSSProperties}>
+        <div
+          className="roles__device"
+          data-reveal
+          style={{ '--i': 2, '--role-wash': ROLE_TONES[active].wash } as CSSProperties}
+        >
           <div className="phone" aria-live="polite">
             <div className="phone__notch" aria-hidden="true" />
             <div className="phone__bar-top">
-              <img src={mark} alt="" width={20} height={18} />
-              <span>Shigjetademy</span>
+              <img src={wordmark} alt="Shigjetademy" width={88} height={22} />
             </div>
             <div className="phone__screens">
               {ROLES.map((r, n) => (

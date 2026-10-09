@@ -59,6 +59,16 @@ const STEPS: Step[] = [
   },
 ]
 
+// Each step keeps its own colour from the brand palette: fill for the bar, ink for its number
+const TONES = [
+  { fill: 'var(--kraft)', ink: 'var(--kraft-ink)' },
+  { fill: 'var(--ink-2)', ink: 'var(--ink-2)' },
+  { fill: 'var(--green)', ink: 'var(--green-deep)' },
+  { fill: 'var(--coral)', ink: 'var(--coral-deep)' },
+  { fill: 'var(--green-deep)', ink: 'var(--green-deep)' },
+  { fill: 'var(--navy)', ink: 'var(--navy)' },
+]
+
 const pct = (d: number) => `${(Math.max(0, d - 1) / TERM_DAYS) * 100}%`
 
 export function Workflow() {
@@ -90,7 +100,11 @@ export function Workflow() {
 
         <ol className="band__steps">
           {STEPS.map((s, i) => (
-            <li key={s.title} data-active={i === active || undefined}>
+            <li
+              key={s.title}
+              data-active={i === active || undefined}
+              style={{ '--tone': TONES[i].fill, '--tone-ink': TONES[i].ink } as CSSProperties}
+            >
               <button type="button" className="band__step" aria-pressed={i === active}
                 onClick={() => setActive(i)}>
                 <span className="band__num tabular">{String(i + 1).padStart(2, '0')}</span>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { CSSProperties } from 'react'
 import { Plus } from 'lucide-react'
+import { Link } from '../lib/router'
 import './Faq.css'
 
 const FAQS = [
@@ -34,7 +35,7 @@ export function Faq() {
       <div className="faq__head" data-reveal>
         <h2 id="faq-title">Questions, answered.</h2>
         <p>
-          Something else on your mind? <a href="#demo">Book a demo</a> and ask us directly.
+          Something else on your mind? <Link href="/contact">Book a demo</Link> and ask us directly.
         </p>
       </div>
       <ul className="faq__list">

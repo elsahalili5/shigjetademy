@@ -1,0 +1,351 @@
+/* What they say: the illustration anchors the left, real quotes stack on the right */
+/* Heading across the top; illustration and the quote deck share the row beneath */
+.testimonials__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  column-gap: clamp(32px, 6vw, 96px);
+  row-gap: clamp(32px, 5vw, 56px);
+  align-items: center;
+}
+
+.testimonials__intro {
+  grid-column: 1 / -1;
+}
+
+.testimonials__media {
+  display: grid;
+  justify-items: center;
+}
+
+.testimonials__intro h2 {
+  font-size: clamp(2rem, 3.8vw, 3.4rem);
+  font-weight: 680;
+  letter-spacing: -0.032em;
+}
+
+.testimonials__intro p {
+  margin-top: 14px;
+  color: var(--ink-2);
+  max-width: 40ch;
+}
+
+.testimonials__art {
+  width: min(100%, 420px);
+  height: auto;
+  mix-blend-mode: multiply; /* the illustration's white ground melts into the band */
+}
+
+.quote__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Sample marker: impossible to mistake for a real review */
+.quote__sample {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--coral-wash);
+  color: var(--coral-deep);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.quote__mark {
+  color: var(--tone);
+}
+
+.quote__who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.quote__avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--navy);
+  color: var(--white);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.quote__who strong {
+  display: block;
+  font-weight: 650;
+}
+
+.quote__who > span:last-child > span {
+  font-size: 0.86rem;
+  color: var(--ink-3);
+}
+
+@media (max-width: 900px) {
+  .testimonials__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .testimonials__art {
+    width: min(100%, 280px);
+  }
+}
+
+.testimonials__first-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: var(--kraft);
+  color: var(--navy);
+}
+
+.deck__card--invite .testimonials__first-title {
+  margin-top: 8px;
+  font-family: var(--display);
+  font-size: clamp(1.6rem, 2.6vw, 2.2rem);
+  font-weight: 680;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+  color: var(--white);
+  max-width: 16ch;
+}
+
+.testimonials__cta {
+  margin-top: 8px;
+  background: var(--green);
+  color: var(--navy);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 14px 28px -12px rgba(31, 176, 139, 0.55);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .testimonials__cta:hover {
+    background: #2bc49c;
+  }
+}
+
+
+/* ---------- The deck ---------- */
+.deck {
+  display: grid;
+  gap: 18px;
+}
+
+.deck__stack {
+  --peek: 16px;
+  position: relative;
+  display: grid;
+  padding-top: calc(var(--peek) * 2); /* room for the cards peeking out above */
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+
+.deck__stack[data-dragging] {
+  cursor: grabbing;
+}
+
+/* Every card shares one cell; depth decides where it sits */
+.deck__card {
+  --tone: var(--green);
+  grid-area: 1 / 1;
+  display: grid;
+  align-content: start;
+  gap: 22px;
+  margin: 0;
+  padding: clamp(28px, 3.4vw, 40px);
+  border-radius: 24px;
+  background: var(--white);
+  box-shadow:
+    0 1px 2px rgba(20, 42, 61, 0.08),
+    0 24px 48px -30px rgba(20, 42, 61, 0.45);
+  transform-origin: top center;
+  transition:
+    transform 460ms var(--ease-out),
+    opacity 300ms ease,
+    background-color 300ms ease;
+}
+
+.deck__card[data-depth='0'] {
+  z-index: 3;
+  transform: translateX(var(--drag, 0px)) rotate(var(--tilt, 0deg));
+}
+
+.deck__stack[data-dragging] .deck__card[data-depth='0'] {
+  transition: none; /* follows the pointer exactly */
+}
+
+.deck__card[data-depth='1'] {
+  z-index: 2;
+  background: var(--mist);
+  transform: translateY(calc(var(--peek) * -1)) scale(0.95);
+}
+
+.deck__card[data-depth='2'] {
+  z-index: 1;
+  background: var(--mist-deep);
+  transform: translateY(calc(var(--peek) * -2)) scale(0.9);
+}
+
+.deck__card[data-depth='hidden'] {
+  z-index: 0;
+  opacity: 0;
+  transform: translateY(calc(var(--peek) * -2)) scale(0.88);
+}
+
+/* Cards behind show only their colour edge, not their text */
+.deck__card:not([data-depth='0']) > * {
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.deck__card[data-depth='0'] > * {
+  transition: opacity 260ms ease 120ms;
+}
+
+/* Leaving: off to the side, quickly, then back to the rear of the deck */
+.deck__card[data-depth='leaving'] {
+  z-index: 4;
+  opacity: 0;
+  transform: translateX(calc(-40% * var(--dir, 1))) rotate(calc(-6deg * var(--dir, 1)));
+  transition:
+    transform 260ms var(--ease-out),
+    opacity 220ms ease;
+}
+
+.deck__card[data-dir='-1'] {
+  --dir: -1;
+}
+
+.deck__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.deck__mark {
+  color: var(--tone);
+}
+
+.deck__card blockquote {
+  margin: 0;
+}
+
+.deck__card blockquote p {
+  font-family: var(--display);
+  font-size: clamp(1.35rem, 2.2vw, 1.9rem);
+  font-weight: 620;
+  letter-spacing: -0.02em;
+  line-height: 1.28;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+
+.deck__card .quote__avatar {
+  background: var(--tone);
+  color: var(--navy);
+}
+
+/* Invitation: same card, navy, with blank cards waiting behind it */
+.deck__card--invite {
+  justify-items: start;
+  gap: 16px;
+  background:
+    radial-gradient(70% 70% at 100% 100%, rgba(31, 176, 139, 0.2), transparent 70%),
+    var(--navy);
+  color: var(--on-navy-2);
+  cursor: default;
+}
+
+.deck__card--invite .testimonials__first-title {
+  margin-top: 8px;
+}
+
+.deck__invite-body {
+  max-width: 46ch;
+}
+
+.deck__card--blank {
+  min-height: 100%;
+}
+
+/* Controls */
+.deck__controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.deck__dots {
+  display: flex;
+  gap: 2px;
+}
+
+.deck__dots button {
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.deck__dots button span {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--rule-strong);
+  transition:
+    width 300ms var(--ease-out),
+    background-color 200ms ease;
+}
+
+.deck__dots button[aria-current='true'] span {
+  width: 28px;
+  background:
+    linear-gradient(var(--tone), var(--tone)) no-repeat 0 0 / 100% 100%,
+    var(--rule-strong);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .deck__dots button span[data-run] {
+    animation: deck-fill linear both;
+  }
+}
+
+@keyframes deck-fill {
+  from {
+    background-size: 0% 100%, auto;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .deck__dots button:not([aria-current='true']):hover span {
+    background: var(--ink-3);
+  }
+}
+
+
+/* Reduced motion: no sliding or tilting, just a quiet fade between quotes */
+@media (prefers-reduced-motion: reduce) {
+  .deck__card,
+  .deck__card[data-depth='leaving'] {
+    transition: opacity 200ms ease, background-color 200ms ease;
+  }
+
+  .deck__card[data-depth='0'] {
+    transform: none;
+  }
+
+  .deck__card[data-depth='leaving'] {
+    transform: none;
+  }
+}
+

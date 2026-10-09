@@ -12,7 +12,7 @@ import {
   Wallet,
   X,
 } from 'lucide-react'
-import mark from '../assets/brand/shigjetademy-mark.png'
+import wordmark from '../assets/brand/shigjetademy-wordmark.png'
 import type { Cohort, FeeStatus } from '../lib/term'
 import {
   COHORTS,
@@ -54,8 +54,7 @@ export function ProductFrame({ compact = false }: { compact?: boolean }) {
     <div className="app" aria-label="Shigjetademy app preview with illustrative data">
       <aside className="app__side">
         <div className="app__brand">
-          <img src={mark} alt="" width={24} height={22} />
-          <span>Shigjetademy</span>
+          <img src={wordmark} alt="Shigjetademy" width={96} height={24} />
         </div>
         <ul>
           {NAV.map(({ icon: Icon, label, active }) => (

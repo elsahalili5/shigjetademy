@@ -20,7 +20,7 @@ OWN-WORLD: White and cool off-white ground, logo navy as the committed field col
 
 STORY: The visitor reads what Shigjetademy is in one line, sees the dashboard running a real class, scans four capabilities, understands the six-step term workflow and who uses it, and books a demo.
 
-FIRST VIEWPORT: Left-aligned headline and one sentence with Book a demo (primary) and See the platform. Below, full container width, a navy stage with logo arcs holding the product frame, with three notification cards stacked over its edge. A "Built for" line naming the four organization types.
+FIRST VIEWPORT (revised 2026-10-08, full-bleed at user request): Nav with brand left, links centred in a pill, Log in + Book a demo right. Hero is a navy field; the AI-generated classroom photo (src/assets/photos/README.md) bleeds off the right and top edges, fading into navy on the left. White headline with "every class" in green and a drawn arc underline, lede, green Book a demo + outline See the platform, six module chips. Four floating product cards (illustrative data) and two icon badges sit along the photo's edges, clear of faces. "Built for" strip at the bottom of the navy. Phones: photo becomes a top band with two cards, copy follows on navy.
 
 FORM: Category standard (canon exit), after seed key 063be7f6 rounds. Signature interaction: the arcs draw in and the notification cards stack in on load, Sonner-style; tabbed feature showcase with blur crossfade.
 

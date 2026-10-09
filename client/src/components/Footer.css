@@ -1,51 +1,116 @@
 .footer {
   max-width: var(--max);
   margin: 0 auto;
-  padding: 56px var(--gutter) 40px;
+  padding: 64px var(--gutter) 36px;
 }
 
-.footer__inner {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 32px;
-  flex-wrap: wrap;
+/* Brand and contact on the left, three link columns on the right */
+.footer__top {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr));
+  gap: 40px clamp(24px, 4vw, 64px);
 }
 
-.footer__brand {
-  display: flex;
+.footer__wordmark {
+  display: block;
+  height: 44px;
+  width: auto;
+}
+
+.footer__brand > p {
+  margin-top: 16px;
+  max-width: 32ch;
+  color: var(--ink-2);
+  font-size: 0.92rem;
+}
+
+.footer__contact {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.footer__contact a,
+.footer__contact span {
+  display: inline-flex;
   align-items: center;
-  gap: 20px;
-}
-
-.footer__brand p {
-  max-width: 30ch;
-  color: var(--ink-2);
+  gap: 8px;
   font-size: 0.92rem;
-}
-
-.footer nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 24px;
-}
-
-.footer nav a {
-  text-decoration: none;
-  font-weight: 500;
-  font-size: 0.92rem;
-  color: var(--ink-2);
-}
-
-.footer nav a:hover {
+  font-weight: 550;
   color: var(--ink);
+  text-decoration: none;
+}
+
+.footer__contact svg {
+  color: var(--green-deep);
+}
+
+.footer__contact a:hover {
   text-decoration: underline;
 }
 
-.footer__legal {
-  margin-top: 40px;
+.footer__col > p {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.footer__col ul {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.footer__col a {
+  text-decoration: none;
+  font-size: 0.92rem;
+  color: var(--ink-2);
+  transition: color 160ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .footer__col a:hover {
+    color: var(--ink);
+    text-decoration: underline;
+  }
+}
+
+.footer__col a[aria-current='page'] {
+  color: var(--green-deep);
+}
+
+/* Bottom row: copyright and social icons */
+.footer__bottom {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-top: 48px;
   padding-top: 20px;
   border-top: 1px solid var(--rule);
+}
+
+.footer__legal {
   font-size: 0.82rem;
   color: var(--ink-3);
+}
+
+@media (max-width: 900px) {
+  .footer__top {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .footer__brand {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 520px) {
+  .footer__top {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

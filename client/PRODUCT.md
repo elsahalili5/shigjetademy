@@ -33,12 +33,14 @@ Undecided: pricing, plans, integrations, languages/localization, mobile apps.
 ## Brand Commitments
 
 - Name: Shigjetademy (from Albanian "shigjeta", arrow).
-- Logo supplied by the user: circular mark of a dark navy arc and diagonal arrow shaft with two green arc segments, wordmark "SHIGJETADEMY" curving around it. Colors in the logo: navy (~#22303F) and green (~#22A887). The logo must be used as supplied.
+- Logo (current, supplied by the user 2026-10-08): the "Shigjetademy Teal Graduation Logo", a lowercase wordmark "shigjetademy" with "shigjeta" in deep navy and "demy" in teal green (~#0a9a6e), and a teal graduation cap sitting over the "de". Original file (navy version, current): `client/src/assets/brand/Shigjetademy Teal Graduation Logo.png`; trimmed copy used in the site: `client/src/assets/brand/shigjetademy-wordmark.png`; favicon is the cap alone. The logo must be used as supplied (no recolouring or redrawing).
+- Previous logo, retired 2026-10-08: a circular mark of a navy arc and diagonal arrow shaft with green arc segments. Its arc geometry still appears as decoration (the `Arcs` component) on navy panels; whether to keep that ornament is an open decision.
+- Brand colours in use on the site: navy #142a3d and green #1fb08b, plus kraft, coral and slate accents. The new logo's teal (~#0a9a6e) is close to but not the same as the site green; aligning them is an open decision.
 - The user asked for a modern, clean, premium, professional and minimal feel, with modern SaaS platforms like Deel as an explicit reference, but with its own identity.
 
 ## Evidence on Hand
 
-- Logo image (user supplied).
+- Logo image (user supplied): the teal graduation wordmark above.
 - No customers, testimonials, metrics, press, pricing, or certifications exist yet. Do not fabricate any of them. Product demonstration data in UI previews must be clearly illustrative.
 
 ## Product Principles

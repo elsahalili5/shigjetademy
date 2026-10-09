@@ -1,229 +1,260 @@
-.day {
+/* One school day: a light section read by scrolling. The sky on the left holds still;
+   the moments on the right pass through the middle of the screen and set the clock and sun. */
+.dt__grid {
   display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  gap: clamp(28px, 5vw, 80px);
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: clamp(32px, 6vw, 96px);
   align-items: start;
 }
 
-.day__head {
-  position: sticky;
-  top: 110px;
+.dt__aside {
+  align-self: stretch; /* full column height, so the sky can stay put while moments pass */
 }
 
-.day__head h2 {
-  font-size: clamp(2rem, 3.8vw, 3.4rem);
+.dt__sticky {
+  position: sticky;
+  top: calc(var(--nav-h) + var(--frame) + 24px);
+}
+
+.dt__aside h2 {
+  font-size: clamp(2rem, 3.6vw, 3.2rem);
   font-weight: 680;
   letter-spacing: -0.032em;
 }
 
-.day__head h2 {
-  color: #fff;
+.dt__lede {
+  margin-top: 16px;
+  color: var(--ink-2);
+  max-width: 44ch;
 }
 
-.day__head p {
-  margin-top: 18px;
-  color: var(--on-navy-2);
-  max-width: 42ch;
-}
-
-.day__list {
-  list-style: none;
-  margin: 0;
+/* The sky: an arc for the day with the sun riding it, and the clock beneath */
+.dt__sky {
+  position: relative;
+  container-type: size;
+  aspect-ratio: 400 / 210;
+  margin-top: clamp(28px, 4vw, 48px);
   padding: 0;
+  border-radius: 24px;
+  background:
+    radial-gradient(60% 80% at 50% 100%, color-mix(in srgb, var(--tone-wash) 90%, transparent), transparent 75%),
+    var(--mist);
+  box-shadow: 0 1px 2px rgba(20, 42, 61, 0.06), 0 24px 48px -32px rgba(20, 42, 61, 0.45);
+  transition: background-color 600ms ease;
+  overflow: hidden;
 }
 
-.moment {
-  --tone: var(--green);
-  --tone-wash: var(--green-wash);
-  --tone-ink: var(--green-deep);
-  display: grid;
-  grid-template-columns: 4.2rem 24px minmax(0, 1fr);
-  gap: 0 18px;
-  position: relative;
-  padding-bottom: 18px;
-}
-
-.moment[data-tone='navy'] {
-  --tone: #9fc3e6;
-  --tone-wash: #dfe9f4;
-  --tone-ink: var(--navy);
-}
-
-.moment[data-tone='coral'] {
-  --tone: var(--coral);
-  --tone-wash: var(--coral-wash);
-  --tone-ink: var(--coral-deep);
-}
-
-.moment[data-tone='kraft'] {
-  --tone: var(--kraft-deep);
-  --tone-wash: var(--kraft-wash);
-  --tone-ink: var(--kraft-ink);
-}
-
-.moment__time {
-  padding-top: 20px;
-  font-family: var(--data);
-  font-size: 0.82rem;
-  font-weight: 500;
-  color: var(--on-navy-2);
-  text-align: right;
-}
-
-/* The day's line: each connector fills as its moment enters */
-.moment__dot {
-  position: relative;
-  justify-self: center;
-  width: 2px;
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.moment__dot::before {
-  content: '';
+.dt__sky svg {
   position: absolute;
-  top: 22px;
-  left: 50%;
-  width: 14px;
-  height: 14px;
-  margin-left: -7px;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.dt__arc {
+  fill: none;
+  stroke: var(--mist-deep);
+  stroke-width: 3;
+  stroke-dasharray: 4 6;
+}
+
+.dt__arc--done {
+  stroke: var(--tone);
+  stroke-dasharray: 1;
+  stroke-linecap: round;
+  transition:
+    stroke-dashoffset 700ms var(--ease-out),
+    stroke 500ms ease;
+}
+
+.dt__tick {
+  fill: var(--white);
+  stroke: var(--rule-strong);
+  stroke-width: 1.5;
+}
+
+.dt__ground {
+  stroke: var(--rule-strong);
+  stroke-width: 1;
+}
+
+.dt__sky text {
+  font-family: var(--data);
+  font-size: 9px;
+  fill: var(--ink-3);
+}
+
+/* The sun moves by transform; its glow takes the current moment's tone */
+.dt__sun {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  transition: transform 700ms var(--ease-out);
+}
+
+.dt__sun > span {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
   border-radius: 50%;
   background: var(--tone);
-  box-shadow: 0 0 0 5px var(--band, var(--haze));
-  z-index: 1;
-}
-
-.moment__dot::after {
-  content: '';
-  position: absolute;
-  inset: 28px 0 -18px;
-  background: var(--green);
-  transform-origin: top;
-}
-
-.moment__dot[data-last]::after,
-.moment:last-child .moment__dot {
-  background: transparent;
-}
-
-.moment:last-child .moment__dot::after {
-  display: none;
-}
-
-.moment__card {
-  background: var(--navy-2);
-  color: var(--on-navy);
-  border-radius: 18px;
-  padding: 18px 22px 20px;
-  box-shadow: 0 1px 2px rgba(22, 34, 46, 0.05);
+  box-shadow:
+    0 0 0 6px color-mix(in srgb, var(--tone) 22%, transparent),
+    0 6px 16px -4px color-mix(in srgb, var(--tone) 70%, transparent);
   transition:
-    transform 200ms var(--ease-out),
-    box-shadow 200ms ease;
+    background-color 500ms ease,
+    box-shadow 500ms ease;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .moment__card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 20px 40px -22px rgba(0, 0, 0, 0.6);
+.dt__clock {
+  position: absolute;
+  left: 50%;
+  bottom: 16%;
+  transform: translateX(-50%);
+  font-family: var(--display);
+  font-size: clamp(2.6rem, 5vw, 4rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.dt__clock > span {
+  display: inline-block;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dt__clock > span {
+    animation: dt-tick 260ms var(--ease-out);
   }
 }
 
-.moment__top {
+@keyframes dt-tick {
+  from {
+    opacity: 0;
+    transform: translateY(30%);
+    filter: blur(3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dt__sun,
+  .dt__arc--done {
+    transition: none;
+  }
+}
+
+/* Moments: generous spacing so each one gets its turn in the middle of the screen */
+.dt__list {
+  list-style: none;
+  margin: 0;
+  padding: 18vh 0;
+  display: grid;
+  gap: clamp(20px, 6vh, 56px);
+}
+
+.dt__item {
+  display: grid;
+  gap: 10px;
+  padding: clamp(22px, 2.6vw, 30px);
+  border-radius: 20px;
+  background: var(--mist);
+  box-shadow: inset 0 0 0 1px var(--rule);
+  opacity: 0.55;
+  transform: scale(0.98);
+  transition:
+    opacity 400ms ease,
+    transform 400ms var(--ease-out),
+    background-color 400ms ease,
+    box-shadow 400ms ease;
+}
+
+.dt__item[data-on] {
+  opacity: 1;
+  transform: none;
+  background: var(--white);
+  box-shadow:
+    inset 0 0 0 1.5px color-mix(in srgb, var(--tone) 45%, transparent),
+    0 24px 48px -30px rgba(20, 42, 61, 0.5);
+}
+
+.dt__top {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
 }
 
-.moment__tag {
+.dt__tag {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
+  padding: 4px 11px;
   border-radius: 999px;
   background: var(--tone-wash);
   color: var(--tone-ink);
-  font-size: 0.76rem;
+  font-size: 0.78rem;
   font-weight: 650;
 }
 
-.moment__meta {
+.dt__time {
   font-family: var(--data);
-  font-size: 0.7rem;
-  color: var(--on-navy-2);
+  font-size: 0.8rem;
+  color: var(--ink-3);
 }
 
-.moment h3 {
-  color: #fff;
-  font-size: 1.2rem;
+.dt__item h3 {
+  font-size: clamp(1.25rem, 2vw, 1.6rem);
   font-weight: 650;
-  line-height: 1.2;
+  letter-spacing: -0.025em;
+  margin-top: 4px;
 }
 
-.moment p {
-  margin-top: 6px;
-  color: var(--on-navy-2);
-  font-size: 0.95rem;
+.dt__item p {
+  color: var(--ink-2);
+  max-width: 52ch;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .motion .moment__dot::after {
-    transform: scaleY(0);
-    transition: transform 900ms var(--ease-in-out) 250ms;
-  }
-
-  .motion .moment[data-inview] .moment__dot::after {
-    transform: scaleY(1);
-  }
-
-  .motion .moment__dot::before {
-    transform: scale(0.6);
-    transition: transform 400ms var(--ease-out) 150ms;
-  }
-
-  .motion .moment[data-inview] .moment__dot::before {
-    transform: scale(1);
-  }
+.dt__meta {
+  font-family: var(--data);
+  font-size: 0.74rem;
+  color: var(--tone-ink);
 }
 
+/* Narrow: the sky rides at the top while the moments scroll under it */
 @media (max-width: 900px) {
-  .day {
+  .dt__grid {
     grid-template-columns: 1fr;
+    gap: 0;
   }
 
-  .day__head {
+  .dt__aside {
+    display: contents;
+  }
+
+  .dt__sticky {
+    display: contents;
+  }
+
+  .dt__aside h2,
+  .dt__lede {
     position: static;
   }
-}
 
-@media (max-width: 520px) {
-  .moment {
-    grid-template-columns: 18px minmax(0, 1fr);
-    gap: 0 14px;
+  .dt__sky {
+    position: sticky;
+    top: calc(var(--nav-h) + var(--frame) + 8px);
+    z-index: 2;
+    max-width: 420px;
+    width: 100%;
+    margin-inline: auto;
   }
 
-  .moment__time {
-    grid-column: 2;
-    grid-row: 1;
-    text-align: left;
-    padding-top: 0;
-    padding-bottom: 8px;
-  }
-
-  .moment__dot {
-    grid-column: 1;
-    grid-row: 1 / span 2;
-  }
-
-  .moment__dot::before {
-    top: 4px;
-  }
-
-  .moment__dot::after {
-    inset: 10px 0 -18px;
-  }
-
-  .moment__card {
-    grid-column: 2;
+  .dt__list {
+    padding: 8vh 0 20vh;
   }
 }

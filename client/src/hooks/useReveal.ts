@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
 
-/** Marks the page as motion-capable and reveals [data-reveal] elements once as they enter. */
-export function useReveal() {
+/** Marks the page as motion-capable and reveals [data-reveal] elements once as they enter.
+    Pass the current path so a new page's sections are observed too. */
+export function useReveal(key?: string) {
   useEffect(() => {
     const root = document.documentElement
     if (!('IntersectionObserver' in window)) return
@@ -19,5 +20,5 @@ export function useReveal() {
     )
     document.querySelectorAll('[data-reveal]').forEach((el) => io.observe(el))
     return () => io.disconnect()
-  }, [])
+  }, [key])
 }

@@ -100,8 +100,9 @@
   transform: scale(0.99);
 }
 
-[data-active] .band__num {
-  color: var(--green-deep);
+/* Every step shows its colour; the chosen one at full strength */
+.band__num {
+  color: var(--tone-ink, var(--ink-3));
 }
 
 .band__track {
@@ -124,7 +125,7 @@
 .band__seg {
   height: 14px;
   border-radius: 7px;
-  background: rgba(22, 34, 46, 0.12);
+  background: color-mix(in srgb, var(--tone, var(--ink)) 30%, transparent);
   transform-origin: left;
 }
 
@@ -158,13 +159,19 @@
   margin-left: -7px;
   border-radius: 3px;
   transform: translateY(-50%) rotate(45deg);
-  background: rgba(22, 34, 46, 0.14);
+  background: color-mix(in srgb, var(--tone, var(--ink)) 35%, transparent);
 }
 
 [data-active] .band__seg,
 [data-active] .band__point {
-  background: var(--green);
-  box-shadow: 0 4px 12px -4px rgba(34, 168, 135, 0.7);
+  background: var(--tone, var(--green));
+  box-shadow: 0 4px 12px -4px color-mix(in srgb, var(--tone, var(--green)) 70%, transparent);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .band__step:hover strong {
+    color: var(--tone-ink, var(--green-deep));
+  }
 }
 
 /* The day marker shares the term clock with the hero shelf */
@@ -240,6 +247,11 @@
   }
 
   [data-active] .band__track {
-    box-shadow: inset 0 -2px 0 var(--green-wash);
+    box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--tone, var(--green)) 25%, transparent);
   }
+}
+
+/* When it follows the features section directly, share one gap instead of stacking two */
+.features + #workflow {
+  padding-top: 0;
 }

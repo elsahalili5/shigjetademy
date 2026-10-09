@@ -1,0 +1,16 @@
+.legal {
+  padding-bottom: clamp(96px, 13vw, 160px);
+}
+
+.legal__body {
+  max-width: 64ch;
+  display: grid;
+  gap: 16px;
+  font-size: 1.05rem;
+  color: var(--ink-2);
+}
+
+.legal__body a {
+  color: var(--green-deep);
+  font-weight: 600;
+}

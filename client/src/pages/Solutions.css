@@ -1,0 +1,584 @@
+/* Solutions page. Every section takes its colours from the palette tones set inline:
+   --tone (bright fill), --tone-ink (text/icon on light), --tone-wash (light ground). */
+
+/* ---------- Four days: the pinned horizontal deck ---------- */
+.days {
+  position: relative;
+  padding-block: clamp(80px, 10vw, 128px);
+}
+
+.days[data-pinned] {
+  padding-block: 0;
+  height: calc(100svh + var(--track-distance, 0px));
+}
+
+.days__sticky {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(24px, 3.5vh, 44px);
+}
+
+.days[data-pinned] .days__sticky {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  padding-top: calc(var(--nav-h) + var(--frame));
+  overflow: hidden;
+}
+
+.days__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px 40px;
+  width: 100%;
+}
+
+.days__head h2 {
+  font-size: clamp(2rem, 3.8vw, 3.4rem);
+  font-weight: 680;
+  letter-spacing: -0.032em;
+}
+
+.days__head p {
+  margin-top: 12px;
+  color: var(--ink-2);
+  max-width: 46ch;
+}
+
+/* Role tabs: show where you are, and jump */
+.days__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--haze);
+}
+
+.days__tabs button {
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition:
+    background-color 220ms ease,
+    color 220ms ease,
+    box-shadow 220ms ease,
+    transform 140ms var(--ease-out);
+}
+
+.days__tabs button:active {
+  transform: scale(0.96);
+}
+
+.days__tabs button[aria-current='true'] {
+  background: var(--white);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(20, 42, 61, 0.1), 0 6px 14px -8px rgba(20, 42, 61, 0.35);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .days__tabs button:hover {
+    color: var(--ink);
+  }
+}
+
+.days__track {
+  --inset: max(var(--gutter), calc((100vw - var(--max)) / 2 + var(--gutter)));
+  display: flex;
+  gap: clamp(16px, 2vw, 24px);
+  padding-inline: var(--inset);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--inset);
+  scrollbar-width: none;
+}
+
+.days__track::-webkit-scrollbar {
+  display: none;
+}
+
+.days[data-pinned] .days__track {
+  overflow: visible;
+  width: max-content;
+  will-change: transform;
+}
+
+/* One day: intro on the left, the timeline of moments on the right */
+.day {
+  --day-bg: var(--haze);
+  --day-ink: var(--ink);
+  --day-sub: var(--ink-2);
+  --day-rule: var(--rule);
+  flex: none;
+  width: min(86vw, 860px);
+  min-height: clamp(380px, 54vh, 500px);
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: clamp(20px, 3vw, 48px);
+  padding: clamp(24px, 3.2vw, 44px);
+  border-radius: 28px;
+  background: var(--day-bg);
+  color: var(--day-ink);
+  scroll-snap-align: start;
+  transition: transform 500ms var(--ease-out);
+}
+
+.day[data-look='navy'] {
+  --day-bg:
+    radial-gradient(70% 70% at 0% 100%, rgba(220, 181, 127, 0.18), transparent 70%), var(--navy);
+  --day-ink: var(--white);
+  --day-sub: var(--on-navy-2);
+  --day-rule: rgba(231, 238, 243, 0.14);
+}
+
+.day[data-look='green'] {
+  --day-bg: var(--green-wash);
+}
+
+.day[data-look='kraft'] {
+  --day-bg: var(--kraft-wash);
+}
+
+.day[data-look='coral'] {
+  --day-bg: var(--coral-wash);
+}
+
+.day__intro {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.day__icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: auto;
+  border-radius: 16px;
+  background: var(--white);
+  color: var(--navy);
+  box-shadow: 0 1px 2px rgba(20, 42, 61, 0.08);
+}
+
+.day[data-look='navy'] .day__icon {
+  background: var(--kraft);
+  color: var(--navy);
+}
+
+.day__role {
+  margin-top: 32px;
+  font-size: 0.86rem;
+  font-weight: 650;
+  color: var(--day-sub);
+}
+
+.day h3 {
+  font-size: clamp(1.6rem, 2.6vw, 2.3rem);
+  font-weight: 680;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  color: var(--day-ink);
+}
+
+.day__body {
+  color: var(--day-sub);
+  max-width: 34ch;
+}
+
+/* Moments: time, what happens, and the capability in use */
+.day__moments {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  align-content: center;
+}
+
+.day__moments li {
+  display: grid;
+  grid-template-columns: 3.4rem minmax(0, 1fr);
+  gap: 6px 14px;
+  padding: 16px 0;
+  border-top: 1px solid var(--day-rule);
+}
+
+.day__moments li:last-child {
+  border-bottom: 1px solid var(--day-rule);
+}
+
+.day__moments time {
+  grid-row: span 2;
+  font-family: var(--data);
+  font-size: 0.78rem;
+  color: var(--day-sub);
+  padding-top: 2px;
+}
+
+.day__text {
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.day__cap {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--tone-ink);
+  font-size: 0.74rem;
+  font-weight: 650;
+}
+
+.day[data-look='navy'] .day__cap {
+  background: color-mix(in srgb, var(--tone) 18%, transparent);
+  color: var(--tone);
+}
+
+/* Arrival: the active day settles in and its moments step through */
+@media (prefers-reduced-motion: no-preference) {
+  /* Waiting days keep their colour; only their content steps back */
+  .days[data-pinned] .day:not([data-active]) {
+    transform: scale(0.97);
+  }
+
+  .days[data-pinned] .day > * {
+    transition: opacity 400ms ease;
+  }
+
+  .days[data-pinned] .day:not([data-active]) > * {
+    opacity: 0.4;
+  }
+
+  .days[data-pinned] .day__moments li {
+    transition:
+      opacity 420ms var(--ease-out),
+      transform 420ms var(--ease-out);
+    transition-delay: calc(var(--i) * 90ms + 120ms);
+  }
+
+  .days[data-pinned] .day:not([data-active]) .day__moments li {
+    opacity: 0;
+    transform: translateX(14px);
+    transition-delay: 0ms;
+  }
+}
+
+/* ---------- Capability index ---------- */
+.sol-index {
+  padding-bottom: clamp(96px, 13vw, 160px);
+}
+
+.index {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-radius: 20px;
+  background: var(--white);
+  box-shadow: 0 1px 2px rgba(20, 42, 61, 0.06), 0 20px 40px -28px rgba(20, 42, 61, 0.35);
+  overflow: hidden;
+}
+
+.index li {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: clamp(18px, 1.8vw, 24px);
+  transition: background-color 220ms ease;
+}
+
+.index li + li {
+  box-shadow: inset 1px 0 0 var(--rule);
+}
+
+.index__icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  margin-bottom: 18px;
+  border-radius: 12px;
+  background: var(--tone-wash);
+  color: var(--tone-ink);
+  transition: background-color 220ms ease, color 220ms ease, transform 220ms var(--ease-out);
+}
+
+.index strong {
+  font-family: var(--display);
+  font-size: 1.05rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+
+.index__roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: auto;
+}
+
+.index__roles span:not(.visually-hidden) {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--haze);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .index li:hover {
+    background: color-mix(in srgb, var(--tone-wash) 40%, var(--white));
+  }
+
+  .index li:hover .index__icon {
+    background: var(--tone);
+    color: var(--navy);
+    transform: translateY(-2px);
+  }
+}
+
+/* How it works: a navy closing panel with a five-step path */
+.sol-how {
+  margin: 0 var(--frame);
+  border-radius: var(--panel-radius);
+  background:
+    radial-gradient(60% 80% at 10% 100%, rgba(220, 181, 127, 0.14), transparent 70%),
+    var(--navy);
+  color: var(--on-navy);
+  padding: clamp(80px, 10vw, 128px) 0;
+}
+
+.sol-how__head {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: clamp(20px, 4vw, 64px);
+  align-items: end;
+  margin-bottom: clamp(48px, 6vw, 80px);
+}
+
+.sol-how__head h2 {
+  font-size: clamp(2rem, 3.8vw, 3.4rem);
+  font-weight: 680;
+  letter-spacing: -0.032em;
+  color: var(--white);
+}
+
+.sol-how__head p {
+  color: var(--on-navy-2);
+  max-width: 44ch;
+}
+
+.steps {
+  --node: 52px;
+  --step-gap: clamp(16px, 2vw, 28px);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--step-gap);
+}
+
+/* The path: a hairline through the nodes, drawn in once */
+.steps::before {
+  content: '';
+  position: absolute;
+  top: calc(var(--node) / 2);
+  left: calc(var(--node) / 2);
+  /* ends on the last node's centre, not the last column's edge */
+  right: calc((100% - 4 * var(--step-gap)) / 5 - var(--node) / 2);
+  height: 2px;
+  background: linear-gradient(90deg, var(--kraft), var(--green), var(--on-navy-2), var(--coral), var(--green));
+  opacity: 0.55;
+  transform-origin: left;
+}
+
+.steps li {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.steps__node {
+  display: grid;
+  place-items: center;
+  width: var(--node);
+  height: var(--node);
+  border-radius: 16px;
+  background: var(--tone);
+  color: var(--navy);
+  box-shadow: 0 0 0 6px var(--navy), 0 14px 28px -14px rgba(0, 0, 0, 0.6);
+  margin-bottom: 10px;
+}
+
+.steps__num {
+  font-family: var(--data);
+  font-size: 0.7rem;
+  color: var(--tone);
+}
+
+.steps h3 {
+  font-size: 1.2rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--white);
+}
+
+.steps p {
+  font-size: 0.92rem;
+  color: var(--on-navy-2);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .motion .steps::before {
+    transform: scaleX(0);
+    transition: transform 1100ms var(--ease-in-out) 150ms;
+  }
+
+  .motion .steps[data-inview]::before {
+    transform: scaleX(1);
+  }
+
+  .motion .steps li {
+    opacity: 0;
+    transform: translateY(12px);
+    transition:
+      opacity 500ms var(--ease-out),
+      transform 500ms var(--ease-out);
+    transition-delay: calc(var(--i) * 180ms + 200ms);
+  }
+
+  .motion .steps[data-inview] li {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Tablet */
+@media (max-width: 1080px) {
+  .index {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .index li:nth-child(5) {
+    box-shadow: inset 0 1px 0 var(--rule);
+  }
+
+  .index li:nth-child(n + 6) {
+    box-shadow: inset 1px 0 0 var(--rule), inset 0 1px 0 var(--rule);
+  }
+
+  .sol-how__head {
+    grid-template-columns: 1fr;
+  }
+
+  .steps {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .steps::before {
+    top: calc(var(--node) / 2);
+    bottom: calc(var(--node) / 2);
+    left: calc(var(--node) / 2 - 1px);
+    right: auto;
+    width: 2px;
+    height: auto;
+    background: linear-gradient(180deg, var(--kraft), var(--green), var(--on-navy-2), var(--coral), var(--green));
+    transform-origin: top;
+  }
+
+  .steps li {
+    grid-template-columns: var(--node) minmax(0, 1fr);
+    column-gap: 20px;
+    row-gap: 6px;
+  }
+
+  .steps__node {
+    grid-row: span 3;
+    margin-bottom: 0;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .motion .steps::before {
+      transform: scaleY(0);
+    }
+
+    .motion .steps[data-inview]::before {
+      transform: scaleY(1);
+    }
+  }
+}
+
+@media (max-width: 860px) {
+  .day {
+    grid-template-columns: 1fr;
+    width: min(84vw, 520px);
+    min-height: 0;
+  }
+
+  .day__icon {
+    margin-bottom: 0;
+  }
+
+  .day__role {
+    margin-top: 8px;
+  }
+
+  .day__moments li {
+    padding: 11px 0;
+  }
+}
+
+/* Phone */
+@media (max-width: 640px) {
+  .days__tabs {
+    display: none;
+  }
+
+  .day__body {
+    display: none;
+  }
+
+  .index {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .index li,
+  .index li + li {
+    box-shadow: inset 0 1px 0 var(--rule);
+  }
+
+  .index li:nth-child(even) {
+    box-shadow: inset 1px 0 0 var(--rule), inset 0 1px 0 var(--rule);
+  }
+
+  .index li:first-child {
+    box-shadow: none;
+  }
+
+  .index li:nth-child(2) {
+    box-shadow: inset 1px 0 0 var(--rule);
+  }
+
+  .index li:last-child {
+    grid-column: span 2;
+  }
+}

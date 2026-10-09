@@ -174,7 +174,7 @@ export function Features() {
   }
 
   return (
-    <section className="section container" id="platform" aria-labelledby="features-title">
+    <section className="section container features" id="platform" aria-labelledby="features-title">
       <div className="section-head" data-reveal>
         <h2 id="features-title">Everything a teaching organization runs on, in one system.</h2>
         <p>
@@ -198,6 +198,7 @@ export function Features() {
               aria-controls={`panel-${t.id}`}
               tabIndex={n === active ? 0 : -1}
               className="showcase__tab"
+              data-tone={t.id}
               onClick={() => setActive(n)}
             >
               <span className="showcase__title">{t.title}</span>

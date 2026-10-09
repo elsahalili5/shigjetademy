@@ -1,30 +1,44 @@
 import { useReveal } from './hooks/useReveal'
+import { usePath } from './lib/router'
 import { Nav } from './components/Nav'
-import { Hero } from './components/Hero'
-import { Patchwork } from './components/Patchwork'
-import { Features } from './components/Features'
-import { DayTimeline } from './components/DayTimeline'
-import { Workflow } from './components/Workflow'
-import { Roles } from './components/Roles'
-import { Faq } from './components/Faq'
-import { Demo } from './components/Demo'
 import { Footer } from './components/Footer'
+import { Home } from './pages/Home'
+import { PlatformPage } from './pages/PlatformPage'
+import { SolutionsPage } from './pages/SolutionsPage'
+import { FeaturesPage } from './pages/FeaturesPage'
+import { ResourcesPage } from './pages/ResourcesPage'
+import { ContactPage } from './pages/ContactPage'
+import { AuthPage } from './pages/AuthPage'
+import { LegalPage } from './pages/LegalPage'
+import { NotFound } from './pages/NotFound'
+
+const PAGES: Record<string, () => React.JSX.Element> = {
+  '/': Home,
+  '/platform': PlatformPage,
+  '/solutions': SolutionsPage,
+  '/features': FeaturesPage,
+  '/resources': ResourcesPage,
+  '/contact': ContactPage,
+  '/privacy': () => <LegalPage kind="privacy" />,
+  '/terms': () => <LegalPage kind="terms" />,
+  '/security': () => <LegalPage kind="security" />,
+}
 
 function App() {
-  useReveal()
+  const path = usePath()
+  useReveal(path)
+  const Page = PAGES[path] ?? NotFound
+
+  // Auth pages stand alone: no site nav or footer
+  if (path === '/login') {
+    return <AuthPage />
+  }
 
   return (
     <>
       <Nav />
-      <main>
-        <Hero />
-        <Patchwork />
-        <Features />
-        <DayTimeline />
-        <Workflow />
-        <Roles />
-        <Faq />
-        <Demo />
+      <main key={path}>
+        <Page />
       </main>
       <Footer />
     </>

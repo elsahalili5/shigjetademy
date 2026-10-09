@@ -1,25 +1,95 @@
+/* The nav sits on the first navy panel of every page. At the top it reads as part of the panel:
+   logo and actions live in light tabs cut into the panel's corners, links sit white on the navy.
+   Once the page scrolls it becomes a floating light bar so it works over any section. */
 .nav {
-  position: sticky;
-  top: 0;
+  position: fixed;
   z-index: 50;
-  background: color-mix(in srgb, var(--haze) 86%, transparent);
-  backdrop-filter: saturate(1.5) blur(14px);
-  -webkit-backdrop-filter: saturate(1.5) blur(14px);
-  border-bottom: 1px solid transparent;
-  transition: border-color 200ms ease;
+  top: var(--frame);
+  left: var(--frame);
+  right: var(--frame);
+  pointer-events: none;
 }
 
-.nav[data-scrolled='true'] {
-  border-bottom-color: var(--rule);
+.nav > * {
+  pointer-events: auto;
 }
 
 .nav__bar {
-  max-width: var(--max);
-  margin: 0 auto;
-  padding: 12px var(--gutter);
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: start;
+  height: var(--nav-h);
+  border-radius: 22px;
+  transition:
+    background-color 260ms ease,
+    box-shadow 260ms ease,
+    height 260ms var(--ease-out);
+}
+
+/* Tabs: haze blocks over the panel's corners, with concave curves where they meet the navy */
+.nav__tab {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 32px;
+  gap: 6px;
+  height: var(--nav-h);
+  background: var(--haze);
+  transition: background-color 260ms ease;
+}
+
+.nav__tab--left {
+  justify-self: start;
+  padding: 0 28px 0 20px;
+  border-bottom-right-radius: var(--notch);
+}
+
+.nav__tab--right {
+  justify-self: end;
+  padding: 0 12px 0 22px;
+  border-bottom-left-radius: var(--notch);
+}
+
+.nav__tab::before,
+.nav__tab::after {
+  content: '';
+  position: absolute;
+  width: var(--notch);
+  height: var(--notch);
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+/* Left tab: curve into the panel's top edge, and into its left edge */
+.nav__tab--left::before {
+  top: 0;
+  left: 100%;
+  background: radial-gradient(circle at 100% 100%, transparent calc(var(--notch) - 0.5px), var(--haze) var(--notch));
+}
+
+.nav__tab--left::after {
+  top: 100%;
+  left: 0;
+  background: radial-gradient(circle at 100% 100%, transparent calc(var(--notch) - 0.5px), var(--haze) var(--notch));
+}
+
+/* Right tab: the mirror image */
+.nav__tab--right::before {
+  top: 0;
+  right: 100%;
+  background: radial-gradient(circle at 0 100%, transparent calc(var(--notch) - 0.5px), var(--haze) var(--notch));
+}
+
+.nav__tab--right::after {
+  top: 100%;
+  right: 0;
+  background: radial-gradient(circle at 0 100%, transparent calc(var(--notch) - 0.5px), var(--haze) var(--notch));
+}
+
+.nav__wordmark {
+  display: block;
+  height: 34px;
+  width: auto;
 }
 
 .nav__brand {
@@ -29,60 +99,160 @@
   text-decoration: none;
   font-family: var(--display);
   font-weight: 700;
-  font-size: 1.18rem;
+  font-size: 1.22rem;
   letter-spacing: -0.02em;
+  color: var(--ink);
 }
 
+/* Links: white on the navy, the current page underlined in green */
 .nav__links {
   display: flex;
-  gap: 2px;
-  margin-left: auto;
+  align-items: center;
+  gap: clamp(8px, 2vw, 28px);
+  height: var(--nav-h);
 }
 
 .nav__links a {
-  padding: 8px 12px;
-  border-radius: 999px;
+  position: relative;
+  padding: 10px 6px;
   text-decoration: none;
-  font-size: 0.95rem;
-  font-weight: 500;
-  color: var(--ink-2);
-  transition:
-    color 200ms ease,
-    background-color 200ms ease;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: rgba(231, 238, 243, 0.78);
+  transition: color 200ms ease;
+}
+
+.nav__links a::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 2px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--kraft);
+  transform: scaleX(0);
+  transition: transform 260ms var(--ease-out);
+}
+
+.nav__links a[aria-current='page'] {
+  color: var(--white);
+}
+
+.nav__links a[aria-current='page']::after {
+  transform: scaleX(1);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .nav__links a:hover {
-    color: var(--ink);
+    color: var(--white);
+  }
+
+  .nav__links a:hover::after {
+    transform: scaleX(0.5);
+  }
+
+  .nav__links a[aria-current='page']:hover::after {
+    transform: scaleX(1);
+  }
+}
+
+.nav__login {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink);
+  transition:
+    background-color 200ms ease,
+    transform 160ms var(--ease-out);
+}
+
+.nav__login svg {
+  color: var(--green-deep);
+}
+
+.nav__login:active {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nav__login:hover {
     background: var(--mist-deep);
   }
 }
 
-.nav__cta {
-  min-height: 42px;
-  padding: 0 18px;
-  font-size: 0.93rem;
-}
-
 .nav__toggle {
   display: none;
-  margin-left: auto;
   width: 44px;
   height: 44px;
   border: 0;
   border-radius: 999px;
   background: transparent;
+  color: var(--ink);
   place-items: center;
   cursor: pointer;
+  transition: transform 160ms var(--ease-out);
+}
+
+.nav__toggle:active {
+  transform: scale(0.94);
+}
+
+/* Scrolled: one floating light bar; the tabs dissolve into it */
+.nav[data-scrolled='true'] .nav__bar,
+.nav[data-open='true'] .nav__bar {
+  --nav-h: 64px;
+  background: color-mix(in srgb, var(--haze) 88%, transparent);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  backdrop-filter: saturate(1.4) blur(14px);
+  box-shadow: 0 1px 2px rgba(20, 42, 61, 0.08), 0 18px 36px -24px rgba(20, 42, 61, 0.45);
+}
+
+.nav[data-scrolled='true'] .nav__tab,
+.nav[data-open='true'] .nav__tab {
+  background: transparent;
+}
+
+.nav[data-scrolled='true'] .nav__tab::before,
+.nav[data-scrolled='true'] .nav__tab::after,
+.nav[data-open='true'] .nav__tab::before,
+.nav[data-open='true'] .nav__tab::after {
+  opacity: 0;
+}
+
+.nav[data-scrolled='true'] .nav__links a,
+.nav[data-open='true'] .nav__links a {
+  color: var(--ink-2);
+}
+
+.nav[data-scrolled='true'] .nav__links a[aria-current='page'] {
+  color: var(--ink);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nav[data-scrolled='true'] .nav__links a:hover {
+    color: var(--ink);
+  }
 }
 
 .nav__sheet {
   display: none;
 }
 
-@media (max-width: 880px) {
+/* Tablet and phone: links move into a sheet under the bar */
+@media (max-width: 1000px) {
+  .nav__bar {
+    grid-template-columns: 1fr auto;
+  }
+
   .nav__links,
-  .nav__cta {
+  .nav__login {
     display: none;
   }
 
@@ -90,11 +260,22 @@
     display: grid;
   }
 
+  .nav__tab--left {
+    padding: 0 22px 0 14px;
+  }
+
+  .nav__tab--right {
+    padding: 0 8px 0 14px;
+  }
+
   .nav__sheet:not([hidden]) {
     display: grid;
-    gap: 4px;
-    padding: 8px var(--gutter) 20px;
-    border-top: 1px solid var(--rule);
+    gap: 2px;
+    margin-top: 8px;
+    padding: 8px 20px 20px;
+    border-radius: 22px;
+    background: var(--haze);
+    box-shadow: 0 1px 2px rgba(20, 42, 61, 0.08), 0 24px 48px -24px rgba(20, 42, 61, 0.5);
   }
 
   .nav__sheet a:not(.button) {
@@ -106,7 +287,30 @@
     border-bottom: 1px solid var(--rule);
   }
 
-  .nav__sheet .button {
+  .nav__sheet a[aria-current='page'] {
+    color: var(--green-deep);
+  }
+
+  .nav__sheet-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
     margin-top: 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --nav-h: 64px;
+    --notch: 20px;
+  }
+
+  .nav__brand {
+    font-size: 1.08rem;
+  }
+
+  .nav__brand img {
+    width: auto;
+    height: 28px;
   }
 }

@@ -45,7 +45,13 @@
 
   --radius: 16px;
   --gutter: clamp(16px, 4vw, 48px);
-  --max: 1240px;
+  --max: 1400px;
+
+  /* The navy first panel and the nav tabs cut into its corners */
+  --frame: 12px;
+  --panel-radius: 32px;
+  --nav-h: 76px;
+  --notch: 26px;
 
   /* Motion (Emil Kowalski's curves) */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
@@ -260,6 +266,11 @@ html {
 .button[disabled] {
   opacity: 0.6;
   cursor: progress;
+}
+
+/* The last section on a page always leaves room before the footer */
+main > :last-child:not(.demo):not(.cta):not(.sol-how) {
+  padding-bottom: clamp(96px, 13vw, 160px);
 }
 
 /* Bands: alternate haze and white to pace the scroll */

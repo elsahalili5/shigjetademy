@@ -1,18 +1,19 @@
-/* The close: a full navy field, the plank the whole page stands on */
+/* The close: on the page's own ground, with the form card on it */
 .demo {
   margin-top: clamp(112px, 14vw, 176px);
   position: relative;
-  background: var(--navy);
-  color: var(--on-navy);
+  background: var(--haze);
+  color: var(--ink);
   overflow: hidden;
   isolation: isolate;
 }
 
 .demo__arcs {
   z-index: -1;
-  width: 900px;
-  left: -300px;
-  bottom: -420px;
+  width: 560px;
+  left: -120px;
+  bottom: -230px;
+  transform: rotate(10deg);
 }
 
 .demo__inner {
@@ -30,13 +31,13 @@
   font-weight: 700;
   letter-spacing: -0.035em;
   line-height: 1;
-  color: #fff;
+  color: var(--ink);
 }
 
 .demo__copy > p {
   margin-top: 22px;
   max-width: 44ch;
-  color: var(--on-navy-2);
+  color: var(--ink-2);
   font-size: 1.06rem;
 }
 
@@ -54,7 +55,7 @@
   gap: 10px;
   align-items: baseline;
   font-weight: 500;
-  color: #e8eef2;
+  color: var(--ink);
 }
 
 .demo__covers li::before {
@@ -64,6 +65,18 @@
   height: 9px;
   border-radius: 50%;
   background: var(--green);
+}
+
+.demo__covers li:nth-child(2)::before {
+  background: var(--kraft);
+}
+
+.demo__covers li:nth-child(3)::before {
+  background: var(--coral);
+}
+
+.demo__covers li:nth-child(4)::before {
+  background: var(--ink-3);
 }
 
 .demo__card {
@@ -166,10 +179,18 @@
 }
 
 .demo__submit {
+  background: var(--green);
+  color: var(--navy);
   width: 100%;
   min-height: 52px;
   margin-top: 4px;
   font-size: 1rem;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .demo__submit:hover {
+    background: #2bc49c;
+  }
 }
 
 .demo__fine {
@@ -221,4 +242,22 @@
   .demo__covers {
     grid-template-columns: 1fr;
   }
+}
+
+/* On the light ground, the cap decoration is drawn in faint navy and kraft instead of white and green */
+.demo__arcs .arcs__line {
+  stroke: rgba(20, 42, 61, 0.06);
+}
+
+.demo__arcs .arcs__line--green {
+  stroke: rgba(220, 181, 127, 0.45);
+}
+
+.demo__arcs .arcs__line--knot {
+  fill: rgba(220, 181, 127, 0.45);
+}
+
+/* The form card needs a little lift off the cream */
+.demo__card {
+  box-shadow: 0 1px 2px rgba(20, 42, 61, 0.06), 0 30px 60px -36px rgba(20, 42, 61, 0.4);
 }
