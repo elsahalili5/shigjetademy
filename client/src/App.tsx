@@ -4,6 +4,7 @@ import { Nav } from './components/Nav'
 import { Footer } from './components/Footer'
 import { Home } from './pages/Home'
 import { PlatformPage } from './pages/PlatformPage'
+import { ModulePage } from './pages/ModulePage'
 import { SolutionsPage } from './pages/SolutionsPage'
 import { FeaturesPage } from './pages/FeaturesPage'
 import { ResourcesPage } from './pages/ResourcesPage'
@@ -27,7 +28,8 @@ const PAGES: Record<string, () => React.JSX.Element> = {
 function App() {
   const path = usePath()
   useReveal(path)
-  const Page = PAGES[path] ?? NotFound
+  const moduleSlug = path.match(/^\/platform\/([^/]+)$/)?.[1]
+  const Page = moduleSlug ? () => <ModulePage slug={moduleSlug} /> : (PAGES[path] ?? NotFound)
 
   // Auth pages stand alone: no site nav or footer
   if (path === '/login') {
