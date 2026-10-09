@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import { PageHeader } from '../components/PageHeader'
 import { Link, useTitle } from '../lib/router'
 import { SITE } from '../lib/site'
-import './Legal.css'
 
 type Kind = 'privacy' | 'terms' | 'security'
 
@@ -332,27 +331,35 @@ export function LegalPage({ kind }: { kind: Kind }) {
   return (
     <>
       <PageHeader id={`${kind}-title`} title={doc.title} intro={doc.intro} />
-      <section className="section container legal">
-        <nav className="legal__toc" aria-label="On this page">
-          <p className="legal__updated">Last updated {doc.updated}</p>
-          <ol>
+      <section className="section shell grid grid-cols-[minmax(200px,3fr)_minmax(0,7fr)] items-start gap-[clamp(32px,6vw,96px)] pb-[clamp(96px,13vw,160px)] max-[860px]:grid-cols-1">
+        {/* Contents list stays in view while reading */}
+        <nav className="sticky top-[calc(var(--nav-h)+24px)] max-[860px]:static" aria-label="On this page">
+          <p className="mb-4 font-data text-[0.8rem] text-ink-3">Last updated {doc.updated}</p>
+          <ol className="border-l border-rule-strong">
             {doc.sections.map((s) => (
               <li key={s.id}>
-                <a href={`#${s.id}`}>{s.heading}</a>
+                <a href={`#${s.id}`} className="block py-[7px] pl-4 text-ink-2 no-underline hover:text-green-deep">
+                  {s.heading}
+                </a>
               </li>
             ))}
           </ol>
         </nav>
 
-        <div className="legal__body">
+        <div className="max-w-[68ch] text-[1.05rem] text-ink-2 [&_a]:font-semibold [&_a]:text-green-deep [&_strong]:text-ink [&_ul]:grid [&_ul]:list-disc [&_ul]:gap-2 [&_ul]:pl-[1.2em] [&_:is(p,ul)+:is(p,ul)]:mt-3">
           {doc.sections.map((s) => (
-            <section key={s.id} id={s.id} aria-labelledby={`${s.id}-h`}>
-              <h2 id={`${s.id}-h`}>{s.heading}</h2>
+            <section
+              key={s.id}
+              id={s.id}
+              aria-labelledby={`${s.id}-h`}
+              className="scroll-mt-[calc(var(--nav-h)+24px)] pb-9 [&+section]:border-t [&+section]:border-rule [&+section]:pt-9"
+            >
+              <h2 id={`${s.id}-h`} className="mb-3.5 text-[clamp(1.35rem,2vw,1.65rem)] font-[650] tracking-[-0.02em] text-ink">{s.heading}</h2>
               {s.body}
             </section>
           ))}
 
-          <p className="legal__more">
+          <p className="border-t border-rule-strong pt-7">
             Also see{' '}
             {(['privacy', 'terms', 'security'] as Kind[])
               .filter((k) => k !== kind)

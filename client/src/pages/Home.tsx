@@ -4,6 +4,7 @@ import { BeforeAfter } from "../components/BeforeAfter";
 import { DayTimeline } from "../components/DayTimeline";
 import { Workflow } from "../components/Workflow";
 import { Roles } from "../components/Roles";
+import { Anywhere } from "../components/Anywhere";
 import { Testimonials } from "../components/Testimonials";
 import { ClosingCta } from "../components/ClosingCta";
 import { useTitle } from "../lib/router";
@@ -17,6 +18,8 @@ export function Home() {
       <BeforeAfter />
       <Roles />
       <Patchwork />
+
+      <Anywhere />
 
       <DayTimeline />
       {/* <Workflow /> */}

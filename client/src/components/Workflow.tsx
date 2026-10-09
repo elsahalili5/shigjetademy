@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import type { CSSProperties } from 'react'
 import { TERM_DAYS, TERM_WEEKS, weekOf } from '../lib/term'
-import './Workflow.css'
 
 type Step = {
   title: string
@@ -79,7 +78,7 @@ export function Workflow() {
 
   return (
     <section className="section" id="workflow" aria-labelledby="workflow-title">
-      <div className="container">
+      <div className="shell">
       <div className="section-head" data-reveal>
         <h2 id="workflow-title">One term, start to finish.</h2>
         <p>
@@ -88,37 +87,56 @@ export function Workflow() {
         </p>
       </div>
 
-      <div className="band" data-reveal style={{ '--marker': marker } as CSSProperties}>
-        <div className="band__scale" aria-hidden="true">
-          <span className="band__label">Term</span>
-          <ol>
+      {/* The term band: steps in a margin column, their spans laid on one shared week scale */}
+      <div
+        className="group/band relative grid grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-x-[clamp(20px,4vw,56px)] max-[860px]:grid-cols-1"
+        data-reveal
+        style={{ '--marker': marker } as CSSProperties}
+      >
+        <div className="col-span-full grid grid-cols-subgrid border-b-2 border-ink pb-3 font-data text-[0.64rem] text-ink-3 max-[860px]:hidden" aria-hidden="true">
+          <span className="tracking-[0.1em] uppercase">Term</span>
+          <ol className="grid grid-cols-12">
             {Array.from({ length: TERM_WEEKS }, (_, i) => (
               <li key={i}>W{i + 1}</li>
             ))}
           </ol>
         </div>
 
-        <ol className="band__steps">
+        <ol className="col-span-full grid grid-cols-subgrid">
           {STEPS.map((s, i) => (
             <li
               key={s.title}
               data-active={i === active || undefined}
-              style={{ '--tone': TONES[i].fill, '--tone-ink': TONES[i].ink } as CSSProperties}
+              style={{ '--tone': TONES[i].fill, '--tone-ink': TONES[i].ink, '--n': i } as CSSProperties}
+              className="group/step col-span-full grid grid-cols-subgrid items-center border-b border-rule max-[860px]:grid-cols-1 max-[860px]:pb-[18px]"
             >
-              <button type="button" className="band__step" aria-pressed={i === active}
+              <button
+                type="button"
+                className="group/btn grid grid-cols-[2.6rem_1fr] items-baseline gap-3 py-[18px] text-left text-ink transition-transform duration-150 ease-out active:scale-[0.99] max-[860px]:pb-3"
+                aria-pressed={i === active}
                 onClick={() => setActive(i)}>
-                <span className="band__num tabular">{String(i + 1).padStart(2, '0')}</span>
-                <span className="band__text">
-                  <strong>{s.title}</strong>
-                  <span>{s.body}</span>
+                <span className="tabular font-data text-[0.8rem] text-(--tone-ink,var(--ink-3)) transition-colors duration-300">{String(i + 1).padStart(2, '0')}</span>
+                <span>
+                  <strong className="block font-display text-[1.35rem] leading-[1.2] font-[650] tracking-[-0.02em] group-hover/btn:text-(--tone-ink,var(--green-deep))">
+                    {s.title}
+                  </strong>
+                  <span className="mt-1 block max-w-[44ch] text-[0.92rem] text-ink-2">{s.body}</span>
                 </span>
               </button>
-              <div className="band__track" aria-hidden="true">
+              <div
+                className="relative h-full min-h-14 bg-[repeating-linear-gradient(90deg,var(--rule)_0_1px,transparent_1px_calc(100%/12))] max-[860px]:ml-[calc(2.6rem+12px)] max-[860px]:min-h-[22px] max-[860px]:group-data-active/step:shadow-[inset_0_-2px_0_color-mix(in_srgb,var(--tone)_25%,transparent)]"
+                aria-hidden="true"
+              >
                 {s.points ? (
-                  s.points.map((p) => <i key={p} className="band__point" style={{ left: pct(p) }} />)
+                  s.points.map((p) => <i
+                      key={p}
+                      className="absolute top-1/2 -ml-[7px] size-3.5 -translate-y-1/2 rotate-45 rounded-[3px] bg-[color-mix(in_srgb,var(--tone)_35%,transparent)] transition-[background-color,box-shadow] duration-300 group-data-active/step:bg-(--tone) group-data-active/step:shadow-[0_4px_12px_-4px_color-mix(in_srgb,var(--tone)_70%,transparent)]"
+                      style={{ left: pct(p) }}
+                    />)
                 ) : (
                   <i
-                    className="band__seg"
+                    // Segments draw in along the term when the band arrives, one after another
+                    className="absolute top-1/2 h-3.5 origin-left -translate-y-1/2 rounded-[7px] bg-[color-mix(in_srgb,var(--tone)_30%,transparent)] transition-[background-color,box-shadow] duration-300 data-early:rounded-l-none group-data-active/step:bg-(--tone) group-data-active/step:shadow-[0_4px_12px_-4px_color-mix(in_srgb,var(--tone)_70%,transparent)] motion-safe:[.motion_&]:scale-x-0 motion-safe:[.motion_&]:transition-[scale,background-color,box-shadow] motion-safe:[.motion_&]:duration-[900ms,300ms,300ms] motion-safe:[.motion_&]:ease-in-out motion-safe:[.motion_&]:[transition-delay:calc(var(--n)*80ms),0s,0s] motion-safe:[.motion_[data-inview]_&]:scale-x-100"
                     data-early={s.from === 0 || undefined}
                     style={{ left: pct(s.from), width: `calc(${pct(s.to + 1)} - ${pct(s.from)})` }}
                   />
@@ -128,8 +146,12 @@ export function Workflow() {
           ))}
         </ol>
 
-        <div className="band__marker" aria-hidden="true">
-          <span className="tabular">Week {weekOf(day)}</span>
+        {/* The day marker shares the term clock with the hero shelf */}
+        <div
+          className="pointer-events-none absolute top-0 right-0 bottom-0 left-[calc(5/12*(100%-clamp(20px,4vw,56px))+clamp(20px,4vw,56px))] before:absolute before:top-6 before:bottom-0 before:left-(--marker) before:-ml-px before:w-0.5 before:bg-navy before:transition-[left] before:duration-[420ms] before:ease-in-out before:content-[''] motion-reduce:before:transition-none max-[860px]:hidden"
+          aria-hidden="true"
+        >
+          <span className="tabular absolute -top-1 left-(--marker) -translate-x-1/2 rounded bg-navy px-[7px] pt-[3px] pb-0.5 font-data text-[0.62rem] whitespace-nowrap text-white transition-[left] duration-[420ms] ease-in-out motion-reduce:transition-none">Week {weekOf(day)}</span>
         </div>
       </div>
       </div>

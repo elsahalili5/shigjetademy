@@ -4,7 +4,6 @@ import { AlertCircle, ArrowRight, Check, Eye, EyeOff, Loader2, LogOut } from 'lu
 import wordmark from '../assets/brand/shigjetademy-wordmark.png'
 import { Arcs } from '../components/Arcs'
 import { Link, navigate, useTitle } from '../lib/router'
-import './Auth.css'
 
 type User = { name: string; email: string; organization: string }
 type Status = { kind: 'idle' } | { kind: 'sending' } | { kind: 'error'; message: string }
@@ -32,13 +31,14 @@ export function AuthPage() {
   }
 
   return (
-    <div className="auth">
-      <main className="auth__main">
-        <Link className="auth__brand" href="/" aria-label="Shigjetademy home">
+    // Auth: form on the left, a navy brand panel on the right
+    <div className="grid min-h-svh grid-cols-2 gap-(--frame) bg-haze p-(--frame) max-[900px]:grid-cols-1">
+      <main className="grid grid-rows-[auto_1fr_auto] px-[clamp(20px,5vw,72px)] py-[clamp(20px,3vw,36px)]">
+        <Link className="flex items-center gap-2.5 justify-self-start font-display text-[1.2rem] font-bold tracking-[-0.02em] text-ink no-underline" href="/" aria-label="Shigjetademy home">
           <img src={wordmark} alt="Shigjetademy" width={152} height={38} />
         </Link>
 
-        <div className="auth__body">
+        <div className="mx-auto my-[clamp(32px,6vh,64px)] w-[min(100%,440px)] self-center [&_h1]:text-[clamp(2rem,3.4vw,2.8rem)] [&_h1]:font-bold [&_h1]:tracking-[-0.034em]">
           {user ? (
             <SignedIn user={user} onLogout={logout} />
           ) : (
@@ -46,13 +46,16 @@ export function AuthPage() {
           )}
         </div>
 
-        <p className="auth__fine">{!user && <Link href="/">← Back to the website</Link>}</p>
+        <p className="text-[0.85rem] text-ink-3 [&_a]:no-underline">{!user && <Link href="/">← Back to the website</Link>}</p>
       </main>
 
       {/* Quiet brand panel: the logo's arcs and one line, nothing to read past */}
-      <aside className="auth__side" aria-hidden="true">
-        <Arcs className="auth__arcs" />
-        <p className="auth__side-title">
+      <aside
+        className="relative isolate flex items-end overflow-hidden rounded-panel bg-navy bg-[radial-gradient(70%_60%_at_100%_100%,rgba(31,176,139,0.2),transparent_70%)] p-[clamp(32px,5vw,64px)] max-[900px]:hidden"
+        aria-hidden="true"
+      >
+        <Arcs className="-top-[30%] -left-[10%] -z-10 w-[140%]" />
+        <p className="max-w-[10ch] font-display text-[clamp(2.2rem,4vw,3.6rem)] leading-none font-bold tracking-[-0.036em] text-white [&_em]:text-kraft [&_em]:not-italic">
           Every class, <em>one place.</em>
         </p>
       </aside>
@@ -98,10 +101,10 @@ function LoginForm({ onDone }: { onDone: (u: User) => void }) {
   return (
     <>
       <h1>Welcome back</h1>
-      <p className="auth__lede">Log in to run your term in Shigjetademy.</p>
+      <p className="mt-2.5 text-ink-2">Log in to run your term in Shigjetademy.</p>
 
-      <form className="auth__form" noValidate onSubmit={onSubmit} aria-describedby={status.kind === 'error' ? ids.err : undefined}>
-        <div className="auth__field">
+      <form className="mt-8 grid gap-4" noValidate onSubmit={onSubmit} aria-describedby={status.kind === 'error' ? ids.err : undefined}>
+        <div className="grid min-w-0 gap-1.5 [&_label]:text-[0.88rem] [&_label]:font-[650] [&_input]:min-h-[50px] [&_input]:w-full [&_input]:rounded-xl [&_input]:border [&_input]:border-rule-strong [&_input]:bg-white [&_input]:px-3.5 [&_input]:text-base [&_input]:transition-[border-color,box-shadow] [&_input]:duration-150 [&_input]:placeholder:text-ink-3 [&_input:hover:not(:disabled)]:border-ink-3 [&_input:focus]:border-green-deep [&_input:focus]:shadow-[0_0_0_3px_var(--green-wash)] [&_input:focus]:outline-none [&_input:disabled]:opacity-60">
           <label htmlFor={ids.email}>Email</label>
           <input
             id={ids.email}
@@ -116,9 +119,9 @@ function LoginForm({ onDone }: { onDone: (u: User) => void }) {
           />
         </div>
 
-        <div className="auth__field">
+        <div className="grid min-w-0 gap-1.5 [&_label]:text-[0.88rem] [&_label]:font-[650] [&_input]:min-h-[50px] [&_input]:w-full [&_input]:rounded-xl [&_input]:border [&_input]:border-rule-strong [&_input]:bg-white [&_input]:px-3.5 [&_input]:text-base [&_input]:transition-[border-color,box-shadow] [&_input]:duration-150 [&_input]:placeholder:text-ink-3 [&_input:hover:not(:disabled)]:border-ink-3 [&_input:focus]:border-green-deep [&_input:focus]:shadow-[0_0_0_3px_var(--green-wash)] [&_input:focus]:outline-none [&_input:disabled]:opacity-60">
           <label htmlFor={ids.pw}>Password</label>
-          <div className="auth__pw">
+          <div className="relative [&_input]:pr-[52px]">
             <input
               id={ids.pw}
               name="password"
@@ -130,7 +133,7 @@ function LoginForm({ onDone }: { onDone: (u: User) => void }) {
             />
             <button
               type="button"
-              className="auth__eye"
+              className="absolute top-[3px] right-[3px] grid size-11 place-items-center rounded-[10px] bg-transparent text-ink-3 transition-colors duration-150 hover:bg-mist hover:text-ink"
               onClick={() => setShowPw((v) => !v)}
               aria-label={showPw ? 'Hide password' : 'Show password'}
               aria-pressed={showPw}
@@ -141,16 +144,16 @@ function LoginForm({ onDone }: { onDone: (u: User) => void }) {
         </div>
 
         {status.kind === 'error' && (
-          <p id={ids.err} className="auth__error" role="alert">
+          <p id={ids.err} className="flex items-start gap-2 rounded-xl bg-coral-wash px-3.5 py-3 text-[0.9rem] font-[550] text-coral-deep [&_svg]:mt-0.5 [&_svg]:flex-none" role="alert">
             <AlertCircle size={16} strokeWidth={2} aria-hidden="true" />
             {status.message}
           </p>
         )}
 
-        <button className="button auth__submit" type="submit" disabled={sending}>
+        <button className="button mt-1.5 min-h-[52px] w-full bg-navy text-white enabled:hover:bg-navy-2" type="submit" disabled={sending}>
           {sending ? (
             <>
-              <Loader2 className="auth__spin" size={18} strokeWidth={2.2} aria-hidden="true" />
+              <Loader2 className="animate-[spin_700ms_linear_infinite] motion-reduce:animate-[spin_1600ms_linear_infinite]" size={18} strokeWidth={2.2} aria-hidden="true" />
               Logging in…
             </>
           ) : (
@@ -162,8 +165,9 @@ function LoginForm({ onDone }: { onDone: (u: User) => void }) {
         </button>
       </form>
 
-      <p className="auth__switch">
-        Don’t have an account? <Link href="/contact">Contact us</Link>
+      <p className="mt-6 text-center text-[0.95rem] text-ink-2">
+        Don’t have an account?{' '}
+        <Link href="/contact" className="font-[650] text-green-deep">Contact us</Link>
       </p>
     </>
   )
@@ -171,19 +175,19 @@ function LoginForm({ onDone }: { onDone: (u: User) => void }) {
 
 function SignedIn({ user, onLogout }: { user: User; onLogout: () => void }) {
   return (
-    <div className="auth__done" role="status">
-      <span className="auth__done-icon" aria-hidden="true">
+    <div className="grid justify-items-start" role="status">
+      <span className="mb-5 grid size-14 place-items-center rounded-full bg-green-wash text-green-deep" aria-hidden="true">
         <Check size={26} strokeWidth={2.6} />
       </span>
       <h1>You’re signed in, {user.name.split(' ')[0]}.</h1>
-      <p className="auth__lede">
+      <p className="mt-2.5 text-ink-2">
         {user.organization} · {user.email}
       </p>
-      <p className="auth__note">
+      <p className="mt-5 text-ink-2">
         Your account is set up. The Shigjetademy dashboard for your organization is coming soon.
       </p>
-      <div className="auth__done-actions">
-        <button className="button auth__submit" type="button" onClick={() => navigate('/')}>
+      <div className="mt-7 grid w-full gap-2.5 [&_.button]:min-h-[50px] [&_.button]:w-full">
+        <button className="button mt-1.5 min-h-[52px] w-full bg-navy text-white enabled:hover:bg-navy-2" type="button" onClick={() => navigate('/')}>
           Back to the website
           <ArrowRight size={17} strokeWidth={2} aria-hidden="true" />
         </button>

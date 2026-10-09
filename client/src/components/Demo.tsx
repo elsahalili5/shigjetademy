@@ -2,7 +2,6 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { AlertCircle, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react'
 import { Arcs } from './Arcs'
-import './Demo.css'
 
 type Status = { kind: 'idle' } | { kind: 'sending' } | { kind: 'sent'; name: string; email: string } | { kind: 'error'; message: string }
 type Errors = Partial<Record<'name' | 'email' | 'organization' | 'orgType', string>>
@@ -69,22 +68,28 @@ export function Demo() {
 
   const errorText = (name: keyof Errors) =>
     errors[name] ? (
-      <span className="field__error" id={`demo-${name}-error`}>
+      <span className="field-error" id={`demo-${name}-error`}>
         {errors[name]}
       </span>
     ) : null
 
   return (
-    <section className="demo" id="demo" aria-labelledby="demo-title">
-      <Arcs className="demo__arcs" />
-      <div className="demo__inner">
-        <div className="demo__copy">
-          <h2 id="demo-title">See your own term in Shigjetademy.</h2>
-          <p>
+    // The close: on the page's own ground, with the form card on it
+    <section
+      data-flush-end
+      className="relative isolate mt-[clamp(112px,14vw,176px)] overflow-hidden bg-haze text-ink [--arc-green:rgba(220,181,127,0.45)] [--arc-knot:rgba(220,181,127,0.45)] [--arc:rgba(20,42,61,0.06)]"
+      id="demo"
+      aria-labelledby="demo-title"
+    >
+      <Arcs className="-bottom-[230px] -left-[120px] -z-10 w-[560px] rotate-[10deg]" />
+      <div className="mx-auto grid max-w-(--max) grid-cols-[minmax(0,6fr)_minmax(0,5fr)] items-start gap-[clamp(40px,6vw,96px)] px-(--gutter) py-[clamp(72px,10vw,128px)] max-[900px]:grid-cols-1">
+        <div>
+          <h2 id="demo-title" className="text-[clamp(2.3rem,4.6vw,4.2rem)] leading-none font-bold tracking-[-0.035em] text-ink">See your own term in Shigjetademy.</h2>
+          <p className="mt-[22px] max-w-[44ch] text-[1.06rem] text-ink-2">
             Tell us a little about your organization and we’ll arrange a walkthrough of the platform, built around
             how you already run your classes.
           </p>
-          <ul className="demo__covers">
+          <ul className="mt-9 grid grid-cols-[repeat(2,minmax(0,max-content))] gap-x-8 gap-y-3 max-[480px]:grid-cols-1 [&>li]:flex [&>li]:items-baseline [&>li]:gap-2.5 [&>li]:font-medium [&>li]:text-ink [&>li]:before:size-[9px] [&>li]:before:flex-none [&>li]:before:rounded-full [&>li]:before:bg-green [&>li]:before:content-[''] [&>li:nth-child(2)]:before:bg-kraft [&>li:nth-child(3)]:before:bg-coral [&>li:nth-child(4)]:before:bg-ink-3">
             <li>Enrolment and class lists</li>
             <li>Timetables and registers</li>
             <li>Fees and invoices</li>
@@ -92,20 +97,21 @@ export function Demo() {
           </ul>
         </div>
 
-        <div className="demo__card">
+        {/* The form card needs a little lift off the cream */}
+        <div className="rounded-card bg-white p-[clamp(22px,3vw,36px)] text-ink shadow-[0_1px_2px_rgba(20,42,61,0.06),0_30px_60px_-36px_rgba(20,42,61,0.4)]">
           {status.kind === 'sent' ? (
-            <div className="demo__done" role="status">
-              <CheckCircle2 size={32} strokeWidth={1.75} aria-hidden="true" />
-              <h3>Thanks, {status.name}. Your request is in.</h3>
-              <p>
-                We’ll email <strong>{status.email}</strong> to find a time that suits you.
+            <div className="grid justify-items-start gap-3 py-3" role="status">
+              <CheckCircle2 className="text-green-deep" size={32} strokeWidth={1.75} aria-hidden="true" />
+              <h3 className="text-[1.6rem]">Thanks, {status.name}. Your message is in.</h3>
+              <p className="text-ink-2">
+                We’ll reply to <strong>{status.email}</strong> soon.
               </p>
               <button type="button" className="button button--ghost" onClick={() => setStatus({ kind: 'idle' })}>
-                Send another request
+                Send another message
               </button>
             </div>
           ) : (
-            <form noValidate onSubmit={onSubmit}>
+            <form noValidate onSubmit={onSubmit} className="grid gap-4">
               <div className="field">
                 <label htmlFor="demo-name">Your name</label>
                 <input {...field('name')} autoComplete="name" />
@@ -148,26 +154,26 @@ export function Demo() {
               </div>
 
               {status.kind === 'error' && (
-                <p className="demo__error" role="alert">
+                <p className="flex items-start gap-2 rounded-lg bg-red-wash px-3 py-2.5 text-[0.88rem] text-[#8a3222] [&_svg]:mt-0.5 [&_svg]:flex-none" role="alert">
                   <AlertCircle size={16} strokeWidth={2} aria-hidden="true" />
                   {status.message}
                 </p>
               )}
 
-              <button className="button button--primary demo__submit" type="submit" disabled={status.kind === 'sending'}>
+              <button className="button mt-1 min-h-[52px] w-full bg-green text-base text-navy hover:bg-[#2bc49c]" type="submit" disabled={status.kind === 'sending'}>
                 {status.kind === 'sending' ? (
                   <>
                     <Loader2 className="spin" size={16} strokeWidth={2} aria-hidden="true" />
-                    Sending request
+                    Sending message
                   </>
                 ) : (
                   <>
-                    Book a demo
+                    Send message
                     <ArrowRight size={16} strokeWidth={2} aria-hidden="true" />
                   </>
                 )}
               </button>
-              <p className="demo__fine">We only use these details to arrange your demo.</p>
+              <p className="text-center text-[0.78rem] text-ink-3">We only use these details to reply to you.</p>
             </form>
           )}
         </div>

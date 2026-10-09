@@ -3,7 +3,6 @@ import wordmark from '../assets/brand/shigjetademy-wordmark.png'
 import { Link } from '../lib/router'
 import { SITE } from '../lib/site'
 import { SocialLinks } from './SocialLinks'
-import './Footer.css'
 
 const YEAR = new Date().getFullYear()
 
@@ -43,13 +42,13 @@ export function Footer() {
   ].filter(Boolean) as { icon: typeof Mail; label: string; href: string | null }[]
 
   return (
-    <footer className="footer">
-      <div className="footer__top">
-        <div className="footer__brand">
-          <img className="footer__wordmark" src={wordmark} alt="Shigjetademy" width={192} height={48} />
-          <p>Education management for schools, academies, training centres and educators.</p>
+    <footer className="mx-auto max-w-(--max) px-(--gutter) pt-16 pb-9">
+      <div className="grid grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))] gap-x-[clamp(24px,4vw,64px)] gap-y-10 max-[900px]:grid-cols-3 max-[520px]:grid-cols-2">
+        <div className="max-[900px]:col-span-full">
+          <img className="block h-11 w-auto" src={wordmark} alt="Shigjetademy" width={192} height={48} />
+          <p className="mt-4 max-w-[32ch] text-[0.92rem] text-ink-2">Education management for schools, academies, training centres and educators.</p>
 
-          <div className="footer__contact">
+          <div className="mt-[22px] grid justify-items-start gap-2.5 [&_:is(a,span)]:inline-flex [&_:is(a,span)]:items-center [&_:is(a,span)]:gap-2 [&_:is(a,span)]:text-[0.92rem] [&_:is(a,span)]:font-[550] [&_:is(a,span)]:text-ink [&_:is(a,span)]:no-underline [&_a:hover]:underline [&_svg]:text-green-deep">
             {contact.length ? (
               contact.map(({ icon: Icon, label, href }) =>
                 href ? (
@@ -74,12 +73,17 @@ export function Footer() {
         </div>
 
         {COLUMNS.map((col) => (
-          <nav key={col.title} className="footer__col" aria-label={col.title}>
-            <p>{col.title}</p>
-            <ul>
+          <nav key={col.title} aria-label={col.title}>
+            <p className="text-[0.8rem] font-bold text-ink">{col.title}</p>
+            <ul className="mt-3.5 grid gap-2.5">
               {col.links.map((l) => (
                 <li key={l.label}>
-                  <Link href={l.href}>{l.label}</Link>
+                  <Link
+                    href={l.href}
+                    className="text-[0.92rem] text-ink-2 no-underline transition-colors duration-150 hover:text-ink hover:underline aria-[current=page]:text-green-deep"
+                  >
+                    {l.label}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -87,8 +91,8 @@ export function Footer() {
         ))}
       </div>
 
-      <div className="footer__bottom">
-        <p className="footer__legal">© {YEAR} Shigjetademy. All rights reserved.</p>
+      <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-rule pt-5">
+        <p className="text-[0.82rem] text-ink-3">© {YEAR} Shigjetademy. All rights reserved.</p>
         <SocialLinks />
       </div>
     </footer>

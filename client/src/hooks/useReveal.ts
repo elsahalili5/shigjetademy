@@ -18,7 +18,17 @@ export function useReveal(key?: string) {
       },
       { rootMargin: '0px 0px -12% 0px', threshold: 0.05 },
     )
-    document.querySelectorAll('[data-reveal]').forEach((el) => io.observe(el))
-    return () => io.disconnect()
+    const observe = () =>
+      document.querySelectorAll('[data-reveal]:not([data-inview])').forEach((el) => io.observe(el))
+    observe()
+
+    // Sections that mount later (lazy content, hot reloads) would otherwise stay hidden
+    const mo = new MutationObserver(observe)
+    mo.observe(document.body, { childList: true, subtree: true })
+
+    return () => {
+      io.disconnect()
+      mo.disconnect()
+    }
   }, [key])
 }

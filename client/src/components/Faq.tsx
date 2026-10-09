@@ -2,7 +2,6 @@ import { useState } from 'react'
 import type { CSSProperties } from 'react'
 import { Plus } from 'lucide-react'
 import { Link } from '../lib/router'
-import './Faq.css'
 
 const FAQS = [
   {
@@ -23,7 +22,7 @@ const FAQS = [
   },
   {
     q: 'How do I get started?',
-    a: 'Book a demo. We’ll walk you through the platform with your own classes and way of working in mind.',
+    a: 'Contact us. We’ll walk you through the platform with your own classes and way of working in mind.',
   },
 ]
 
@@ -31,35 +30,54 @@ export function Faq() {
   const [open, setOpen] = useState<number | null>(0)
 
   return (
-    <section className="section container faq" id="faq" aria-labelledby="faq-title">
-      <div className="faq__head" data-reveal>
-        <h2 id="faq-title">Questions, answered.</h2>
-        <p>
-          Something else on your mind? <Link href="/contact">Book a demo</Link> and ask us directly.
+    // A soft warm field sets the questions apart from the white sections around them
+    <section
+      className="section shell relative isolate grid grid-cols-[minmax(0,5fr)_minmax(0,7fr)] items-start gap-[clamp(28px,5vw,80px)] pb-[clamp(96px,13vw,160px)] before:absolute before:inset-y-0 before:-inset-x-[calc(50vw-50%)] before:-z-10 before:bg-[color-mix(in_srgb,var(--kraft-wash)_70%,var(--haze))] before:content-[''] max-[900px]:grid-cols-1"
+      id="faq" aria-labelledby="faq-title">
+      <div data-reveal>
+        <h2 id="faq-title" className="text-[clamp(2rem,3.8vw,3.4rem)] font-[680] tracking-[-0.032em]">Questions, answered.</h2>
+        <p className="mt-[18px] text-ink-2">
+          Something else on your mind? <Link href="/contact" className="font-semibold text-green-deep">
+            Contact us
+          </Link> and ask us directly.
         </p>
       </div>
-      <ul className="faq__list">
+      <ul className="grid gap-2.5">
         {FAQS.map((f, n) => {
           const isOpen = open === n
           return (
-            <li key={f.q} data-open={isOpen || undefined} data-reveal style={{ '--i': n } as CSSProperties}>
-              <h3>
+            <li
+              key={f.q}
+              data-open={isOpen || undefined}
+              data-reveal
+              style={{ '--i': n } as CSSProperties}
+              className="group rounded-[18px] bg-white transition-shadow duration-200 data-open:shadow-[0_18px_36px_-24px_rgba(22,34,46,0.35)]"
+            >
+              <h3 className="font-sans text-[1.08rem] font-[650] tracking-[-0.01em]">
                 <button
                   type="button"
                   aria-expanded={isOpen}
                   aria-controls={`faq-${n}`}
                   id={`faq-q-${n}`}
                   onClick={() => setOpen(isOpen ? null : n)}
+                  className="group/btn flex w-full items-center justify-between gap-4 px-6 py-[22px] text-left"
                 >
                   {f.q}
-                  <span className="faq__icon" aria-hidden="true">
+                  <span
+                    className="grid size-[34px] flex-none place-items-center rounded-full bg-haze text-ink transition-[rotate,background-color,color] duration-[250ms] ease-out group-hover/btn:bg-mist-deep group-data-open:rotate-45 group-data-open:bg-coral-deep group-data-open:text-white group-data-open:group-hover/btn:bg-[#9c3f2d]"
+                    aria-hidden="true"
+                  >
                     <Plus size={18} strokeWidth={2} />
                   </span>
                 </button>
               </h3>
-              <div className="faq__answer" id={`faq-${n}`} role="region" aria-labelledby={`faq-q-${n}`}>
-                <div>
-                  <p>{f.a}</p>
+              <div
+                className="grid grid-rows-[0fr] transition-[grid-template-rows] duration-[280ms] ease-out group-data-open:grid-rows-[1fr]"
+                id={`faq-${n}`} role="region" aria-labelledby={`faq-q-${n}`}>
+                <div className="overflow-hidden">
+                  <p className="max-w-[60ch] px-6 pb-6 text-ink-2 opacity-0 transition-opacity duration-200 group-data-open:opacity-100 group-data-open:delay-[60ms]">
+                    {f.a}
+                  </p>
                 </div>
               </div>
             </li>

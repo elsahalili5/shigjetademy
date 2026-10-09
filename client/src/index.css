@@ -1,3 +1,7 @@
+@import 'tailwindcss';
+
+/* Brand tokens. Kept as plain custom properties too, so inline styles (tones, --i staggers)
+   can keep using var(--green) and friends. */
 :root {
   /* Ground: the brine-haze palette */
   --white: #ffffff;
@@ -53,153 +57,244 @@
   --nav-h: 76px;
   --notch: 26px;
 
+  --shadow-card: 0 1px 2px rgba(22, 34, 46, 0.06), 0 16px 36px -16px rgba(22, 34, 46, 0.28);
+}
+
+@media (max-width: 640px) {
+  :root {
+    --nav-h: 64px;
+    --notch: 20px;
+  }
+}
+
+/* Tailwind theme: the same tokens as utilities (bg-navy, text-ink-2, font-display, rounded-card…) */
+@theme inline {
+  --color-white: var(--white);
+  --color-haze: var(--haze);
+  --color-mist: var(--mist);
+  --color-mist-deep: var(--mist-deep);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-navy: var(--navy);
+  --color-navy-2: var(--navy-2);
+  --color-on-navy: var(--on-navy);
+  --color-on-navy-2: var(--on-navy-2);
+  --color-green: var(--green);
+  --color-green-deep: var(--green-deep);
+  --color-green-press: var(--green-press);
+  --color-green-wash: var(--green-wash);
+  --color-kraft: var(--kraft);
+  --color-kraft-deep: var(--kraft-deep);
+  --color-kraft-wash: var(--kraft-wash);
+  --color-kraft-ink: var(--kraft-ink);
+  --color-coral: var(--coral);
+  --color-coral-deep: var(--coral-deep);
+  --color-coral-wash: var(--coral-wash);
+  --color-amber: var(--amber);
+  --color-amber-wash: var(--amber-wash);
+  --color-red: var(--red);
+  --color-red-wash: var(--red-wash);
+
+  --font-display: var(--display);
+  --font-sans: var(--sans);
+  --font-data: var(--data);
+
+  --radius-card: var(--radius);
+  --radius-panel: var(--panel-radius);
+
+  --shadow-card: var(--shadow-card);
+}
+
+@theme static {
   /* Motion (Emil Kowalski's curves) */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 
-  --shadow-card: 0 1px 2px rgba(22, 34, 46, 0.06), 0 16px 36px -16px rgba(22, 34, 46, 0.28);
+  --animate-rise: rise 700ms var(--ease-out) both;
+  --animate-spin: spin 0.9s linear infinite;
 
-  font: 400 17px/1.55 var(--sans);
-  color: var(--ink);
-  background: var(--haze);
-  color-scheme: light;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  accent-color: var(--green-deep);
-  caret-color: var(--green-deep);
-  scroll-behavior: smooth;
-  scroll-padding-top: 84px;
-}
-
-@media (max-width: 720px) {
-  :root {
-    font-size: 16px;
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+      filter: blur(4px);
+    }
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
+@layer base {
   :root {
-    scroll-behavior: auto;
+    font: 400 17px/1.55 var(--sans);
+    color: var(--ink);
+    background: var(--haze);
+    color-scheme: light;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    accent-color: var(--green-deep);
+    caret-color: var(--green-deep);
+    scroll-behavior: smooth;
+    scroll-padding-top: 84px;
+    scrollbar-color: var(--rule-strong) var(--mist);
+  }
+
+  @media (max-width: 720px) {
+    :root {
+      font-size: 16px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root {
+      scroll-behavior: auto;
+    }
+  }
+
+  body {
+    margin: 0;
+    background: var(--haze);
+    min-width: 320px;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background: var(--green-wash);
+    color: var(--ink);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--display);
+    font-weight: 650;
+    letter-spacing: -0.025em;
+    line-height: 1.05;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  a {
+    color: inherit;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--green-deep);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  /* The last section on a page always leaves room before the footer */
+  main > :last-child:not([data-flush-end]) {
+    padding-bottom: clamp(96px, 13vw, 160px);
+  }
+
+  /* Motion. Content is visible by default; only when JS marks the page .motion
+     and the visitor allows motion do elements start hidden and reveal on entry. */
+  @media (prefers-reduced-motion: no-preference) {
+    .motion [data-reveal] {
+      opacity: 0;
+      transform: translateY(18px);
+      filter: blur(4px);
+      transition:
+        opacity 700ms var(--ease-out),
+        transform 700ms var(--ease-out),
+        filter 700ms var(--ease-out);
+      transition-delay: calc(var(--i, 0) * 60ms);
+    }
+
+    .motion [data-reveal][data-inview] {
+      opacity: 1;
+      transform: none;
+      filter: none;
+    }
   }
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  background: var(--haze);
-  min-width: 320px;
-  overflow-x: hidden;
-}
-
-::selection {
-  background: var(--green-wash);
-  color: var(--ink);
-}
-
-h1,
-h2,
-h3,
-h4 {
-  font-family: var(--display);
-  font-weight: 650;
-  letter-spacing: -0.025em;
-  line-height: 1.05;
-  margin: 0;
-  text-wrap: balance;
-}
-
-p {
-  margin: 0;
-  text-wrap: pretty;
-}
-
-a {
-  color: inherit;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 0.2em;
-}
-
-img {
-  display: block;
-  max-width: 100%;
-}
-
-button,
-input,
-select,
-textarea {
-  font: inherit;
-  color: inherit;
-}
-
-:focus-visible {
-  outline: 2px solid var(--green-deep);
-  outline-offset: 3px;
-  border-radius: 4px;
-}
-
-html {
-  scrollbar-color: var(--rule-strong) var(--mist);
-}
-
-.tabular {
+/* Shared pieces, as Tailwind utilities so they work with variants (md:, hover:, …) */
+@utility tabular {
   font-variant-numeric: tabular-nums;
 }
 
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
+@utility visually-hidden {
+  @apply sr-only;
 }
 
-/* Shared layout */
-.container {
+@utility shell {
   max-width: var(--max);
-  margin: 0 auto;
+  margin-inline: auto;
   padding-inline: var(--gutter);
 }
 
-.section {
+@utility section {
   padding-top: clamp(96px, 13vw, 160px);
 }
 
-.section-head {
+@utility section-head {
   display: grid;
   grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
   gap: clamp(20px, 4vw, 64px);
   align-items: end;
   margin-bottom: clamp(36px, 5vw, 64px);
-}
 
-.section-head h2 {
-  font-size: clamp(2rem, 3.8vw, 3.4rem);
-  font-weight: 680;
-  letter-spacing: -0.032em;
-}
+  & h2 {
+    font-size: clamp(2rem, 3.8vw, 3.4rem);
+    font-weight: 680;
+    letter-spacing: -0.032em;
+  }
 
-.section-head p {
-  color: var(--ink-2);
-  max-width: 48ch;
-}
+  & p {
+    color: var(--ink-2);
+    max-width: 48ch;
+  }
 
-@media (max-width: 900px) {
-  .section-head {
+  @media (max-width: 900px) {
     grid-template-columns: 1fr;
   }
 }
 
+/* Bands: alternate haze and white to pace the scroll */
+@utility band-white {
+  --band: var(--white);
+  background: var(--white);
+  padding-bottom: clamp(96px, 13vw, 160px);
+}
+
+@utility band-navy {
+  --band: var(--navy);
+  background: var(--navy);
+  color: var(--on-navy);
+  padding-bottom: clamp(96px, 13vw, 160px);
+}
+
+/* Entrance used by page headers: staggered by --i */
+@utility rise {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: var(--animate-rise);
+    animation-delay: calc(var(--i, 0) * 70ms + 80ms);
+  }
+}
+
+@utility spin {
+  animation: var(--animate-spin);
+}
+
 /* Buttons */
-.button {
+@utility button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -218,114 +313,64 @@ html {
     background-color 200ms ease,
     border-color 200ms ease,
     color 200ms ease;
-}
 
-.button:active {
-  transform: scale(0.97);
-}
-
-.button svg {
-  transition: transform 200ms var(--ease-out);
-}
-
-.button--primary {
-  background: var(--navy);
-  color: #fff;
-}
-
-.button--ghost {
-  background: transparent;
-  border-color: var(--rule-strong);
-  color: var(--ink);
-}
-
-.button--light {
-  background: #fff;
-  color: var(--ink);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .button--primary:hover {
-    background: var(--navy-2);
+  &:active {
+    transform: scale(0.97);
   }
 
-  .button--ghost:hover {
-    border-color: var(--ink-3);
-    background: var(--mist);
+  & svg {
+    transition: transform 200ms var(--ease-out);
   }
 
-  .button--light:hover {
-    background: var(--mist);
-  }
-
-  .button:hover svg {
-    transform: translateX(2px);
-  }
-}
-
-.button[disabled] {
-  opacity: 0.6;
-  cursor: progress;
-}
-
-/* The last section on a page always leaves room before the footer */
-main > :last-child:not(.demo):not(.cta):not(.sol-how) {
-  padding-bottom: clamp(96px, 13vw, 160px);
-}
-
-/* Bands: alternate haze and white to pace the scroll */
-.band-white {
-  --band: var(--white);
-  background: var(--white);
-}
-
-.band-navy {
-  --band: var(--navy);
-  background: var(--navy);
-  color: var(--on-navy);
-}
-
-.band-white.section,
-.band-navy.section {
-  padding-bottom: clamp(96px, 13vw, 160px);
-}
-
-/* Motion. Content is visible by default; only when JS marks the page .motion
-   and the visitor allows motion do elements start hidden and reveal on entry. */
-@media (prefers-reduced-motion: no-preference) {
-  .rise {
-    animation: rise 700ms var(--ease-out) both;
-    animation-delay: calc(var(--i, 0) * 70ms + 80ms);
-  }
-
-  @keyframes rise {
-    from {
-      opacity: 0;
-      transform: translateY(14px);
-      filter: blur(4px);
+  @media (hover: hover) and (pointer: fine) {
+    &:hover svg {
+      transform: translateX(2px);
     }
   }
 
-  .motion [data-reveal] {
-    opacity: 0;
-    transform: translateY(18px);
-    filter: blur(4px);
-    transition:
-      opacity 700ms var(--ease-out),
-      transform 700ms var(--ease-out),
-      filter 700ms var(--ease-out);
-    transition-delay: calc(var(--i, 0) * 60ms);
-  }
-
-  .motion [data-reveal][data-inview] {
-    opacity: 1;
-    transform: none;
-    filter: none;
+  &[disabled] {
+    opacity: 0.6;
+    cursor: progress;
   }
 }
 
-/* Small shared pieces */
-.chip {
+@utility button--primary {
+  background: var(--navy);
+  color: #fff;
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      background: var(--navy-2);
+    }
+  }
+}
+
+@utility button--ghost {
+  background: transparent;
+  border-color: var(--rule-strong);
+  color: var(--ink);
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      border-color: var(--ink-3);
+      background: var(--mist);
+    }
+  }
+}
+
+@utility button--light {
+  background: #fff;
+  color: var(--ink);
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      background: var(--mist);
+    }
+  }
+}
+
+/* Small status chips */
+@utility chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -336,22 +381,288 @@ main > :last-child:not(.demo):not(.cta):not(.sol-how) {
   white-space: nowrap;
 }
 
-.chip--green {
+@utility chip--green {
   background: var(--green-wash);
   color: var(--green-deep);
 }
 
-.chip--kraft {
+@utility chip--kraft {
   background: var(--kraft-wash);
   color: var(--kraft-ink);
 }
 
-.chip--coral {
+@utility chip--coral {
   background: var(--coral-wash);
   color: var(--coral-deep);
 }
 
-.chip--navy {
+@utility chip--navy {
   background: #dfe6ee;
   color: var(--ink);
+}
+
+/* Arcs (the cap decoration): line colours come from --arc, --arc-green and --arc-knot,
+   so each panel can retint it with a Tailwind arbitrary property, e.g. [--arc-green:…] */
+@theme static {
+  --animate-draw: draw 1400ms var(--ease-in-out) forwards;
+  --animate-knot-in: knot-in 500ms var(--ease-out) both;
+
+  @keyframes draw {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  @keyframes knot-in {
+    from {
+      opacity: 0;
+      transform: scale(0.6);
+      transform-origin: 900px 690px;
+    }
+  }
+}
+
+/* Closing call to action: one soft ring that breathes out when the band arrives */
+@theme static {
+  --animate-cta-ring: cta-ring 1600ms var(--ease-out) 700ms 2;
+
+  @keyframes cta-ring {
+    to {
+      box-shadow: 0 0 0 18px rgba(31, 176, 139, 0);
+    }
+  }
+}
+
+/* Built for strip: audiences rise in after the hero has settled */
+@theme static {
+  --animate-built-for-in: built-for-in 600ms var(--ease-out) both;
+
+  @keyframes built-for-in {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+      filter: blur(5px);
+    }
+  }
+}
+
+/* Form fields, shared by the contact form and the login page */
+@utility field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+
+  & label {
+    font-size: 0.86rem;
+    font-weight: 600;
+  }
+
+  & label span {
+    font-weight: 400;
+    color: var(--ink-3);
+  }
+
+  & :is(input, select) {
+    width: 100%;
+    min-height: 46px;
+    padding: 0 14px;
+    border: 1px solid var(--rule-strong);
+    border-radius: 10px;
+    background-color: #fff;
+    transition:
+      border-color 0.2s,
+      box-shadow 0.2s;
+  }
+
+  & select {
+    appearance: none;
+    background-image:
+      linear-gradient(45deg, transparent 50%, var(--ink-2) 50%),
+      linear-gradient(135deg, var(--ink-2) 50%, transparent 50%);
+    background-position:
+      calc(100% - 19px) 50%,
+      calc(100% - 14px) 50%;
+    background-size: 5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 36px;
+  }
+
+  & :is(input, select):hover {
+    border-color: var(--ink-3);
+  }
+
+  & :is(input, select):focus {
+    outline: none;
+    border-color: var(--green-deep);
+    box-shadow: 0 0 0 3px var(--green-wash);
+  }
+
+  & [aria-invalid='true'] {
+    border-color: var(--red);
+  }
+}
+
+@utility field-error {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--red);
+}
+
+@utility field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Platform explorer: the module preview settles in when a tab is picked */
+@theme static {
+  --animate-preview-in: preview-in 420ms var(--ease-out);
+
+  @keyframes preview-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+      filter: blur(4px);
+    }
+  }
+}
+
+/* Hero: the photo settles, the underline draws, the cards float in and drift */
+@theme static {
+  --animate-mark-draw: draw 900ms var(--ease-out) 650ms forwards;
+  --animate-media-in: media-in 1200ms var(--ease-out) both;
+  --animate-media-settle: media-settle 2000ms var(--ease-out) both;
+  --animate-card-in: card-in 650ms var(--ease-out) both;
+  --animate-drift: drift 7s ease-in-out infinite alternate;
+  --animate-meter: meter 1000ms var(--ease-out) 1100ms both;
+  --animate-tick-up: tick-up 220ms var(--ease-out);
+  --animate-tick-down: tick-down 220ms var(--ease-out);
+  --animate-toast-text: toast-text 220ms ease;
+
+  @keyframes media-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes media-settle {
+    from {
+      transform: scale(1.08);
+    }
+  }
+
+  @keyframes card-in {
+    from {
+      opacity: 0;
+      transform: translateY(18px) scale(0.94);
+      filter: blur(6px);
+    }
+  }
+
+  @keyframes drift {
+    to {
+      transform: translateY(-7px);
+    }
+  }
+
+  @keyframes meter {
+    from {
+      transform: scaleX(0);
+    }
+  }
+
+  @keyframes tick-up {
+    from {
+      transform: translateY(45%);
+      opacity: 0;
+      filter: blur(2px);
+    }
+  }
+
+  @keyframes tick-down {
+    from {
+      transform: translateY(-45%);
+      opacity: 0;
+      filter: blur(2px);
+    }
+  }
+
+  @keyframes toast-text {
+    from {
+      opacity: 0;
+      filter: blur(3px);
+    }
+  }
+}
+
+/* The hero's floating cards (and the register card among them): white, lifted, slowly drifting */
+@utility hero-card {
+  background: var(--white);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(20, 42, 61, 0.1), 0 24px 48px -20px rgba(10, 22, 34, 0.5);
+  font-size: 0.84rem;
+  line-height: 1.35;
+  color: var(--ink);
+
+  & strong {
+    display: block;
+    font-weight: 650;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: var(--animate-drift);
+    animation-delay: calc(var(--i, 0) * -1.7s);
+  }
+}
+
+/* Before/after: notes settle in once when the photo first appears */
+@theme static {
+  --animate-note-pin: note-pin 520ms var(--ease-out) both;
+
+  @keyframes note-pin {
+    from {
+      opacity: 0;
+      translate: 0 10px;
+    }
+  }
+}
+
+/* Testimonials: the active dot fills over the auto-advance interval */
+@theme static {
+  --animate-deck-fill: deck-fill linear both;
+
+  @keyframes deck-fill {
+    from {
+      background-size: 0% 100%, auto;
+    }
+  }
+}
+
+/* Day timeline: the clock digits tick in */
+@theme static {
+  --animate-dt-tick: dt-tick 260ms var(--ease-out);
+
+  @keyframes dt-tick {
+    from {
+      opacity: 0;
+      transform: translateY(30%);
+      filter: blur(3px);
+    }
+  }
+}
+
+/* Product preview: register ticks stamp in */
+@theme static {
+  --animate-stamp: stamp 0.45s var(--ease-out) both;
+
+  @keyframes stamp {
+    from {
+      transform: scale(1.35);
+      opacity: 0.3;
+    }
+  }
 }
