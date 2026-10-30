@@ -1,0 +1,126 @@
+import { screen, within } from '@testing-library/react'
+import { http, HttpResponse } from 'msw'
+import { describe, expect, it } from 'vitest'
+import { ACTIVITY_PAGE_SIZE } from '@shigjetademy/shared/activity'
+import type { ActivityEntry } from '@shigjetademy/shared/activity'
+import type { ClientOrganization } from '@shigjetademy/shared/organization'
+import { buildUser, PLATFORM_ADMIN_ROLES, signInAs } from '#/test/fixtures'
+import { renderRoute } from '#/test/render-route'
+import { server } from '#/test/server'
+
+const ADMIN = { id: 'admin-1', first_name: 'Platform', last_name: 'Admin', email: 'admin@platform.test' }
+const ELSA = { id: 'user-2', first_name: 'Elsa', last_name: 'Halili', email: 'elsa@rilindja.test' }
+const ARTA = { id: 'user-3', first_name: 'Arta', last_name: 'Gashi', email: 'arta@yllka.test' }
+
+const ENTRIES: ActivityEntry[] = [
+  { id: 'a-3', action: 'ACCOUNT_LOCKED', created_at: '2026-10-03T09:00:00.000Z', actor: null, organization: null, target_user: ARTA },
+  { id: 'a-2', action: 'PASSWORD_CHANGED', created_at: '2026-10-02T09:00:00.000Z', actor: ELSA, organization: null, target_user: ELSA },
+  {
+    id: 'a-1',
+    action: 'ORGANIZATION_SUSPENDED',
+    created_at: '2026-10-01T09:00:00.000Z',
+    actor: ADMIN,
+    organization: { id: 'org-1', name: 'Rilindja Academy' },
+    target_user: null,
+  },
+]
+
+const CLIENTS: ClientOrganization[] = [
+  {
+    id: 'org-1',
+    name: 'Rilindja Academy',
+    type: 'ACADEMY',
+    country: 'XK',
+    status: 'SUSPENDED',
+    created_at: '2026-09-01T09:00:00.000Z',
+    owner: ELSA,
+    member_counts: { OWNER: 1, ADMIN: 0, LECTURER: 0, STUDENT: 0, GUARDIAN: 0 },
+  },
+]
+
+/** Answers like the API: the filters in the query string narrow the entries */
+const serveActivity = (requests: URLSearchParams[] = []) =>
+  server.use(
+    http.get('*/api/organizations', () => HttpResponse.json({ data: CLIENTS })),
+    http.get('*/api/activity', ({ request }) => {
+      const params = new URL(request.url).searchParams
+      requests.push(params)
+      const organizationId = params.get('organizationId')
+      const action = params.get('action')
+      const entries = ENTRIES.filter(
+        (entry) => (!organizationId || entry.organization?.id === organizationId) && (!action || entry.action === action),
+      )
+      return HttpResponse.json({ data: entries })
+    }),
+  )
+
+describe('ActivityModule', () => {
+  it('is in the admin sidebar and lists entries as sentences, newest first', async () => {
+    signInAs(buildUser({ user_roles: PLATFORM_ADMIN_ROLES }))
+    serveActivity()
+    renderRoute('/dashboard/activity')
+
+    const sidebar = await screen.findByRole('navigation', { name: 'Modules' })
+    expect(within(sidebar).getByRole('link', { name: 'Activity' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Activity' })).toBeInTheDocument()
+
+    const list = await screen.findByRole('list', { name: 'Activity' })
+    const rows = within(list).getAllByRole('listitem')
+    expect(rows[0]).toHaveTextContent('Arta Gashi’s account was locked after too many failed logins')
+    expect(rows[1]).toHaveTextContent('Elsa Halili changed their password')
+    expect(rows[2]).toHaveTextContent('Platform Admin suspended Rilindja Academy')
+    expect(within(rows[2]).getByRole('link', { name: 'Rilindja Academy' })).toHaveAttribute('href', '/dashboard/clients/org-1')
+  })
+
+  it('asks the API for one client or one action and offers to clear the filters', async () => {
+    signInAs(buildUser({ user_roles: PLATFORM_ADMIN_ROLES }))
+    const requests: URLSearchParams[] = []
+    serveActivity(requests)
+    const { user } = renderRoute('/dashboard/activity')
+    await screen.findByText(/changed their password/)
+
+    await user.selectOptions(await screen.findByRole('combobox', { name: 'Filter by client' }), 'Rilindja Academy')
+    expect(await screen.findByText(/Platform Admin suspended/)).toBeInTheDocument()
+    expect(screen.queryByText(/changed their password/)).not.toBeInTheDocument()
+    expect(requests.at(-1)?.get('organizationId')).toBe('org-1')
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Filter by action' }), 'Password changed')
+    expect(await screen.findByText('No activity matches these filters.')).toBeInTheDocument()
+    expect(requests.at(-1)?.get('action')).toBe('PASSWORD_CHANGED')
+
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }))
+    expect(await screen.findByText(/changed their password/)).toBeInTheDocument()
+  })
+
+  it('shows an empty state before anything has happened', async () => {
+    signInAs(buildUser({ user_roles: PLATFORM_ADMIN_ROLES }))
+    server.use(
+      http.get('*/api/organizations', () => HttpResponse.json({ data: CLIENTS })),
+      http.get('*/api/activity', () => HttpResponse.json({ data: [] })),
+    )
+    renderRoute('/dashboard/activity')
+
+    expect(await screen.findByText('No activity yet.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument()
+  })
+
+  it('loads older entries after a full page', async () => {
+    signInAs(buildUser({ user_roles: PLATFORM_ADMIN_ROLES }))
+    const fullPage = Array.from({ length: ACTIVITY_PAGE_SIZE }, (_, index) => ({ ...ENTRIES[1], id: `page-${index}` }))
+    const oldest = { ...ENTRIES[2], created_at: '2026-09-01T09:00:00.000Z' }
+    server.use(
+      http.get('*/api/organizations', () => HttpResponse.json({ data: CLIENTS })),
+      http.get('*/api/activity', ({ request }) => {
+        const params = new URL(request.url).searchParams
+        const isNextPage = params.get('before') === ENTRIES[1].created_at && params.get('beforeId') === fullPage.at(-1)?.id
+        return HttpResponse.json({ data: isNextPage ? [oldest] : fullPage })
+      }),
+    )
+    const { user } = renderRoute('/dashboard/activity')
+
+    await user.click(await screen.findByRole('button', { name: 'Load more' }))
+
+    expect(await screen.findByText(/Platform Admin suspended/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument()
+  })
+})

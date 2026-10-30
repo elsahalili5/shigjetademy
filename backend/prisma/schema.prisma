@@ -74,6 +74,13 @@ enum InvitationStatus {
   REVOKED
 }
 
+enum ActivityAction {
+  ORGANIZATION_SUSPENDED
+  ORGANIZATION_REACTIVATED
+  PASSWORD_CHANGED
+  ACCOUNT_LOCKED
+}
+
 // ─────────────────────────────────────────
 // USERS & PLATFORM ROLES
 // ─────────────────────────────────────────
@@ -99,6 +106,8 @@ model User {
   refresh_tokens      RefreshTokens[]
   memberships         Membership[]
   sent_invitations    Invitation[] @relation("InvitedBy")
+  activity_as_actor   ActivityLog[] @relation("ActivityActor")
+  activity_as_target  ActivityLog[] @relation("ActivityTarget")
 }
 
 /// Platform-wide roles (PLATFORM_ADMIN); organization roles live on Membership
@@ -171,6 +180,7 @@ model Organization {
 
   memberships  Membership[]
   invitations  Invitation[]
+  activity     ActivityLog[]
 }
 
 /// A user's place in one organization. One user can belong to many organizations, once each.
@@ -212,4 +222,27 @@ model Invitation {
 
   @@index([organization_id, status])
   @@index([email])
+}
+
+// ─────────────────────────────────────────
+// ACTIVITY LOG
+// ─────────────────────────────────────────
+
+/// Who did what and when. Links become null when a user or organization is deleted, so the entry stays.
+model ActivityLog {
+  id              String         @id @default(uuid()) @db.Uuid
+  /// Null for system events, like a lockout after failed logins
+  actor_id        String?        @db.Uuid
+  action          ActivityAction
+  organization_id String?        @db.Uuid
+  target_user_id  String?        @db.Uuid
+  created_at      DateTime       @default(now())
+
+  actor           User?          @relation("ActivityActor", fields: [actor_id], references: [id], onDelete: SetNull)
+  organization    Organization?  @relation(fields: [organization_id], references: [id], onDelete: SetNull)
+  target_user     User?          @relation("ActivityTarget", fields: [target_user_id], references: [id], onDelete: SetNull)
+
+  @@index([created_at])
+  @@index([organization_id])
+  @@index([action])
 }

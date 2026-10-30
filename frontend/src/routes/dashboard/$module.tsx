@@ -7,6 +7,7 @@ import { getSessionUser } from '#/lib/route-guard'
 import { useTitle } from '#/lib/use-title'
 import { MODULES, moduleBySlug } from '#/lib/modules'
 import type { Module } from '#/lib/modules'
+import { ActivityModule } from '#/modules/activity/components/activity-module'
 import { useAuth } from '#/modules/auth/hooks/use-auth'
 import { isPlatformAdmin } from '#/modules/auth/utils/get-home-path'
 import { ClientsModule } from '#/modules/organization/components/clients-module'
@@ -48,6 +49,8 @@ function AdminModulePage({ module }: AdminModulePageProps) {
       return <ClientsModule />
     case 'statistics':
       return <StatisticsModule />
+    case 'activity':
+      return <ActivityModule />
     default: {
       const unknown: never = module.slug
       throw new Error(`Unknown admin module: ${String(unknown)}`)

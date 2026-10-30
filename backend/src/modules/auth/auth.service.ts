@@ -98,14 +98,18 @@ export const AuthService = {
         const isLocking = failedCount >= MAX_FAILED_ATTEMPTS
         const lockedUntil = new Date(Date.now() + LOCKOUT_DURATION_MS)
 
-        await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            access_failed_count: failedCount,
-            status: isLocking ? 'LOCKED' : user.status,
-            locked_until: isLocking ? lockedUntil : null,
-          },
-        })
+        // A lockout is a system event, so its log entry has no actor
+        await prisma.$transaction([
+          prisma.user.update({
+            where: { id: user.id },
+            data: {
+              access_failed_count: failedCount,
+              status: isLocking ? 'LOCKED' : user.status,
+              locked_until: isLocking ? lockedUntil : null,
+            },
+          }),
+          ...(isLocking ? [prisma.activityLog.create({ data: { action: 'ACCOUNT_LOCKED', target_user_id: user.id } })] : []),
+        ])
 
         if (isLocking) {
           throw new HttpError(403, `Too many failed attempts. Try again after ${lockedUntil.toISOString()}`)
@@ -206,6 +210,7 @@ export const AuthService = {
     await prisma.$transaction([
       prisma.user.update({ where: { id: userId }, data: { password_hash: await bcrypt.hash(data.new_password, SALT_ROUNDS) } }),
       prisma.refreshTokens.updateMany({ where: { user_id: userId, revoked: false }, data: { revoked: true } }),
+      prisma.activityLog.create({ data: { actor_id: userId, action: 'PASSWORD_CHANGED', target_user_id: userId } }),
     ])
 
     return issueTokens(userId)

@@ -1,4 +1,4 @@
-import type { MemberRole, OrganizationType } from '@generated/prisma/enums.ts'
+import type { ActivityAction, MemberRole, OrganizationType } from '@generated/prisma/enums.ts'
 import { prisma } from '@lib/prisma.ts'
 import { HttpError } from '@lib/httpError.ts'
 import type { CreateOrganizationInput, UpdateOrganizationStatusInput } from './organization.types.ts'
@@ -26,8 +26,14 @@ const startOfWeek = (date: Date) => {
 
 type UpdateOrganizationStatusParams = {
   organizationId: string
+  actorId: string
   data: UpdateOrganizationStatusInput
 }
+
+const STATUS_ACTIVITY = {
+  ACTIVE: 'ORGANIZATION_REACTIVATED',
+  SUSPENDED: 'ORGANIZATION_SUSPENDED',
+} as const satisfies Record<UpdateOrganizationStatusInput['status'], ActivityAction>
 
 type CreateOrganizationParams = {
   userId: string
@@ -163,16 +169,25 @@ export const OrganizationService = {
     }
   },
 
-  // One guarded write, so an owner deactivating at the same moment can't be overwritten
-  updateOrganizationStatus: async ({ organizationId, data }: UpdateOrganizationStatusParams) => {
-    const { count } = await prisma.organization.updateMany({
-      where: { id: organizationId, status: { not: 'DEACTIVATED' } },
-      data: { status: data.status },
-    })
-    if (count === 0) {
-      const exists = await prisma.organization.findUnique({ where: { id: organizationId }, select: { id: true } })
-      throw exists ? new HttpError(409, 'The owner deactivated this organization') : new HttpError(404, 'Client not found')
-    }
-    return { id: organizationId, status: data.status }
-  },
+  // One guarded write, so an owner deactivating at the same moment can't be overwritten; only a real change is logged
+  updateOrganizationStatus: ({ organizationId, actorId, data }: UpdateOrganizationStatusParams) =>
+    prisma.$transaction(async (tx) => {
+      const { count } = await tx.organization.updateMany({
+        where: { id: organizationId, status: { notIn: ['DEACTIVATED', data.status] } },
+        data: { status: data.status },
+      })
+      if (count > 0) {
+        await tx.activityLog.create({ data: { actor_id: actorId, action: STATUS_ACTIVITY[data.status], organization_id: organizationId } })
+        return { id: organizationId, status: data.status }
+      }
+
+      const current = await tx.organization.findUnique({ where: { id: organizationId }, select: { status: true } })
+      if (!current) {
+        throw new HttpError(404, 'Client not found')
+      }
+      if (current.status === 'DEACTIVATED') {
+        throw new HttpError(409, 'The owner deactivated this organization')
+      }
+      return { id: organizationId, status: data.status }
+    }),
 }
