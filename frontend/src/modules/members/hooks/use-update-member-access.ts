@@ -1,0 +1,18 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import type { OrganizationMember } from '@shigjetademy/shared/organization'
+import { showErrorToast } from '#/lib/error-toast'
+import { membersApi } from '../api/members-api'
+import { membersQueryKey } from './use-organization-members'
+
+// The saved member replaces the cached one, so the list shows the new access without a refetch
+export function useUpdateMemberAccess(organizationId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: membersApi.updateAccess,
+    onError: (error) => showErrorToast(error),
+    onSuccess: (saved) =>
+      queryClient.setQueryData<OrganizationMember[]>(membersQueryKey(organizationId), (members) =>
+        members?.map((member) => (member.membership_id === saved.membership_id ? saved : member)),
+      ),
+  })
+}

@@ -2,7 +2,7 @@ import type { Response } from 'express'
 import { sendError } from '@lib/httpError.ts'
 import type { AuthRequest, TypedRequest } from '@lib/types.ts'
 import { OrganizationService } from './organization.service.ts'
-import type { CreateOrganizationInput, OrganizationIdParam, UpdateOrganizationStatusInput } from './organization.types.ts'
+import type { CreateOrganizationInput, MembershipParam, OrganizationIdParam, UpdateMemberAccessInput, UpdateOrganizationStatusInput } from './organization.types.ts'
 
 type CreateOrganizationRequest = AuthRequest & { body: CreateOrganizationInput }
 
@@ -63,6 +63,42 @@ export const OrganizationController = {
       return res.status(200).json({ data: organization })
     } catch (error) {
       return sendError({ res, error, fallback: 'Failed to update client' })
+    }
+  },
+
+  listMembers: async (req: TypedRequest<unknown, OrganizationIdParam>, res: Response) => {
+    try {
+      const members = await OrganizationService.listMembers(req.params.organizationId)
+      return res.status(200).json({ data: members })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to fetch members' })
+    }
+  },
+
+  listPendingInvitations: async (req: TypedRequest<unknown, OrganizationIdParam>, res: Response) => {
+    try {
+      const invitations = await OrganizationService.listPendingInvitations(req.params.organizationId)
+      return res.status(200).json({ data: invitations })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to fetch invitations' })
+    }
+  },
+
+  updateMemberAccess: async (req: TypedRequest<UpdateMemberAccessInput, MembershipParam>, res: Response) => {
+    try {
+      const member = await OrganizationService.updateMemberAccess({ ...req.params, data: req.body })
+      return res.status(200).json({ data: member })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to update access' })
+    }
+  },
+
+  removeMember: async (req: TypedRequest<unknown, MembershipParam>, res: Response) => {
+    try {
+      await OrganizationService.removeMember(req.params)
+      return res.status(200).json({ message: 'Member removed' })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to remove member' })
     }
   },
 }

@@ -12,6 +12,23 @@ export const MEMBER_ROLES = ['OWNER', 'ADMIN', 'LECTURER', 'STUDENT', 'GUARDIAN'
 
 export type MemberRole = (typeof MEMBER_ROLES)[number]
 
+/** What a School Admin may do; the owner always has all of them */
+export const PERMISSIONS = [
+  'MANAGE_STUDENTS',
+  'MANAGE_LECTURERS',
+  'MANAGE_GUARDIANS',
+  'MANAGE_COURSES',
+  'MANAGE_SCHEDULES',
+  'MANAGE_ATTENDANCE',
+  'MANAGE_GRADES',
+  'MANAGE_MATERIALS',
+  'MANAGE_TESTS',
+  'VIEW_PERFORMANCE',
+  'VIEW_REPORTS',
+] as const
+
+export type Permission = (typeof PERMISSIONS)[number]
+
 // bcrypt only reads the first 72 bytes
 const passwordSchema = z.string().min(8, 'Use at least 8 characters.').max(72, 'Use at most 72 characters.')
 

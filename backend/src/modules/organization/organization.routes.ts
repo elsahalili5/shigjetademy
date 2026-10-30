@@ -1,10 +1,17 @@
 import { Router } from 'express'
 import { ROLES } from '@lib/roles.ts'
 import { authMiddleware } from '@shared/middleware/authMiddleware.ts'
+import { requireMembership } from '@shared/middleware/membershipMiddleware.ts'
 import { roleMiddleware } from '@shared/middleware/roleMiddleware.ts'
 import { validateRequestMiddleware } from '@shared/middleware/validateRequest.middleware.ts'
 import { OrganizationController } from './organization.controller.ts'
-import { createOrganizationSchema, organizationIdParamSchema, updateOrganizationStatusSchema } from './organization.schema.ts'
+import {
+  createOrganizationSchema,
+  membershipParamSchema,
+  organizationIdParamSchema,
+  updateMemberAccessSchema,
+  updateOrganizationStatusSchema,
+} from './organization.schema.ts'
 
 const router = Router()
 
@@ -30,6 +37,39 @@ router.patch(
   validateRequestMiddleware(organizationIdParamSchema, 'params'),
   validateRequestMiddleware(updateOrganizationStatusSchema),
   OrganizationController.updateOrganizationStatus,
+)
+
+router.get(
+  '/:organizationId/members',
+  authMiddleware,
+  validateRequestMiddleware(organizationIdParamSchema, 'params'),
+  requireMembership(['OWNER']),
+  OrganizationController.listMembers,
+)
+
+router.get(
+  '/:organizationId/invitations',
+  authMiddleware,
+  validateRequestMiddleware(organizationIdParamSchema, 'params'),
+  requireMembership(['OWNER']),
+  OrganizationController.listPendingInvitations,
+)
+
+router.patch(
+  '/:organizationId/members/:membershipId',
+  authMiddleware,
+  validateRequestMiddleware(membershipParamSchema, 'params'),
+  requireMembership(['OWNER']),
+  validateRequestMiddleware(updateMemberAccessSchema),
+  OrganizationController.updateMemberAccess,
+)
+
+router.delete(
+  '/:organizationId/members/:membershipId',
+  authMiddleware,
+  validateRequestMiddleware(membershipParamSchema, 'params'),
+  requireMembership(['OWNER']),
+  OrganizationController.removeMember,
 )
 
 export default router

@@ -9,7 +9,7 @@ import { renderRoute } from '#/test/render-route'
 import { server } from '#/test/server'
 
 const ADMIN = { id: 'admin-1', first_name: 'Platform', last_name: 'Admin', email: 'admin@platform.test' }
-const ELSA = { id: 'user-2', first_name: 'Elsa', last_name: 'Halili', email: 'elsa@rilindja.test' }
+const ELSA = { id: 'user-2', first_name: 'Elsa', last_name: 'Halili', email: 'elsa@oxford.test' }
 const ARTA = { id: 'user-3', first_name: 'Arta', last_name: 'Gashi', email: 'arta@yllka.test' }
 
 const ENTRIES: ActivityEntry[] = [
@@ -20,7 +20,7 @@ const ENTRIES: ActivityEntry[] = [
     action: 'ORGANIZATION_SUSPENDED',
     created_at: '2026-10-01T09:00:00.000Z',
     actor: ADMIN,
-    organization: { id: 'org-1', name: 'Rilindja Academy' },
+    organization: { id: 'org-1', name: 'Oxford Academy' },
     target_user: null,
   },
 ]
@@ -28,7 +28,7 @@ const ENTRIES: ActivityEntry[] = [
 const CLIENTS: ClientOrganization[] = [
   {
     id: 'org-1',
-    name: 'Rilindja Academy',
+    name: 'Oxford Academy',
     type: 'ACADEMY',
     country: 'XK',
     status: 'SUSPENDED',
@@ -68,8 +68,8 @@ describe('ActivityModule', () => {
     const rows = within(list).getAllByRole('listitem')
     expect(rows[0]).toHaveTextContent('Arta Gashi’s account was locked after too many failed logins')
     expect(rows[1]).toHaveTextContent('Elsa Halili changed their password')
-    expect(rows[2]).toHaveTextContent('Platform Admin suspended Rilindja Academy')
-    expect(within(rows[2]).getByRole('link', { name: 'Rilindja Academy' })).toHaveAttribute('href', '/dashboard/clients/org-1')
+    expect(rows[2]).toHaveTextContent('Platform Admin suspended Oxford Academy')
+    expect(within(rows[2]).getByRole('link', { name: 'Oxford Academy' })).toHaveAttribute('href', '/dashboard/clients/org-1')
   })
 
   it('asks the API for one client or one action and offers to clear the filters', async () => {
@@ -79,7 +79,7 @@ describe('ActivityModule', () => {
     const { user } = renderRoute('/dashboard/activity')
     await screen.findByText(/changed their password/)
 
-    await user.selectOptions(await screen.findByRole('combobox', { name: 'Filter by client' }), 'Rilindja Academy')
+    await user.selectOptions(await screen.findByRole('combobox', { name: 'Filter by client' }), 'Oxford Academy')
     expect(await screen.findByText(/Platform Admin suspended/)).toBeInTheDocument()
     expect(screen.queryByText(/changed their password/)).not.toBeInTheDocument()
     expect(requests.at(-1)?.get('organizationId')).toBe('org-1')

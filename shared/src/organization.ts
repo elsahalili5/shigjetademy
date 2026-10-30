@@ -1,6 +1,7 @@
 // The create-organization form and the endpoint that stores it share this schema.
 import { z } from 'zod'
-import type { MemberRole } from './auth.ts'
+import { PERMISSIONS } from './auth.ts'
+import type { MemberRole, Permission } from './auth.ts'
 
 export const ORGANIZATION_TYPES = ['School', 'Kindergarten', 'Academy', 'Training centre', 'Independent lecturer', 'Other'] as const
 
@@ -99,3 +100,30 @@ export const updateOrganizationStatusSchema = z.object({
 })
 
 export type UpdateOrganizationStatusInput = z.infer<typeof updateOrganizationStatusSchema>
+
+/** Someone with access to an organization, as its owner sees them on the Members page */
+export type OrganizationMember = {
+  membership_id: string
+  id: string
+  first_name: string
+  last_name: string
+  email: string
+  role: MemberRole
+  permissions: Permission[]
+  joined_at: string
+}
+
+export type OrganizationInvitation = {
+  id: string
+  email: string
+  role: MemberRole
+  permissions: Permission[]
+  created_at: string
+  expires_at: string
+}
+
+export const updateMemberAccessSchema = z.object({
+  permissions: z.array(z.enum(PERMISSIONS)).min(1, 'Choose at least one thing they can manage.'),
+})
+
+export type UpdateMemberAccessInput = z.infer<typeof updateMemberAccessSchema>

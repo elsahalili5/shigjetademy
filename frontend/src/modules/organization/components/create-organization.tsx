@@ -66,7 +66,7 @@ export function CreateOrganization({ onCreate, backendError }: CreateOrganizatio
                 type="text"
                 autoComplete="organization"
                 maxLength={ORGANIZATION_NAME_MAX}
-                placeholder="Rilindja Academy"
+                placeholder="Oxford Academy"
                 disabled={isSubmitting}
                 aria-invalid={!!fieldError('name')}
                 aria-describedby={fieldError('name') ? `${ids.name}-error` : undefined}

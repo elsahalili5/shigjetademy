@@ -21,7 +21,7 @@ export type Student = {
   contacts: Contact[]
 }
 
-export const SAMPLE_ORG = { name: 'Rilindja Academy', kind: 'Academy', term: 'Spring term 2026' }
+export const SAMPLE_ORG = { name: 'Oxford Academy', kind: 'Academy', term: 'Spring term 2026' }
 
 
 export const GROUPS = ['English B1', 'Maths 9A', 'Coding Juniors', 'IELTS Prep', 'Art Studio']

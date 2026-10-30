@@ -1,4 +1,4 @@
-import { LogOut } from 'lucide-react'
+import { LogOut, Users } from 'lucide-react'
 import { Link, Outlet, createFileRoute, useNavigate } from '@tanstack/react-router'
 import wordmark from '#/assets/brand/shigjetademy-wordmark.png'
 import { initials } from '#/lib/initials'
@@ -29,6 +29,7 @@ function DashboardLayout() {
   const isAdmin = auth.user ? isPlatformAdmin(auth.user) : false
   const sidebarModules = isAdmin ? ADMIN_MODULES : MODULES
   const isSuspended = !isAdmin && membership?.organization.status === 'SUSPENDED'
+  const isOwner = membership?.role === 'OWNER'
 
   const handleLogout = async () => {
     await auth.logout()
@@ -63,6 +64,21 @@ function DashboardLayout() {
             className="-mx-1 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-1 [scrollbar-width:none] max-[860px]:flex-row max-[860px]:gap-1.5 max-[860px]:overflow-x-auto [&::-webkit-scrollbar]:hidden"
             aria-label="Modules"
           >
+            {isOwner ? (
+              <>
+                <span className="px-3.5 pb-2.5 font-data text-[0.807rem] tracking-[0.06em] text-on-navy-2 uppercase max-[860px]:hidden" aria-hidden="true">
+                  Organization
+                </span>
+                <Link
+                  to="/dashboard/members"
+                  className="flex items-center gap-3 rounded-xl px-3.5 py-[10px] font-[550] text-on-navy-2 no-underline transition-colors duration-[180ms] ease-out hover:text-white aria-[current=page]:bg-navy-2 aria-[current=page]:text-white max-[860px]:flex-none max-[860px]:whitespace-nowrap [&_svg]:flex-none aria-[current=page]:[&_svg]:text-green"
+                >
+                  <Users size={18} strokeWidth={1.9} aria-hidden="true" />
+                  Members
+                </Link>
+                <span className="pb-3 max-[860px]:hidden" aria-hidden="true" />
+              </>
+            ) : null}
             <span className="px-3.5 pb-2.5 font-data text-[0.807rem] tracking-[0.06em] text-on-navy-2 uppercase max-[860px]:hidden" aria-hidden="true">
               {isAdmin ? 'Platform' : 'Dashboard'}
             </span>

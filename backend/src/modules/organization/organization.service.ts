@@ -1,7 +1,7 @@
 import type { ActivityAction, MemberRole, OrganizationType } from '@generated/prisma/enums.ts'
 import { prisma } from '@lib/prisma.ts'
 import { HttpError } from '@lib/httpError.ts'
-import type { CreateOrganizationInput, UpdateOrganizationStatusInput } from './organization.types.ts'
+import type { CreateOrganizationInput, UpdateMemberAccessInput, UpdateOrganizationStatusInput } from './organization.types.ts'
 
 // The form sends readable labels; the database stores enum values
 const ORGANIZATION_TYPE_VALUES = {
@@ -34,6 +34,45 @@ const STATUS_ACTIVITY = {
   ACTIVE: 'ORGANIZATION_REACTIVATED',
   SUSPENDED: 'ORGANIZATION_SUSPENDED',
 } as const satisfies Record<UpdateOrganizationStatusInput['status'], ActivityAction>
+
+type MembershipParams = {
+  organizationId: string
+  membershipId: string
+}
+
+type UpdateMemberAccessParams = MembershipParams & {
+  data: UpdateMemberAccessInput
+}
+
+const memberSelect = {
+  id: true,
+  role: true,
+  permissions: true,
+  created_at: true,
+  user: { select: { id: true, first_name: true, last_name: true, email: true } },
+} as const
+
+type MemberRecord = {
+  id: string
+  role: MemberRole
+  permissions: UpdateMemberAccessInput['permissions']
+  created_at: Date
+  user: { id: string; first_name: string; last_name: string; email: string }
+}
+
+const toMember = ({ id, role, permissions, created_at, user }: MemberRecord) => ({ ...user, membership_id: id, role, permissions, joined_at: created_at })
+
+/** Only an active School Admin in this organization can have their access changed or be removed */
+const findEditableAdmin = async ({ organizationId, membershipId }: MembershipParams) => {
+  const membership = await prisma.membership.findFirst({ where: { id: membershipId, organization_id: organizationId, status: 'ACTIVE' } })
+  if (!membership) {
+    throw new HttpError(404, 'Member not found')
+  }
+  if (membership.role !== 'ADMIN') {
+    throw new HttpError(400, 'Only school admins can be changed here')
+  }
+  return membership
+}
 
 type CreateOrganizationParams = {
   userId: string
@@ -190,4 +229,33 @@ export const OrganizationService = {
       }
       return { id: organizationId, status: data.status }
     }),
+
+  // The owner's Members page: active members, owner first, then by when they joined
+  listMembers: async (organizationId: string) => {
+    const memberships = await prisma.membership.findMany({
+      where: { organization_id: organizationId, status: 'ACTIVE' },
+      orderBy: [{ role: 'asc' }, { created_at: 'asc' }],
+      select: memberSelect,
+    })
+    return memberships.map(toMember)
+  },
+
+  listPendingInvitations: (organizationId: string) =>
+    prisma.invitation.findMany({
+      where: { organization_id: organizationId, status: 'PENDING', expires_at: { gt: new Date() } },
+      orderBy: { created_at: 'desc' },
+      select: { id: true, email: true, role: true, permissions: true, created_at: true, expires_at: true },
+    }),
+
+  updateMemberAccess: async ({ organizationId, membershipId, data }: UpdateMemberAccessParams) => {
+    await findEditableAdmin({ organizationId, membershipId })
+    const membership = await prisma.membership.update({ where: { id: membershipId }, data: { permissions: data.permissions }, select: memberSelect })
+    return toMember(membership)
+  },
+
+  // Removing keeps the membership row as REMOVED, so history (and the activity log) still points at it
+  removeMember: async ({ organizationId, membershipId }: MembershipParams) => {
+    await findEditableAdmin({ organizationId, membershipId })
+    await prisma.membership.update({ where: { id: membershipId }, data: { status: 'REMOVED' } })
+  },
 }

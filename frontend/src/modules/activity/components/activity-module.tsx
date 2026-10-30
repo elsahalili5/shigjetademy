@@ -194,7 +194,7 @@ interface ActivitySentenceProps {
   entry: ActivityEntry
 }
 
-/** "Platform Admin suspended Rilindja Academy", with the client's name linking to its page */
+/** "Platform Admin suspended Oxford Academy", with the client's name linking to its page */
 function ActivitySentence({ entry }: ActivitySentenceProps) {
   switch (entry.action) {
     case 'ORGANIZATION_SUSPENDED':

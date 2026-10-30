@@ -23,7 +23,7 @@ export const OWNER_MEMBERSHIPS: AuthUser['memberships'] = [
     id: 'membership-1',
     role: 'OWNER',
     permissions: [],
-    organization: { id: 'org-1', name: 'Rilindja Academy', type: 'ACADEMY', status: 'ACTIVE' },
+    organization: { id: 'org-1', name: 'Oxford Academy', type: 'ACADEMY', status: 'ACTIVE' },
   },
 ]
 

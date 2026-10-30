@@ -18,6 +18,14 @@ window.matchMedia = vi.fn((query: string) => ({
   dispatchEvent: vi.fn(() => false),
 }))
 
+// jsdom has no modal dialogs; opening sets `open`, which is what the page relies on
+HTMLDialogElement.prototype.showModal = function showModal(this: HTMLDialogElement) {
+  this.open = true
+}
+HTMLDialogElement.prototype.close = function close(this: HTMLDialogElement) {
+  this.open = false
+}
+
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }))
 afterEach(() => {
   cleanup()

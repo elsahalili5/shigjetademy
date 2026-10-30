@@ -12,8 +12,8 @@ let organizationId: string
 
 beforeEach(async () => {
   adminId = (await createUser({ email: 'admin@platform.test', isPlatformAdmin: true })).id
-  ownerId = (await createUser({ email: 'owner@rilindja.test' })).id
-  organizationId = (await createOrganization({ name: 'Rilindja Academy', ownerId })).id
+  ownerId = (await createUser({ email: 'owner@oxford.test' })).id
+  organizationId = (await createOrganization({ name: 'Oxford Academy', ownerId })).id
 })
 
 const readLog = () =>
@@ -58,7 +58,7 @@ describe('recording activity', () => {
   })
 
   it('records a user changing their password', async () => {
-    const ownerAuth = await loginAs('owner@rilindja.test')
+    const ownerAuth = await loginAs('owner@oxford.test')
 
     await request(app)
       .post('/api/auth/change-password')
@@ -72,7 +72,7 @@ describe('recording activity', () => {
 
   it('records a lockout after too many failed logins, with no actor', async () => {
     for (let count = 0; count < MAX_FAILED_ATTEMPTS; count += 1) {
-      await request(app).post('/api/auth/login').send({ email: 'owner@rilindja.test', password: 'wrong-password' })
+      await request(app).post('/api/auth/login').send({ email: 'owner@oxford.test', password: 'wrong-password' })
     }
 
     expect(await readLog()).toEqual([
@@ -106,7 +106,7 @@ describe('GET /api/activity', () => {
       .set('Authorization', await loginAs('admin@platform.test'))
 
   it('refuses an organization owner', async () => {
-    const response = await request(app).get('/api/activity').set('Authorization', await loginAs('owner@rilindja.test'))
+    const response = await request(app).get('/api/activity').set('Authorization', await loginAs('owner@oxford.test'))
 
     expect(response.status).toBe(403)
   })
@@ -122,13 +122,13 @@ describe('GET /api/activity', () => {
         created_at: '2026-10-01T09:02:00.000Z',
         actor: null,
         organization: null,
-        target_user: { id: ownerId, first_name: 'Test', last_name: 'User', email: 'owner@rilindja.test' },
+        target_user: { id: ownerId, first_name: 'Test', last_name: 'User', email: 'owner@oxford.test' },
       },
       expect.objectContaining({ action: 'PASSWORD_CHANGED', actor: expect.objectContaining({ first_name: 'Arta', last_name: 'Gashi' }) }),
       expect.objectContaining({
         action: 'ORGANIZATION_SUSPENDED',
         actor: expect.objectContaining({ id: adminId }),
-        organization: { id: organizationId, name: 'Rilindja Academy' },
+        organization: { id: organizationId, name: 'Oxford Academy' },
         target_user: null,
       }),
     ])

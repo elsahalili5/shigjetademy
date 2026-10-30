@@ -8,7 +8,7 @@ import { server } from '#/test/server'
 
 const CLIENT: ClientOrganizationDetail = {
   id: 'org-1',
-  name: 'Rilindja Academy',
+  name: 'Oxford Academy',
   type: 'ACADEMY',
   country: 'XK',
   currency: 'EUR',
@@ -17,8 +17,8 @@ const CLIENT: ClientOrganizationDetail = {
   created_at: '2026-10-01T09:00:00.000Z',
   member_counts: { OWNER: 1, ADMIN: 0, LECTURER: 1, STUDENT: 0, GUARDIAN: 0 },
   members: [
-    { membership_id: 'm-1', id: 'u-1', first_name: 'Arben', last_name: 'Krasniqi', email: 'owner@rilindja.test', role: 'OWNER', joined_at: '2026-10-01T09:00:00.000Z' },
-    { membership_id: 'm-2', id: 'u-2', first_name: 'Leon', last_name: 'Hoxha', email: 'lecturer@rilindja.test', role: 'LECTURER', joined_at: '2026-10-02T09:00:00.000Z' },
+    { membership_id: 'm-1', id: 'u-1', first_name: 'Arben', last_name: 'Krasniqi', email: 'owner@oxford.test', role: 'OWNER', joined_at: '2026-10-01T09:00:00.000Z' },
+    { membership_id: 'm-2', id: 'u-2', first_name: 'Leon', last_name: 'Hoxha', email: 'lecturer@oxford.test', role: 'LECTURER', joined_at: '2026-10-02T09:00:00.000Z' },
   ],
   pending_invitations: [],
 }
@@ -30,7 +30,7 @@ const LIST_ITEM: ClientOrganization = {
   country: CLIENT.country,
   status: CLIENT.status,
   created_at: CLIENT.created_at,
-  owner: { id: 'u-1', first_name: 'Arben', last_name: 'Krasniqi', email: 'owner@rilindja.test' },
+  owner: { id: 'u-1', first_name: 'Arben', last_name: 'Krasniqi', email: 'owner@oxford.test' },
   member_counts: CLIENT.member_counts,
 }
 
@@ -45,11 +45,11 @@ describe('ClientDetail', () => {
     )
     const { user } = renderRoute('/dashboard/clients')
 
-    await user.click(await screen.findByRole('link', { name: 'Rilindja Academy' }))
+    await user.click(await screen.findByRole('link', { name: 'Oxford Academy' }))
 
-    expect(await screen.findByRole('heading', { name: 'Rilindja Academy' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Oxford Academy' })).toBeInTheDocument()
     const members = screen.getByRole('region', { name: 'Members' })
-    expect(within(members).getByText('owner@rilindja.test')).toBeInTheDocument()
+    expect(within(members).getByText('owner@oxford.test')).toBeInTheDocument()
     expect(within(members).getByText('Lecturer')).toBeInTheDocument()
   })
 
