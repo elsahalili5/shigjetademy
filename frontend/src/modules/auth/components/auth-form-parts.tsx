@@ -1,18 +1,4 @@
-import type { ReactNode } from 'react'
-import { AlertCircle, ArrowRight, Loader2 } from 'lucide-react'
-
-interface FormAlertProps {
-  children: ReactNode
-}
-
-export function FormAlert({ children }: FormAlertProps) {
-  return (
-    <p className="flex items-start gap-2 rounded-xl bg-coral-wash px-3.5 py-3 text-[1.009rem] font-[550] text-coral-deep [&_svg]:mt-0.5 [&_svg]:flex-none" role="alert">
-      <AlertCircle size={16} strokeWidth={2} aria-hidden="true" />
-      {children}
-    </p>
-  )
-}
+import { ArrowRight, Loader2 } from 'lucide-react'
 
 interface SubmitButtonProps {
   isPending: boolean

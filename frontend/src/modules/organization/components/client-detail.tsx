@@ -3,7 +3,6 @@ import { AlertCircle, ArrowLeft, Mail, RotateCw } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import type { ClientOrganizationDetail } from '@shigjetademy/shared/organization'
 import { isApiError } from '#/api/client'
-import { getApiErrorMessage } from '#/lib/api-error-message'
 import { initials } from '#/lib/initials'
 import { ROLE_LABELS } from '#/modules/auth/utils/role-labels'
 import { useClient } from '../hooks/use-client'
@@ -171,14 +170,11 @@ function StatusControl({ client }: StatusControlProps) {
     updateStatus.mutate({ organizationId: client.id, status: 'SUSPENDED' }, { onSuccess: () => setIsConfirming(false) })
   }
 
-  // A failed attempt's error shouldn't follow the admin into the next try
   const handleOpenConfirm = () => {
-    updateStatus.reset()
     setIsConfirming(true)
   }
 
   const handleCancel = () => {
-    updateStatus.reset()
     setIsConfirming(false)
   }
 
@@ -186,7 +182,6 @@ function StatusControl({ client }: StatusControlProps) {
     updateStatus.mutate({ organizationId: client.id, status: 'ACTIVE' })
   }
 
-  const errorMessage = updateStatus.isError ? getApiErrorMessage(updateStatus.error, 'We couldn’t change this client’s status. Please try again.') : null
 
   if (client.status === 'DEACTIVATED') {
     return <p className="max-w-[28ch] text-[0.95rem] text-ink-3">The owner deactivated this organization.</p>
@@ -198,7 +193,6 @@ function StatusControl({ client }: StatusControlProps) {
         <button type="button" className="button button--primary min-h-11 px-4 text-base" onClick={handleReactivate} disabled={updateStatus.isPending}>
           {updateStatus.isPending ? 'Reactivating…' : 'Reactivate'}
         </button>
-        {errorMessage ? <StatusError>{errorMessage}</StatusError> : null}
       </div>
     )
   }
@@ -217,7 +211,6 @@ function StatusControl({ client }: StatusControlProps) {
             Cancel
           </button>
         </div>
-        {errorMessage ? <StatusError>{errorMessage}</StatusError> : null}
       </div>
     )
   }
@@ -226,19 +219,6 @@ function StatusControl({ client }: StatusControlProps) {
     <button type="button" className="button button--ghost min-h-11 px-4 text-base" onClick={handleOpenConfirm}>
       Suspend client
     </button>
-  )
-}
-
-interface StatusErrorProps {
-  children: string
-}
-
-function StatusError({ children }: StatusErrorProps) {
-  return (
-    <p className="flex items-center gap-1.5 text-[0.93rem] font-[550] text-coral-deep" role="alert">
-      <AlertCircle size={15} strokeWidth={2} aria-hidden="true" />
-      {children}
-    </p>
   )
 }
 

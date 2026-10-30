@@ -2,6 +2,7 @@ import { render } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
+import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from '#/modules/auth/components/auth-provider'
 import { routeTree } from '#/routeTree.gen'
 
@@ -18,6 +19,7 @@ export function renderRoute(path: string) {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <RouterProvider router={router} />
+        <Toaster />
       </AuthProvider>
     </QueryClientProvider>,
   )

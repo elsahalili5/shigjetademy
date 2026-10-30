@@ -1,10 +1,10 @@
 import { useId } from 'react'
-import { getApiErrorMessage } from '#/lib/api-error-message'
+import { FormAlert } from '#/components/FormAlert'
+import { getErrorMessage, getFieldError } from '#/lib/error-message'
 import { useChangePassword } from '../hooks/use-change-password'
 import { useChangePasswordForm } from '../hooks/use-change-password-form'
 import type { ChangePasswordFormValues } from '../hooks/use-change-password-form'
 import { AuthField } from './auth-field'
-import { FormAlert } from './auth-form-parts'
 import { FormSuccess } from './form-success'
 
 export function ChangePasswordForm() {
@@ -25,7 +25,7 @@ export function ChangePasswordForm() {
         type="password"
         autoComplete="current-password"
         disabled={changePassword.isPending}
-        error={errors.current_password?.message}
+        error={getFieldError<ChangePasswordFormValues>({ fieldName: 'current_password', formErrors: errors, backendError: changePassword.error })}
         {...changePasswordForm.register('current_password')}
       />
       <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
@@ -36,7 +36,7 @@ export function ChangePasswordForm() {
           autoComplete="new-password"
           placeholder="At least 8 characters"
           disabled={changePassword.isPending}
-          error={errors.new_password?.message}
+          error={getFieldError<ChangePasswordFormValues>({ fieldName: 'new_password', formErrors: errors, backendError: changePassword.error })}
           {...changePasswordForm.register('new_password')}
         />
         <AuthField
@@ -45,12 +45,12 @@ export function ChangePasswordForm() {
           type="password"
           autoComplete="new-password"
           disabled={changePassword.isPending}
-          error={errors.confirm_password?.message}
+          error={getFieldError<ChangePasswordFormValues>({ fieldName: 'confirm_password', formErrors: errors, backendError: changePassword.error })}
           {...changePasswordForm.register('confirm_password')}
         />
       </div>
 
-      {changePassword.isError ? <FormAlert>{getApiErrorMessage(changePassword.error, 'We couldn’t change your password. Please try again.')}</FormAlert> : null}
+      {changePassword.isError ? <FormAlert>{getErrorMessage(changePassword.error)}</FormAlert> : null}
 
       <div className="flex flex-wrap items-center gap-4">
         <button className="button button--primary min-h-11 px-5 text-base" type="submit" disabled={changePassword.isPending}>

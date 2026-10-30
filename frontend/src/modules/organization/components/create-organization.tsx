@@ -8,6 +8,8 @@ import type { OrganizationType } from '@shigjetademy/shared'
 import { COUNTRIES, CURRENCIES, ORGANIZATION_NAME_MAX } from '@shigjetademy/shared/organization'
 import type { CreateOrganizationInput } from '@shigjetademy/shared/organization'
 import wordmark from '#/assets/brand/shigjetademy-wordmark.png'
+import { FormAlert } from '#/components/FormAlert'
+import { getErrorMessage, getFieldError } from '#/lib/error-message'
 import { useCreateOrganizationForm } from '../hooks/use-create-organization-form'
 import { OrganizationPreview } from './organization-preview'
 
@@ -28,14 +30,16 @@ const FIELD =
 
 interface CreateOrganizationProps {
   onCreate: (input: CreateOrganizationInput) => Promise<void>
-  errorMessage?: string
+  backendError: unknown
 }
 
 /** Onboarding step where a new owner names their organization: form on the left, a live workspace preview on the right. */
-export function CreateOrganization({ onCreate, errorMessage }: CreateOrganizationProps) {
+export function CreateOrganization({ onCreate, backendError }: CreateOrganizationProps) {
   const createOrganizationForm = useCreateOrganizationForm({ onSubmit: onCreate })
   const { form } = createOrganizationForm
   const { errors, isSubmitting } = form.formState
+  const fieldError = (fieldName: keyof CreateOrganizationInput) =>
+    getFieldError<CreateOrganizationInput>({ fieldName, formErrors: errors, backendError })
   const ids = { name: useId(), type: useId(), country: useId(), currency: useId(), size: useId() }
 
   const name = form.watch('name')
@@ -55,7 +59,7 @@ export function CreateOrganization({ onCreate, errorMessage }: CreateOrganizatio
           <p className="mt-2.5 text-ink-2">You’ll be its owner. You can invite admins and lecturers once it’s ready.</p>
 
           <form className="mt-9 grid gap-7" noValidate onSubmit={createOrganizationForm.handleSubmit}>
-            <Field label="Organization name" htmlFor={ids.name} error={errors.name?.message}>
+            <Field label="Organization name" htmlFor={ids.name} error={fieldError('name')}>
               <input
                 id={ids.name}
                 className={FIELD}
@@ -64,13 +68,13 @@ export function CreateOrganization({ onCreate, errorMessage }: CreateOrganizatio
                 maxLength={ORGANIZATION_NAME_MAX}
                 placeholder="Rilindja Academy"
                 disabled={isSubmitting}
-                aria-invalid={!!errors.name}
-                aria-describedby={errors.name ? `${ids.name}-error` : undefined}
+                aria-invalid={!!fieldError('name')}
+                aria-describedby={fieldError('name') ? `${ids.name}-error` : undefined}
                 {...form.register('name')}
               />
             </Field>
 
-            <fieldset className="grid min-w-0 gap-2.5" aria-describedby={errors.type ? ids.type : undefined}>
+            <fieldset className="grid min-w-0 gap-2.5" aria-describedby={fieldError('type') ? ids.type : undefined}>
               <legend className="mb-2.5 text-[0.987rem] font-[650]">What kind of organization is it?</legend>
               <div className="grid grid-cols-2 gap-2.5 max-[520px]:grid-cols-1">
                 {ORGANIZATION_TYPES.map((option) => {
@@ -92,11 +96,11 @@ export function CreateOrganization({ onCreate, errorMessage }: CreateOrganizatio
                   )
                 })}
               </div>
-              {errors.type?.message ? <FieldError id={ids.type}>{errors.type.message}</FieldError> : null}
+              {fieldError('type') ? <FieldError id={ids.type}>{fieldError('type')}</FieldError> : null}
             </fieldset>
 
             <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-4 max-[520px]:grid-cols-1">
-              <Field label="Country" htmlFor={ids.country} error={errors.country?.message}>
+              <Field label="Country" htmlFor={ids.country} error={fieldError('country')}>
                 <SelectFrame>
                   <select id={ids.country} className={`${FIELD} appearance-none pr-10`} disabled={isSubmitting} {...createOrganizationForm.countryField}>
                     {COUNTRIES.map((entry) => (
@@ -108,7 +112,7 @@ export function CreateOrganization({ onCreate, errorMessage }: CreateOrganizatio
                 </SelectFrame>
               </Field>
 
-              <Field label="Currency" htmlFor={ids.currency} error={errors.currency?.message}>
+              <Field label="Currency" htmlFor={ids.currency} error={fieldError('currency')}>
                 <SelectFrame>
                   <select id={ids.currency} className={`${FIELD} appearance-none pr-10`} disabled={isSubmitting} {...form.register('currency')}>
                     {CURRENCIES.map((code) => (
@@ -134,12 +138,8 @@ export function CreateOrganization({ onCreate, errorMessage }: CreateOrganizatio
               </SelectFrame>
             </Field>
 
-            {errorMessage ? (
-              <p className="flex items-start gap-2 rounded-xl bg-coral-wash px-3.5 py-3 font-[550] text-coral-deep [&_svg]:mt-0.5 [&_svg]:flex-none" role="alert">
-                <AlertCircle size={16} strokeWidth={2} aria-hidden="true" />
-                {errorMessage}
-              </p>
-            ) : null}
+
+            {backendError ? <FormAlert>{getErrorMessage(backendError)}</FormAlert> : null}
 
             <button className="button button--primary mt-1 min-h-[52px] w-full" type="submit" disabled={isSubmitting}>
               {isSubmitting ? (

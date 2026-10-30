@@ -1,10 +1,10 @@
 import { useId } from 'react'
 import type { AuthUser, UpdateProfileInput } from '@shigjetademy/shared/auth'
-import { getApiErrorMessage } from '#/lib/api-error-message'
+import { FormAlert } from '#/components/FormAlert'
+import { getErrorMessage, getFieldError } from '#/lib/error-message'
 import { useProfileForm } from '../hooks/use-profile-form'
 import { useUpdateProfile } from '../hooks/use-update-profile'
 import { AuthField } from './auth-field'
-import { FormAlert } from './auth-form-parts'
 import { FormSuccess } from './form-success'
 
 interface ProfileDetailsFormProps {
@@ -30,7 +30,7 @@ export function ProfileDetailsForm({ user }: ProfileDetailsFormProps) {
           label="First name"
           autoComplete="given-name"
           disabled={updateProfile.isPending}
-          error={errors.first_name?.message}
+          error={getFieldError<UpdateProfileInput>({ fieldName: 'first_name', formErrors: errors, backendError: updateProfile.error })}
           {...profileForm.register('first_name')}
         />
         <AuthField
@@ -38,7 +38,7 @@ export function ProfileDetailsForm({ user }: ProfileDetailsFormProps) {
           label="Last name"
           autoComplete="family-name"
           disabled={updateProfile.isPending}
-          error={errors.last_name?.message}
+          error={getFieldError<UpdateProfileInput>({ fieldName: 'last_name', formErrors: errors, backendError: updateProfile.error })}
           {...profileForm.register('last_name')}
         />
       </div>
@@ -49,11 +49,11 @@ export function ProfileDetailsForm({ user }: ProfileDetailsFormProps) {
         autoComplete="email"
         inputMode="email"
         disabled={updateProfile.isPending}
-        error={errors.email?.message}
+        error={getFieldError<UpdateProfileInput>({ fieldName: 'email', formErrors: errors, backendError: updateProfile.error })}
         {...profileForm.register('email')}
       />
 
-      {updateProfile.isError ? <FormAlert>{getApiErrorMessage(updateProfile.error, 'We couldn’t save your details. Please try again.')}</FormAlert> : null}
+      {updateProfile.isError ? <FormAlert>{getErrorMessage(updateProfile.error)}</FormAlert> : null}
 
       <div className="flex flex-wrap items-center gap-4">
         <button className="button button--primary min-h-11 px-5 text-base" type="submit" disabled={updateProfile.isPending || !isDirty}>

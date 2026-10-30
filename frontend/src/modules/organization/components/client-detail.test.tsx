@@ -69,6 +69,20 @@ describe('ClientDetail', () => {
     expect(screen.getByText('Suspended')).toBeInTheDocument()
   })
 
+  it('shows a toast when suspending fails', async () => {
+    signInAsAdmin()
+    server.use(
+      http.get('*/api/organizations/org-1', () => HttpResponse.json({ data: CLIENT })),
+      http.patch('*/api/organizations/org-1/status', () => HttpResponse.json({ error: 'The owner deactivated this organization' }, { status: 409 })),
+    )
+    const { user } = renderRoute('/dashboard/clients/org-1')
+
+    await user.click(await screen.findByRole('button', { name: 'Suspend client' }))
+    await user.click(screen.getByRole('button', { name: 'Suspend' }))
+
+    expect(await screen.findByText('The owner deactivated this organization')).toBeInTheDocument()
+  })
+
   it('says when the client does not exist', async () => {
     signInAsAdmin()
     server.use(http.get('*/api/organizations/missing', () => HttpResponse.json({ error: 'Client not found' }, { status: 404 })))

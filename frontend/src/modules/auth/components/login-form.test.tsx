@@ -31,3 +31,20 @@ describe('LoginForm', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/students'))
   })
 })
+
+describe('LoginForm server validation', () => {
+  it('puts the server’s field errors under their fields', async () => {
+    server.use(
+      http.post('*/api/auth/login', () =>
+        HttpResponse.json({ error: 'Validation failed', details: { formErrors: [], fieldErrors: { email: ['This email is blocked'] } } }, { status: 400 }),
+      ),
+    )
+    const { user } = renderRoute('/login')
+
+    await user.type(await screen.findByLabelText('Email'), 'elsa@school.test')
+    await user.type(screen.getByLabelText('Password'), 'password123')
+    await user.click(screen.getByRole('button', { name: 'Log in' }))
+
+    expect(await screen.findAllByText('This email is blocked')).not.toHaveLength(0)
+  })
+})

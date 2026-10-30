@@ -1,11 +1,12 @@
 import { useId } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import type { RegisterUserInput } from '@shigjetademy/shared/auth'
-import { getApiErrorMessage } from '#/lib/api-error-message'
+import { FormAlert } from '#/components/FormAlert'
+import { getErrorMessage, getFieldError } from '#/lib/error-message'
 import { useRegister } from '../hooks/use-register'
 import { useRegisterForm } from '../hooks/use-register-form'
 import { AuthField } from './auth-field'
-import { FormAlert, SubmitButton } from './auth-form-parts'
+import { SubmitButton } from './auth-form-parts'
 
 /** Sign-up for education providers: the account comes first, the organization is the next step */
 export function SignupForm() {
@@ -32,7 +33,7 @@ export function SignupForm() {
             label="First name"
             autoComplete="given-name"
             disabled={register.isPending}
-            error={errors.first_name?.message}
+            error={getFieldError<RegisterUserInput>({ fieldName: 'first_name', formErrors: errors, backendError: register.error })}
             {...registerForm.register('first_name')}
           />
           <AuthField
@@ -40,7 +41,7 @@ export function SignupForm() {
             label="Last name"
             autoComplete="family-name"
             disabled={register.isPending}
-            error={errors.last_name?.message}
+            error={getFieldError<RegisterUserInput>({ fieldName: 'last_name', formErrors: errors, backendError: register.error })}
             {...registerForm.register('last_name')}
           />
         </div>
@@ -52,7 +53,7 @@ export function SignupForm() {
           inputMode="email"
           placeholder="you@school.edu"
           disabled={register.isPending}
-          error={errors.email?.message}
+          error={getFieldError<RegisterUserInput>({ fieldName: 'email', formErrors: errors, backendError: register.error })}
           {...registerForm.register('email')}
         />
         <AuthField
@@ -62,11 +63,11 @@ export function SignupForm() {
           autoComplete="new-password"
           placeholder="At least 8 characters"
           disabled={register.isPending}
-          error={errors.password?.message}
+          error={getFieldError<RegisterUserInput>({ fieldName: 'password', formErrors: errors, backendError: register.error })}
           {...registerForm.register('password')}
         />
 
-        {register.isError ? <FormAlert>{getApiErrorMessage(register.error, 'We couldn’t create your account. Please try again.')}</FormAlert> : null}
+        {register.isError ? <FormAlert>{getErrorMessage(register.error)}</FormAlert> : null}
 
         <SubmitButton isPending={register.isPending} label="Create account" pendingLabel="Creating your account…" />
       </form>

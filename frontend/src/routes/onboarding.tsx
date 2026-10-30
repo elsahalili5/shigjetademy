@@ -1,6 +1,5 @@
 import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import type { CreateOrganizationInput } from '@shigjetademy/shared/organization'
-import { getApiErrorMessage } from '#/lib/api-error-message'
 import { requireAuthenticated } from '#/lib/route-guard'
 import { useTitle } from '#/lib/use-title'
 import { hasOrganization } from '#/modules/auth/utils/get-home-path'
@@ -27,13 +26,10 @@ function OnboardingPage() {
       await createOrganization.mutateAsync(input)
       await navigate({ to: '/dashboard' })
     } catch {
-      // The mutation keeps the error; the form shows it below
+      // The form shows the mutation's error above its button and on the fields it names
     }
   }
 
-  const errorMessage = createOrganization.isError
-    ? getApiErrorMessage(createOrganization.error, 'We couldn’t create your organization. Please try again.')
-    : undefined
 
-  return <CreateOrganization onCreate={handleCreate} errorMessage={errorMessage} />
+  return <CreateOrganization onCreate={handleCreate} backendError={createOrganization.error} />
 }
