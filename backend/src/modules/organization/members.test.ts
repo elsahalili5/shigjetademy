@@ -46,16 +46,38 @@ describe('GET /api/organizations/:organizationId/members', () => {
 describe('managing school admins', () => {
   const adminMembership = () => prisma.membership.findFirstOrThrow({ where: { organization_id: organizationId, role: 'ADMIN' } })
 
-  it('lets the owner change an admin’s permissions', async () => {
+  it('lets the owner change an admin’s name and permissions', async () => {
     const membership = await adminMembership()
 
     const response = await request(app)
       .patch(`${membersPath}/${membership.id}`)
       .set('Authorization', await loginAs('owner@oxford.test'))
-      .send({ permissions: ['MANAGE_STUDENTS', 'VIEW_REPORTS'] })
+      .send({ first_name: 'Drita', last_name: 'Berisha', permissions: ['MANAGE_STUDENTS', 'VIEW_REPORTS'] })
 
     expect(response.status).toBe(200)
-    expect(response.body.data.permissions).toEqual(['MANAGE_STUDENTS', 'VIEW_REPORTS'])
+    expect(response.body.data).toMatchObject({ first_name: 'Drita', last_name: 'Berisha', permissions: ['MANAGE_STUDENTS', 'VIEW_REPORTS'] })
+  })
+
+  it('refuses an empty name', async () => {
+    const membership = await adminMembership()
+
+    const response = await request(app)
+      .patch(`${membersPath}/${membership.id}`)
+      .set('Authorization', await loginAs('owner@oxford.test'))
+      .send({ first_name: ' ', last_name: 'Berisha', permissions: ['MANAGE_STUDENTS'] })
+
+    expect(response.status).toBe(400)
+  })
+
+  it('does not let a school admin edit another member', async () => {
+    const membership = await adminMembership()
+
+    const response = await request(app)
+      .patch(`${membersPath}/${membership.id}`)
+      .set('Authorization', await loginAs('admin1@oxford.com'))
+      .send({ first_name: 'Me', last_name: 'Me', permissions: ['MANAGE_STUDENTS'] })
+
+    expect(response.status).toBe(403)
   })
 
   it('removes an admin, who then no longer appears', async () => {

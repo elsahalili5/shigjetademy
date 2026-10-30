@@ -8,10 +8,10 @@ import { ROLE_LABELS } from '#/modules/auth/utils/role-labels'
 import { useOrganizationMembers } from '../hooks/use-organization-members'
 import { usePendingInvitations } from '../hooks/use-pending-invitations'
 import { useRemoveMember } from '../hooks/use-remove-member'
-import { useUpdateMemberAccess } from '../hooks/use-update-member-access'
+import { useUpdateMember } from '../hooks/use-update-member'
 import { PERMISSION_LABELS } from '../utils/permission-labels'
 import { AdminAccessDialog } from './admin-access-dialog'
-import type { AdminAccessDialogMode } from './admin-access-dialog'
+import type { AdminAccessDialogMode, AdminAccessInput } from './admin-access-dialog'
 
 const SHOWN_PERMISSIONS = 3
 const SKELETON_ROWS = 2
@@ -33,7 +33,7 @@ export function MembersPage({ organizationId, organizationName }: MembersPagePro
   const dialogRef = useRef<HTMLDialogElement>(null)
   const members = useOrganizationMembers(organizationId)
   const invitations = usePendingInvitations(organizationId)
-  const updateAccess = useUpdateMemberAccess(organizationId)
+  const updateMember = useUpdateMember(organizationId)
   const removeMember = useRemoveMember(organizationId)
   const [dialogMode, setDialogMode] = useState<AdminAccessDialogMode>({ kind: 'invite' })
   const [notice, setNotice] = useState<Notice | null>(null)
@@ -44,19 +44,26 @@ export function MembersPage({ organizationId, organizationName }: MembersPagePro
   }
 
   const handleOpenEdit = (member: OrganizationMember) => {
-    setDialogMode({ kind: 'edit', membershipId: member.membership_id, name: fullName(member), email: member.email, permissions: member.permissions })
+    setDialogMode({
+      kind: 'edit',
+      membershipId: member.membership_id,
+      firstName: member.first_name,
+      lastName: member.last_name,
+      email: member.email,
+      permissions: member.permissions,
+    })
     dialogRef.current?.showModal()
   }
 
   // Sending invitations comes with the email step; until then the form says so instead of pretending
-  const handleSubmitAccess = ({ email, permissions }: { email: string; permissions: Permission[] }) => {
+  const handleSubmitAccess = ({ email, firstName, lastName, permissions }: AdminAccessInput) => {
     if (dialogMode.kind === 'invite') {
       setNotice({ tone: 'info', text: `Sending invitations isn’t connected yet, so nothing was sent to ${email}.` })
       return
     }
-    updateAccess.mutate(
-      { organizationId, membershipId: dialogMode.membershipId, permissions },
-      { onSuccess: () => setNotice({ tone: 'success', text: `Access updated for ${email}.` }) },
+    updateMember.mutate(
+      { organizationId, membershipId: dialogMode.membershipId, first_name: firstName, last_name: lastName, permissions },
+      { onSuccess: (saved) => setNotice({ tone: 'success', text: `Saved changes for ${saved.first_name} ${saved.last_name}.` }) },
     )
   }
 
@@ -311,7 +318,7 @@ function MemberActions({ member, onEdit, onRemove }: MemberRowProps) {
 
   return (
     <span className="flex flex-wrap items-center gap-1.5">
-      <RowAction icon={Pencil} label="Edit access" onClick={() => onEdit(member)} />
+      <RowAction icon={Pencil} label="Edit" onClick={() => onEdit(member)} />
       <RowAction icon={UserMinus} label="Remove" tone="danger" onClick={() => setIsConfirmingRemove(true)} />
     </span>
   )

@@ -1,7 +1,7 @@
 import type { ActivityAction, MemberRole, OrganizationType } from '@generated/prisma/enums.ts'
 import { prisma } from '@lib/prisma.ts'
 import { HttpError } from '@lib/httpError.ts'
-import type { CreateOrganizationInput, UpdateMemberAccessInput, UpdateOrganizationStatusInput } from './organization.types.ts'
+import type { CreateOrganizationInput, UpdateMemberInput, UpdateOrganizationStatusInput } from './organization.types.ts'
 
 // The form sends readable labels; the database stores enum values
 const ORGANIZATION_TYPE_VALUES = {
@@ -40,8 +40,8 @@ type MembershipParams = {
   membershipId: string
 }
 
-type UpdateMemberAccessParams = MembershipParams & {
-  data: UpdateMemberAccessInput
+type UpdateMemberParams = MembershipParams & {
+  data: UpdateMemberInput
 }
 
 const memberSelect = {
@@ -55,7 +55,7 @@ const memberSelect = {
 type MemberRecord = {
   id: string
   role: MemberRole
-  permissions: UpdateMemberAccessInput['permissions']
+  permissions: UpdateMemberInput['permissions']
   created_at: Date
   user: { id: string; first_name: string; last_name: string; email: string }
 }
@@ -247,9 +247,12 @@ export const OrganizationService = {
       select: { id: true, email: true, role: true, permissions: true, created_at: true, expires_at: true },
     }),
 
-  updateMemberAccess: async ({ organizationId, membershipId, data }: UpdateMemberAccessParams) => {
-    await findEditableAdmin({ organizationId, membershipId })
-    const membership = await prisma.membership.update({ where: { id: membershipId }, data: { permissions: data.permissions }, select: memberSelect })
+  updateMember: async ({ organizationId, membershipId, data }: UpdateMemberParams) => {
+    const editable = await findEditableAdmin({ organizationId, membershipId })
+    const [, membership] = await prisma.$transaction([
+      prisma.user.update({ where: { id: editable.user_id }, data: { first_name: data.first_name, last_name: data.last_name } }),
+      prisma.membership.update({ where: { id: membershipId }, data: { permissions: data.permissions }, select: memberSelect }),
+    ])
     return toMember(membership)
   },
 

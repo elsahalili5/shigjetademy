@@ -9,7 +9,7 @@ import {
   createOrganizationSchema,
   membershipParamSchema,
   organizationIdParamSchema,
-  updateMemberAccessSchema,
+  updateMemberSchema,
   updateOrganizationStatusSchema,
 } from './organization.schema.ts'
 
@@ -60,8 +60,8 @@ router.patch(
   authMiddleware,
   validateRequestMiddleware(membershipParamSchema, 'params'),
   requireMembership(['OWNER']),
-  validateRequestMiddleware(updateMemberAccessSchema),
-  OrganizationController.updateMemberAccess,
+  validateRequestMiddleware(updateMemberSchema),
+  OrganizationController.updateMember,
 )
 
 router.delete(

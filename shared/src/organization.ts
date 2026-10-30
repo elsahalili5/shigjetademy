@@ -122,8 +122,11 @@ export type OrganizationInvitation = {
   expires_at: string
 }
 
-export const updateMemberAccessSchema = z.object({
+/** What the owner can change about a school admin: their name and what they may do */
+export const updateMemberSchema = z.object({
+  first_name: z.string().trim().min(1, 'Enter their first name.').max(80),
+  last_name: z.string().trim().min(1, 'Enter their last name.').max(80),
   permissions: z.array(z.enum(PERMISSIONS)).min(1, 'Choose at least one thing they can manage.'),
 })
 
-export type UpdateMemberAccessInput = z.infer<typeof updateMemberAccessSchema>
+export type UpdateMemberInput = z.infer<typeof updateMemberSchema>

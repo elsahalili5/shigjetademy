@@ -2,7 +2,7 @@ import type { Response } from 'express'
 import { sendError } from '@lib/httpError.ts'
 import type { AuthRequest, TypedRequest } from '@lib/types.ts'
 import { OrganizationService } from './organization.service.ts'
-import type { CreateOrganizationInput, MembershipParam, OrganizationIdParam, UpdateMemberAccessInput, UpdateOrganizationStatusInput } from './organization.types.ts'
+import type { CreateOrganizationInput, MembershipParam, OrganizationIdParam, UpdateMemberInput, UpdateOrganizationStatusInput } from './organization.types.ts'
 
 type CreateOrganizationRequest = AuthRequest & { body: CreateOrganizationInput }
 
@@ -84,12 +84,12 @@ export const OrganizationController = {
     }
   },
 
-  updateMemberAccess: async (req: TypedRequest<UpdateMemberAccessInput, MembershipParam>, res: Response) => {
+  updateMember: async (req: TypedRequest<UpdateMemberInput, MembershipParam>, res: Response) => {
     try {
-      const member = await OrganizationService.updateMemberAccess({ ...req.params, data: req.body })
+      const member = await OrganizationService.updateMember({ ...req.params, data: req.body })
       return res.status(200).json({ data: member })
     } catch (error) {
-      return sendError({ res, error, fallback: 'Failed to update access' })
+      return sendError({ res, error, fallback: 'Failed to update member' })
     }
   },
 

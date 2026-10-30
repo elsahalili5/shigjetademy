@@ -10,10 +10,12 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export type AdminAccessDialogMode =
   | { kind: 'invite' }
-  | { kind: 'edit'; membershipId: string; name: string; email: string; permissions: Permission[] }
+  | { kind: 'edit'; membershipId: string; firstName: string; lastName: string; email: string; permissions: Permission[] }
 
-type AdminAccessInput = {
+export type AdminAccessInput = {
   email: string
+  firstName: string
+  lastName: string
   permissions: Permission[]
 }
 
@@ -23,7 +25,7 @@ interface AdminAccessDialogProps {
   onSubmit: (input: AdminAccessInput) => void
 }
 
-/** Invite a School Admin, or change what an existing one may do; opened with dialogRef.current.showModal() */
+/** Invite a School Admin, or edit an existing one's name and access; opened with dialogRef.current.showModal() */
 export function AdminAccessDialog({ dialogRef, mode, onSubmit }: AdminAccessDialogProps) {
   const isEditing = mode.kind === 'edit'
   // A new key per mode remounts the form, so it starts from that mode's values
@@ -41,10 +43,10 @@ export function AdminAccessDialog({ dialogRef, mode, onSubmit }: AdminAccessDial
         <header className="flex items-start justify-between gap-4 border-b border-rule px-6 pt-6 pb-4">
           <div>
             <h2 id="admin-access-title" className="text-[1.45rem] font-[680] tracking-[-0.02em]">
-              {isEditing ? `Edit ${mode.name}’s access` : 'Invite a school admin'}
+              {isEditing ? `Edit ${mode.firstName} ${mode.lastName}` : 'Invite a school admin'}
             </h2>
             <p className="mt-1 text-[0.95rem] text-ink-2">
-              {isEditing ? 'Changes apply the next time they open Shigjetademy.' : 'They get an email with a link to join. The link works for 7 days.'}
+              {isEditing ? `${mode.email} · changes apply the next time they open Shigjetademy.` : 'They get an email with a link to join. The link works for 7 days.'}
             </p>
           </div>
           <button type="button" className="grid size-10 flex-none place-items-center rounded-full text-ink-3 hover:bg-mist hover:text-ink" onClick={handleClose} aria-label="Close">
@@ -64,29 +66,54 @@ interface AdminAccessFormProps {
 }
 
 function AdminAccessForm({ mode, onSubmit, onCancel }: AdminAccessFormProps) {
-  const emailId = useId()
-  const [email, setEmail] = useState(mode.kind === 'edit' ? mode.email : '')
-  const [permissions, setPermissions] = useState<Permission[]>(mode.kind === 'edit' ? mode.permissions : [...PERMISSIONS])
-  const [errors, setErrors] = useState<{ email?: string; permissions?: string }>({})
+  const ids = { email: useId(), firstName: useId(), lastName: useId() }
+  const isEditing = mode.kind === 'edit'
+  const [email, setEmail] = useState(isEditing ? mode.email : '')
+  const [firstName, setFirstName] = useState(isEditing ? mode.firstName : '')
+  const [lastName, setLastName] = useState(isEditing ? mode.lastName : '')
+  const [permissions, setPermissions] = useState<Permission[]>(isEditing ? mode.permissions : [...PERMISSIONS])
+  const [errors, setErrors] = useState<{ email?: string; firstName?: string; lastName?: string; permissions?: string }>({})
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    // The invite form asks for the email; editing asks for the name
     const found = {
-      email: EMAIL_PATTERN.test(email.trim()) ? undefined : 'Enter an email address like name@school.org.',
+      email: isEditing || EMAIL_PATTERN.test(email.trim()) ? undefined : 'Enter an email address like name@school.org.',
+      firstName: !isEditing || firstName.trim() ? undefined : 'Enter their first name.',
+      lastName: !isEditing || lastName.trim() ? undefined : 'Enter their last name.',
       permissions: permissions.length > 0 ? undefined : 'Choose at least one thing they can manage.',
     }
     setErrors(found)
-    if (found.email || found.permissions) return
-    onSubmit({ email: email.trim().toLowerCase(), permissions })
+    if (Object.values(found).some(Boolean)) return
+    onSubmit({ email: email.trim().toLowerCase(), firstName: firstName.trim(), lastName: lastName.trim(), permissions })
     onCancel()
   }
 
   return (
     <form className="flex min-h-0 flex-col" noValidate onSubmit={handleSubmit}>
       <div className="grid gap-6 overflow-y-auto px-6 py-5">
-        {mode.kind === 'invite' ? (
+        {isEditing ? (
+          <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
+            <AuthField
+              id={ids.firstName}
+              label="First name"
+              autoComplete="off"
+              value={firstName}
+              onChange={(event) => setFirstName(event.target.value)}
+              error={errors.firstName}
+            />
+            <AuthField
+              id={ids.lastName}
+              label="Last name"
+              autoComplete="off"
+              value={lastName}
+              onChange={(event) => setLastName(event.target.value)}
+              error={errors.lastName}
+            />
+          </div>
+        ) : (
           <AuthField
-            id={emailId}
+            id={ids.email}
             label="Email"
             type="email"
             autoComplete="off"
@@ -96,7 +123,7 @@ function AdminAccessForm({ mode, onSubmit, onCancel }: AdminAccessFormProps) {
             onChange={(event) => setEmail(event.target.value)}
             error={errors.email}
           />
-        ) : null}
+        )}
         <PermissionPicker value={permissions} onChange={setPermissions} error={errors.permissions} />
       </div>
 
@@ -108,7 +135,7 @@ function AdminAccessForm({ mode, onSubmit, onCancel }: AdminAccessFormProps) {
           Cancel
         </button>
         <button type="submit" className="button button--primary min-h-11 px-5 text-base">
-          {mode.kind === 'edit' ? 'Save access' : 'Send invitation'}
+          {isEditing ? 'Save changes' : 'Send invitation'}
         </button>
       </footer>
     </form>

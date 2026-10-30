@@ -44,23 +44,36 @@ describe('MembersPage', () => {
     const people = await screen.findByRole('region', { name: 'People with access' })
     expect(await within(people).findByText('Admin One')).toBeInTheDocument()
     expect(within(people).getByText('admin1@oxford.com · joined', { exact: false })).toBeInTheDocument()
-    expect(within(people).getAllByRole('button', { name: 'Edit access' })).toHaveLength(1)
+    expect(within(people).getAllByRole('button', { name: 'Edit' })).toHaveLength(1)
     expect(screen.getByText('No open invitations.')).toBeInTheDocument()
   })
 
-  it('saves an admin’s new access', async () => {
+  it('saves an admin’s new name', async () => {
     signInAsOwnerWithMembers()
     server.use(
-      http.patch('*/api/organizations/org-1/members/membership-2', () =>
-        HttpResponse.json({ data: { ...ADMIN, permissions: ['MANAGE_STUDENTS'] } }),
-      ),
+      http.patch('*/api/organizations/org-1/members/membership-2', () => HttpResponse.json({ data: { ...ADMIN, first_name: 'Drita', last_name: 'Berisha' } })),
     )
     const { user } = renderRoute('/dashboard/members')
 
-    await user.click(await screen.findByRole('button', { name: 'Edit access' }))
-    await user.click(screen.getByRole('button', { name: 'Save access' }))
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+    const firstName = screen.getByLabelText('First name')
+    await user.clear(firstName)
+    await user.type(firstName, 'Drita')
+    await user.click(screen.getByRole('button', { name: 'Save changes' }))
 
-    expect(await screen.findByText('Access updated for admin1@oxford.com.')).toBeInTheDocument()
+    expect(await screen.findByText('Saved changes for Drita Berisha.')).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'People with access' })).getByText('Drita Berisha')).toBeInTheDocument()
+  })
+
+  it('asks for a name when editing', async () => {
+    signInAsOwnerWithMembers()
+    const { user } = renderRoute('/dashboard/members')
+
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+    await user.clear(screen.getByLabelText('Last name'))
+    await user.click(screen.getByRole('button', { name: 'Save changes' }))
+
+    expect(screen.getByText('Enter their last name.')).toBeInTheDocument()
   })
 
   it('removes an admin after confirming', async () => {

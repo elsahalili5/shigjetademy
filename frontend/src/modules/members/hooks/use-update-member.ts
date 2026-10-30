@@ -4,11 +4,11 @@ import { showErrorToast } from '#/lib/error-toast'
 import { membersApi } from '../api/members-api'
 import { membersQueryKey } from './use-organization-members'
 
-// The saved member replaces the cached one, so the list shows the new access without a refetch
-export function useUpdateMemberAccess(organizationId: string) {
+// The saved member replaces the cached one, so the list shows the change without a refetch
+export function useUpdateMember(organizationId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: membersApi.updateAccess,
+    mutationFn: membersApi.update,
     onError: (error) => showErrorToast(error),
     onSuccess: (saved) =>
       queryClient.setQueryData<OrganizationMember[]>(membersQueryKey(organizationId), (members) =>
