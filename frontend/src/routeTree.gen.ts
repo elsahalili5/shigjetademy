@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as appRouteRouteImport } from './routes/(app)/route'
 import { Route as authRouteRouteImport } from './routes/(auth)/route'
 import { Route as DashboardRouteRouteImport } from './routes/dashboard/route'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as appIndexRouteImport } from './routes/(app)/index'
 import { Route as appContactRouteImport } from './routes/(app)/contact'
 import { Route as appFeaturesRouteImport } from './routes/(app)/features'
@@ -21,10 +22,13 @@ import { Route as appSecurityRouteImport } from './routes/(app)/security'
 import { Route as appSolutionsRouteImport } from './routes/(app)/solutions'
 import { Route as appTermsRouteImport } from './routes/(app)/terms'
 import { Route as authLoginRouteImport } from './routes/(auth)/login'
+import { Route as authSignupRouteImport } from './routes/(auth)/signup'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as DashboardModuleRouteImport } from './routes/dashboard/$module'
+import { Route as DashboardProfileRouteImport } from './routes/dashboard/profile'
 import { Route as appPlatformIndexRouteImport } from './routes/(app)/platform/index'
 import { Route as appPlatformSlugRouteImport } from './routes/(app)/platform/$slug'
+import { Route as DashboardClientsOrganizationIdRouteImport } from './routes/dashboard/clients/$organizationId'
 
 const appRouteRoute = appRouteRouteImport.update({
   id: '/(app)',
@@ -37,6 +41,11 @@ const authRouteRoute = authRouteRouteImport.update({
 const DashboardRouteRoute = DashboardRouteRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const appIndexRoute = appIndexRouteImport.update({
@@ -84,6 +93,11 @@ const authLoginRoute = authLoginRouteImport.update({
   path: '/login',
   getParentRoute: () => authRouteRoute,
 } as any)
+const authSignupRoute = authSignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => authRouteRoute,
+} as any)
 const DashboardIndexRoute = DashboardIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -92,6 +106,11 @@ const DashboardIndexRoute = DashboardIndexRouteImport.update({
 const DashboardModuleRoute = DashboardModuleRouteImport.update({
   id: '/$module',
   path: '/$module',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+const DashboardProfileRoute = DashboardProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
 const appPlatformIndexRoute = appPlatformIndexRouteImport.update({
@@ -104,9 +123,16 @@ const appPlatformSlugRoute = appPlatformSlugRouteImport.update({
   path: '/platform/$slug',
   getParentRoute: () => appRouteRoute,
 } as any)
+const DashboardClientsOrganizationIdRoute =
+  DashboardClientsOrganizationIdRouteImport.update({
+    id: '/clients/$organizationId',
+    path: '/clients/$organizationId',
+    getParentRoute: () => DashboardRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRouteRouteWithChildren
+  '/onboarding': typeof OnboardingRoute
   '/contact': typeof appContactRoute
   '/features': typeof appFeaturesRoute
   '/privacy': typeof appPrivacyRoute
@@ -115,13 +141,17 @@ export interface FileRoutesByFullPath {
   '/solutions': typeof appSolutionsRoute
   '/terms': typeof appTermsRoute
   '/login': typeof authLoginRoute
+  '/signup': typeof authSignupRoute
   '/dashboard/$module': typeof DashboardModuleRoute
+  '/dashboard/profile': typeof DashboardProfileRoute
   '/': typeof appIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/platform/$slug': typeof appPlatformSlugRoute
+  '/dashboard/clients/$organizationId': typeof DashboardClientsOrganizationIdRoute
   '/platform/': typeof appPlatformIndexRoute
 }
 export interface FileRoutesByTo {
+  '/onboarding': typeof OnboardingRoute
   '/contact': typeof appContactRoute
   '/features': typeof appFeaturesRoute
   '/privacy': typeof appPrivacyRoute
@@ -130,10 +160,13 @@ export interface FileRoutesByTo {
   '/solutions': typeof appSolutionsRoute
   '/terms': typeof appTermsRoute
   '/login': typeof authLoginRoute
+  '/signup': typeof authSignupRoute
   '/dashboard/$module': typeof DashboardModuleRoute
+  '/dashboard/profile': typeof DashboardProfileRoute
   '/': typeof appIndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/platform/$slug': typeof appPlatformSlugRoute
+  '/dashboard/clients/$organizationId': typeof DashboardClientsOrganizationIdRoute
   '/platform': typeof appPlatformIndexRoute
 }
 export interface FileRoutesById {
@@ -141,6 +174,7 @@ export interface FileRoutesById {
   '/(app)': typeof appRouteRouteWithChildren
   '/(auth)': typeof authRouteRouteWithChildren
   '/dashboard': typeof DashboardRouteRouteWithChildren
+  '/onboarding': typeof OnboardingRoute
   '/(app)/contact': typeof appContactRoute
   '/(app)/features': typeof appFeaturesRoute
   '/(app)/privacy': typeof appPrivacyRoute
@@ -149,16 +183,20 @@ export interface FileRoutesById {
   '/(app)/solutions': typeof appSolutionsRoute
   '/(app)/terms': typeof appTermsRoute
   '/(auth)/login': typeof authLoginRoute
+  '/(auth)/signup': typeof authSignupRoute
   '/dashboard/$module': typeof DashboardModuleRoute
+  '/dashboard/profile': typeof DashboardProfileRoute
   '/(app)/': typeof appIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/(app)/platform/$slug': typeof appPlatformSlugRoute
+  '/dashboard/clients/$organizationId': typeof DashboardClientsOrganizationIdRoute
   '/(app)/platform/': typeof appPlatformIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/dashboard'
+    | '/onboarding'
     | '/contact'
     | '/features'
     | '/privacy'
@@ -167,13 +205,17 @@ export interface FileRouteTypes {
     | '/solutions'
     | '/terms'
     | '/login'
+    | '/signup'
     | '/dashboard/$module'
+    | '/dashboard/profile'
     | '/'
     | '/dashboard/'
     | '/platform/$slug'
+    | '/dashboard/clients/$organizationId'
     | '/platform/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/onboarding'
     | '/contact'
     | '/features'
     | '/privacy'
@@ -182,16 +224,20 @@ export interface FileRouteTypes {
     | '/solutions'
     | '/terms'
     | '/login'
+    | '/signup'
     | '/dashboard/$module'
+    | '/dashboard/profile'
     | '/'
     | '/dashboard'
     | '/platform/$slug'
+    | '/dashboard/clients/$organizationId'
     | '/platform'
   id:
     | '__root__'
     | '/(app)'
     | '/(auth)'
     | '/dashboard'
+    | '/onboarding'
     | '/(app)/contact'
     | '/(app)/features'
     | '/(app)/privacy'
@@ -200,10 +246,13 @@ export interface FileRouteTypes {
     | '/(app)/solutions'
     | '/(app)/terms'
     | '/(auth)/login'
+    | '/(auth)/signup'
     | '/dashboard/$module'
+    | '/dashboard/profile'
     | '/(app)/'
     | '/dashboard/'
     | '/(app)/platform/$slug'
+    | '/dashboard/clients/$organizationId'
     | '/(app)/platform/'
   fileRoutesById: FileRoutesById
 }
@@ -211,6 +260,7 @@ export interface RootRouteChildren {
   appRouteRoute: typeof appRouteRouteWithChildren
   authRouteRoute: typeof authRouteRouteWithChildren
   DashboardRouteRoute: typeof DashboardRouteRouteWithChildren
+  OnboardingRoute: typeof OnboardingRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -234,6 +284,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(app)/': {
@@ -299,6 +356,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof authLoginRouteImport
       parentRoute: typeof authRouteRoute
     }
+    '/(auth)/signup': {
+      id: '/(auth)/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof authSignupRouteImport
+      parentRoute: typeof authRouteRoute
+    }
     '/dashboard/': {
       id: '/dashboard/'
       path: '/'
@@ -311,6 +375,13 @@ declare module '@tanstack/react-router' {
       path: '/$module'
       fullPath: '/dashboard/$module'
       preLoaderRoute: typeof DashboardModuleRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
+    '/dashboard/profile': {
+      id: '/dashboard/profile'
+      path: '/profile'
+      fullPath: '/dashboard/profile'
+      preLoaderRoute: typeof DashboardProfileRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
     '/(app)/platform/': {
@@ -326,6 +397,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/platform/$slug'
       preLoaderRoute: typeof appPlatformSlugRouteImport
       parentRoute: typeof appRouteRoute
+    }
+    '/dashboard/clients/$organizationId': {
+      id: '/dashboard/clients/$organizationId'
+      path: '/clients/$organizationId'
+      fullPath: '/dashboard/clients/$organizationId'
+      preLoaderRoute: typeof DashboardClientsOrganizationIdRouteImport
+      parentRoute: typeof DashboardRouteRoute
     }
   }
 }
@@ -362,10 +440,12 @@ const appRouteRouteWithChildren = appRouteRoute._addFileChildren(
 
 interface authRouteRouteChildren {
   authLoginRoute: typeof authLoginRoute
+  authSignupRoute: typeof authSignupRoute
 }
 
 const authRouteRouteChildren: authRouteRouteChildren = {
   authLoginRoute: authLoginRoute,
+  authSignupRoute: authSignupRoute,
 }
 
 const authRouteRouteWithChildren = authRouteRoute._addFileChildren(
@@ -374,12 +454,16 @@ const authRouteRouteWithChildren = authRouteRoute._addFileChildren(
 
 interface DashboardRouteRouteChildren {
   DashboardModuleRoute: typeof DashboardModuleRoute
+  DashboardProfileRoute: typeof DashboardProfileRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardClientsOrganizationIdRoute: typeof DashboardClientsOrganizationIdRoute
 }
 
 const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardModuleRoute: DashboardModuleRoute,
+  DashboardProfileRoute: DashboardProfileRoute,
   DashboardIndexRoute: DashboardIndexRoute,
+  DashboardClientsOrganizationIdRoute: DashboardClientsOrganizationIdRoute,
 }
 
 const DashboardRouteRouteWithChildren = DashboardRouteRoute._addFileChildren(
@@ -390,6 +474,7 @@ const rootRouteChildren: RootRouteChildren = {
   appRouteRoute: appRouteRouteWithChildren,
   authRouteRoute: authRouteRouteWithChildren,
   DashboardRouteRoute: DashboardRouteRouteWithChildren,
+  OnboardingRoute: OnboardingRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

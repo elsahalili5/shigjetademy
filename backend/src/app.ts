@@ -1,0 +1,18 @@
+import express from 'express'
+import cors from 'cors'
+import authRoutes from '@modules/auth/auth.routes.ts'
+import organizationRoutes from '@modules/organization/organization.routes.ts'
+import userRoutes from '@modules/users/user.routes.ts'
+
+export const app = express()
+
+app.use(cors())
+app.use(express.json({ limit: '20kb' }))
+
+app.use('/api/auth', authRoutes)
+app.use('/api/organizations', organizationRoutes)
+app.use('/api/users', userRoutes)
+
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok', time: new Date().toISOString() })
+})

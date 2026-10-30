@@ -1,20 +1,67 @@
 import { Construction } from 'lucide-react'
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute, redirect } from '@tanstack/react-router'
 import { StudentsModule } from '#/components/StudentsModule'
+import { adminModuleBySlug } from '#/lib/admin-modules'
+import type { AdminModule } from '#/lib/admin-modules'
+import { getSessionUser } from '#/lib/route-guard'
 import { useTitle } from '#/lib/use-title'
 import { MODULES, moduleBySlug } from '#/lib/modules'
 import type { Module } from '#/lib/modules'
+import { useAuth } from '#/modules/auth/hooks/use-auth'
+import { isPlatformAdmin } from '#/modules/auth/utils/get-home-path'
+import { ClientsModule } from '#/modules/organization/components/clients-module'
+import { StatisticsModule } from '#/modules/organization/components/statistics-module'
 
 export const Route = createFileRoute('/dashboard/$module')({
+  // The platform admin only has the platform modules, and organization members only the school ones
+  beforeLoad: ({ context, params }) => {
+    const user = getSessionUser(context.queryClient)
+    const isAdmin = !!user && isPlatformAdmin(user)
+    if (isAdmin && !adminModuleBySlug(params.module)) {
+      throw redirect({ to: '/dashboard/$module', params: { module: 'clients' } })
+    }
+    if (!isAdmin && adminModuleBySlug(params.module)) {
+      throw redirect({ to: '/dashboard/$module', params: { module: 'students' } })
+    }
+  },
   component: DashboardModulePage,
 })
 
-/** One module on the dashboard's white panel; only Students & enrolment is built so far. */
+/** One module on the dashboard's white panel */
 function DashboardModulePage() {
+  const auth = useAuth()
   const { module: slug } = Route.useParams()
-  const mod = moduleBySlug(slug) ?? MODULES[0]
-  useTitle(`${mod.name} · Shigjetademy`)
+  const adminModule = auth.user && isPlatformAdmin(auth.user) ? adminModuleBySlug(slug) : undefined
 
+  if (adminModule) return <AdminModulePage module={adminModule} />
+  return <SchoolModulePage mod={moduleBySlug(slug) ?? MODULES[0]} />
+}
+
+interface AdminModulePageProps {
+  module: AdminModule
+}
+
+function AdminModulePage({ module }: AdminModulePageProps) {
+  useTitle(`${module.name} · Shigjetademy`)
+  switch (module.slug) {
+    case 'clients':
+      return <ClientsModule />
+    case 'statistics':
+      return <StatisticsModule />
+    default: {
+      const unknown: never = module.slug
+      throw new Error(`Unknown admin module: ${String(unknown)}`)
+    }
+  }
+}
+
+interface SchoolModulePageProps {
+  mod: Module
+}
+
+/** Only Students & enrolment is built so far */
+function SchoolModulePage({ mod }: SchoolModulePageProps) {
+  useTitle(`${mod.name} · Shigjetademy`)
   if (mod.slug === 'students') return <StudentsModule mod={mod} />
   return <NotBuilt mod={mod} />
 }

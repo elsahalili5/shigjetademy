@@ -1,0 +1,215 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  LOCKED
+  DISABLED
+}
+
+enum TokenType {
+  PASSWORD_RESET
+  EMAIL_VERIFICATION
+}
+
+enum OrganizationType {
+  SCHOOL
+  KINDERGARTEN
+  ACADEMY
+  TRAINING_CENTRE
+  INDEPENDENT_LECTURER
+  OTHER
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+/// A user's role inside one organization
+enum MemberRole {
+  OWNER
+  ADMIN
+  LECTURER
+  STUDENT
+  GUARDIAN
+}
+
+enum MembershipStatus {
+  ACTIVE
+  REMOVED
+}
+
+/// What a School Admin may do; the owner always has all of them
+enum Permission {
+  MANAGE_STUDENTS
+  MANAGE_LECTURERS
+  MANAGE_GUARDIANS
+  MANAGE_COURSES
+  MANAGE_SCHEDULES
+  MANAGE_ATTENDANCE
+  MANAGE_GRADES
+  MANAGE_MATERIALS
+  MANAGE_TESTS
+  VIEW_PERFORMANCE
+  VIEW_REPORTS
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+// ─────────────────────────────────────────
+// USERS & PLATFORM ROLES
+// ─────────────────────────────────────────
+
+model User {
+  id                  String     @id @default(uuid()) @db.Uuid
+  first_name          String
+  last_name           String
+  email               String     @unique
+  password_hash       String
+  status              UserStatus @default(PENDING)
+
+  lockout_enabled     Boolean    @default(true)
+  access_failed_count Int        @default(0)
+  locked_until        DateTime?
+  email_confirmed     Boolean    @default(false)
+
+  created_at          DateTime   @default(now())
+  updated_at          DateTime   @updatedAt
+
+  user_roles          UserRole[]
+  user_tokens         UserTokens[]
+  refresh_tokens      RefreshTokens[]
+  memberships         Membership[]
+  sent_invitations    Invitation[] @relation("InvitedBy")
+}
+
+/// Platform-wide roles (PLATFORM_ADMIN); organization roles live on Membership
+model Role {
+  id              Int        @id @default(autoincrement())
+  name            String     @unique
+  normalized_name String     @unique
+  description     String?
+  user_roles      UserRole[]
+}
+
+model UserRole {
+  user_id String @db.Uuid
+  role_id Int
+  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  role    Role   @relation(fields: [role_id], references: [id])
+
+  @@id([user_id, role_id])
+}
+
+// ─────────────────────────────────────────
+// TOKEN MANAGEMENT
+// ─────────────────────────────────────────
+
+model RefreshTokens {
+  id      String   @id @default(uuid()) @db.Uuid
+  user_id String   @db.Uuid
+  token   String   @unique
+  expires DateTime
+  created DateTime @default(now())
+  revoked Boolean  @default(false)
+
+  user    User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+}
+
+/// One-time tokens for password reset and email verification, stored hashed
+model UserTokens {
+  id         String    @id @default(uuid()) @db.Uuid
+  user_id    String    @db.Uuid
+  type       TokenType
+  token_hash String    @unique
+  expires    DateTime
+  used_at    DateTime?
+  created_at DateTime  @default(now())
+
+  user       User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, type])
+}
+
+// ─────────────────────────────────────────
+// ORGANIZATIONS & MEMBERSHIP
+// ─────────────────────────────────────────
+
+model Organization {
+  id           String             @id @default(uuid()) @db.Uuid
+  name         String
+  type         OrganizationType
+  country      String             @db.Char(2)
+  currency     String             @db.Char(3)
+  size         String?
+  /// Shigjetademy's share of each student payment, in hundredths of a percent (300 = 3%)
+  fee_rate_bps Int                @default(300)
+  status       OrganizationStatus @default(ACTIVE)
+
+  created_at   DateTime           @default(now())
+  updated_at   DateTime           @updatedAt
+
+  memberships  Membership[]
+  invitations  Invitation[]
+}
+
+/// A user's place in one organization. One user can belong to many organizations, once each.
+model Membership {
+  id              String           @id @default(uuid()) @db.Uuid
+  user_id         String           @db.Uuid
+  organization_id String           @db.Uuid
+  role            MemberRole
+  permissions     Permission[]
+  status          MembershipStatus @default(ACTIVE)
+
+  created_at      DateTime         @default(now())
+  updated_at      DateTime         @updatedAt
+
+  user            User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  organization    Organization     @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, organization_id])
+  @@index([organization_id, role])
+}
+
+model Invitation {
+  id              String           @id @default(uuid()) @db.Uuid
+  organization_id String           @db.Uuid
+  email           String
+  role            MemberRole
+  permissions     Permission[]
+  token_hash      String           @unique
+  status          InvitationStatus @default(PENDING)
+  expires_at      DateTime
+  invited_by_id   String           @db.Uuid
+
+  created_at      DateTime         @default(now())
+  accepted_at     DateTime?
+  revoked_at      DateTime?
+
+  organization    Organization     @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  invited_by      User             @relation("InvitedBy", fields: [invited_by_id], references: [id])
+
+  @@index([organization_id, status])
+  @@index([email])
+}

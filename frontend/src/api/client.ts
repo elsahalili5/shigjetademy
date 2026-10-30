@@ -1,9 +1,11 @@
 import axios from 'axios'
 import type { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
+import { API_BASE_URL } from './config'
+import { appendAccessTokenInterceptor, createRefreshTokenInterceptor } from './interceptors'
 
-// One axios instance for every API call. The auth interceptors (access token, refresh on 401) attach here later.
+// One axios instance for every API call: it sends the access token and refreshes it on a 401
 export const axiosClient: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? '/api',
+  baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
 })
 
@@ -35,3 +37,6 @@ export const apiClient: ApiClient = {
 }
 
 export const isApiError = (error: unknown): error is AxiosError<{ error?: string }> => axios.isAxiosError(error)
+
+axiosClient.interceptors.request.use(appendAccessTokenInterceptor)
+axiosClient.interceptors.response.use((response) => response, createRefreshTokenInterceptor(axiosClient))

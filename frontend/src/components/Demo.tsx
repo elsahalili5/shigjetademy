@@ -1,16 +1,15 @@
 import { useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
-import { AlertCircle, ArrowRight, CheckCircle2, ChevronDown, Loader2 } from 'lucide-react'
+import { AlertCircle, ArrowRight, CheckCircle2, ChevronDown } from 'lucide-react'
 import { Arcs } from './Arcs'
 import { Link } from '@tanstack/react-router'
-import type { CreateDemoRequestInput, OrganizationType, STUDENT_COUNTS } from '@shigjetademy/shared'
-import { isApiError } from '#/api/client'
-import { useCreateDemoRequest } from '#/modules/demo-request/hooks/use-create-demo-request'
+import type { OrganizationType, STUDENT_COUNTS } from '@shigjetademy/shared'
+import { SITE } from '#/lib/site'
 
-type Status = { kind: 'idle' } | { kind: 'sending' } | { kind: 'sent'; name: string; email: string } | { kind: 'error'; message: string }
+type Status = { kind: 'idle' } | { kind: 'sent'; name: string; email: string }
 type Errors = Partial<Record<'name' | 'email' | 'organization' | 'orgType', string>>
 
-// Values are what the server accepts; labels read inside the sentence
+// Values go into the email; labels read inside the sentence
 const ORG_TYPES = [
   { value: 'School', label: 'a school' },
   { value: 'Kindergarten', label: 'a kindergarten' },
@@ -43,11 +42,10 @@ function validate(data: FormData): Errors {
 }
 
 export function Demo() {
-  const createDemoRequest = useCreateDemoRequest()
   const [status, setStatus] = useState<Status>({ kind: 'idle' })
   const [errors, setErrors] = useState<Errors>({})
 
-  async function onSubmit(e: FormEvent<HTMLFormElement>) {
+  function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const form = e.currentTarget
     const data = new FormData(form)
@@ -59,30 +57,20 @@ export function Demo() {
       return
     }
 
-    setStatus({ kind: 'sending' })
-    const text = (key: string) => String(data.get(key) ?? '')
-    const input: CreateDemoRequestInput = {
-      name: text('name'),
-      email: text('email'),
-      organization: text('organization'),
-      orgType: text('orgType'),
-      size: text('size'),
-      message: text('message'),
-    }
-    try {
-      await createDemoRequest.mutateAsync(input)
-      setStatus({ kind: 'sent', name: input.name.split(' ')[0], email: input.email })
-    } catch (err) {
-      // No response at all means the request never reached the server
-      const isOffline = isApiError(err) && !err.response
-      const serverMessage = isApiError(err) ? err.response?.data?.error : undefined
-      setStatus({
-        kind: 'error',
-        message: isOffline
-          ? 'We couldn’t reach Shigjetademy. Check your connection and try again.'
-          : `${serverMessage ?? 'The server could not save your request.'} Please try again.`,
-      })
-    }
+    // No backend for this form: it opens the visitor's mail app with the request written out
+    const text = (key: string) => String(data.get(key) ?? '').trim()
+    const body = [
+      `Name: ${text('name')}`,
+      `Email: ${text('email')}`,
+      `Organization: ${text('organization')} (${text('orgType')})`,
+      text('size') ? `Students: ${text('size')}` : '',
+      text('message') ? `\n${text('message')}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n')
+    const subject = `Demo request: ${text('organization')}`
+    window.location.href = `mailto:${SITE.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    setStatus({ kind: 'sent', name: text('name').split(' ')[0], email: text('email') })
   }
 
   const field = (name: keyof Errors) => ({
@@ -183,24 +171,9 @@ export function Demo() {
               </div>
 
               <div className="grid gap-3">
-                {status.kind === 'error' && (
-                  <p className="flex items-start justify-center gap-2 text-[0.987rem] font-medium text-red [&_svg]:mt-0.5 [&_svg]:flex-none" role="alert">
-                    <AlertCircle size={16} strokeWidth={2} aria-hidden="true" />
-                    {status.message}
-                  </p>
-                )}
-                <button className="button min-h-[56px] w-full bg-navy text-base text-white enabled:hover:bg-navy-2" type="submit" disabled={status.kind === 'sending'}>
-                  {status.kind === 'sending' ? (
-                    <>
-                      <Loader2 className="spin" size={16} strokeWidth={2} aria-hidden="true" />
-                      Sending message
-                    </>
-                  ) : (
-                    <>
-                      Send message
-                      <ArrowRight size={16} strokeWidth={2} aria-hidden="true" />
-                    </>
-                  )}
+                <button className="button min-h-[56px] w-full bg-navy text-base text-white enabled:hover:bg-navy-2" type="submit">
+                  Send message
+                  <ArrowRight size={16} strokeWidth={2} aria-hidden="true" />
                 </button>
                 <p className="text-[0.897rem] text-ink-3">
                   Student numbers and the note are optional. We only use these details to reply to you. See our{' '}
