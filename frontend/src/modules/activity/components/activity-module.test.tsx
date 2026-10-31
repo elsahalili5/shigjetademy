@@ -144,6 +144,31 @@ describe('ActivityModule', () => {
     sentences.forEach((sentence, index) => expect(rows[index]).toHaveTextContent(sentence))
   })
 
+  it('shows student record changes as sentences that name the client', async () => {
+    signInAs(buildUser({ user_roles: PLATFORM_ADMIN_ROLES }))
+    const oxford = { id: 'org-1', name: 'Oxford Academy' }
+    const actions: ActivityAction[] = ['STUDENT_ADDED', 'STUDENT_UPDATED', 'STUDENT_ARCHIVED', 'STUDENT_RESTORED']
+    server.use(
+      http.get('*/api/organizations', () => HttpResponse.json({ data: CLIENTS })),
+      http.get('*/api/activity', () =>
+        HttpResponse.json({
+          data: actions.map((action) => ({ id: action, action, created_at: '2026-10-04T09:00:00.000Z', actor: ELSA, organization: oxford, target_user: null, subject_name: 'Arta Gashi' })),
+        }),
+      ),
+    )
+    renderRoute('/dashboard/activity')
+
+    const rows = await within(await screen.findByRole('list', { name: 'Activity' })).findAllByRole('listitem')
+    const sentences = [
+      'Elsa Halili added the student Arta Gashi at Oxford Academy',
+      'Elsa Halili changed the student Arta Gashi at Oxford Academy',
+      'Elsa Halili archived the student Arta Gashi at Oxford Academy',
+      'Elsa Halili restored the student Arta Gashi at Oxford Academy',
+    ]
+    expect(rows).toHaveLength(sentences.length)
+    sentences.forEach((sentence, index) => expect(rows[index]).toHaveTextContent(sentence))
+  })
+
   it('asks the API for one client or one action and offers to clear the filters', async () => {
     signInAs(buildUser({ user_roles: PLATFORM_ADMIN_ROLES }))
     const requests: URLSearchParams[] = []

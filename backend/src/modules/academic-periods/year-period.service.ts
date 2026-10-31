@@ -2,8 +2,10 @@ import type { Prisma } from '@generated/prisma/client.ts'
 import type { ActivityAction } from '@generated/prisma/enums.ts'
 import { prisma } from '@lib/prisma.ts'
 import { HttpError } from '@lib/httpError.ts'
+import { toDate } from '@lib/calendar-day.ts'
+import { lockOrganization } from '@lib/organization-lock.ts'
 import type { AcademicTermInput } from './academic-periods.types.ts'
-import { findYear, lockOrganization, overlapping, periodSelect, refuseOutsideYear, toDate, toPeriodJson } from './academic-periods.utils.ts'
+import { findYear, overlapping, periodSelect, refuseOutsideYear, toPeriodJson } from './academic-periods.utils.ts'
 
 /** Terms and holidays: named date ranges inside one school year */
 export type YearPeriodKind = 'term' | 'holiday'

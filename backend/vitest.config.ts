@@ -19,6 +19,8 @@ export default defineConfig({
     setupFiles: ['./test/setup.ts'],
     // Every file shares the one test database, so files run one at a time
     fileParallelism: false,
+    // Requests hash passwords and hit the database, which runs slower when the whole workspace tests at once
+    testTimeout: 15_000,
     env: {
       DATABASE_URL: TEST_DATABASE_URL,
       JWT_ACCESS_SECRET: 'test-access-secret',

@@ -32,6 +32,7 @@ import { Route as DashboardOrganizationProfileRouteImport } from './routes/dashb
 import { Route as DashboardOrganizationSettingsRouteImport } from './routes/dashboard/organization-settings'
 import { Route as DashboardOverviewRouteImport } from './routes/dashboard/overview'
 import { Route as DashboardProfileRouteImport } from './routes/dashboard/profile'
+import { Route as DashboardStudentsRouteImport } from './routes/dashboard/students'
 import { Route as OrganizationsNewRouteImport } from './routes/organizations/new'
 import { Route as appPlatformIndexRouteImport } from './routes/(app)/platform/index'
 import { Route as appPlatformSlugRouteImport } from './routes/(app)/platform/$slug'
@@ -153,6 +154,11 @@ const DashboardProfileRoute = DashboardProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
+const DashboardStudentsRoute = DashboardStudentsRouteImport.update({
+  id: '/students',
+  path: '/students',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
 const OrganizationsNewRoute = OrganizationsNewRouteImport.update({
   id: '/organizations/new',
   path: '/organizations/new',
@@ -195,6 +201,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/organization-settings': typeof DashboardOrganizationSettingsRoute
   '/dashboard/overview': typeof DashboardOverviewRoute
   '/dashboard/profile': typeof DashboardProfileRoute
+  '/dashboard/students': typeof DashboardStudentsRoute
   '/organizations/new': typeof OrganizationsNewRoute
   '/': typeof appIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
@@ -221,6 +228,7 @@ export interface FileRoutesByTo {
   '/dashboard/organization-settings': typeof DashboardOrganizationSettingsRoute
   '/dashboard/overview': typeof DashboardOverviewRoute
   '/dashboard/profile': typeof DashboardProfileRoute
+  '/dashboard/students': typeof DashboardStudentsRoute
   '/organizations/new': typeof OrganizationsNewRoute
   '/': typeof appIndexRoute
   '/dashboard': typeof DashboardIndexRoute
@@ -251,6 +259,7 @@ export interface FileRoutesById {
   '/dashboard/organization-settings': typeof DashboardOrganizationSettingsRoute
   '/dashboard/overview': typeof DashboardOverviewRoute
   '/dashboard/profile': typeof DashboardProfileRoute
+  '/dashboard/students': typeof DashboardStudentsRoute
   '/organizations/new': typeof OrganizationsNewRoute
   '/(app)/': typeof appIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
@@ -280,6 +289,7 @@ export interface FileRouteTypes {
     | '/dashboard/organization-settings'
     | '/dashboard/overview'
     | '/dashboard/profile'
+    | '/dashboard/students'
     | '/organizations/new'
     | '/'
     | '/dashboard/'
@@ -306,6 +316,7 @@ export interface FileRouteTypes {
     | '/dashboard/organization-settings'
     | '/dashboard/overview'
     | '/dashboard/profile'
+    | '/dashboard/students'
     | '/organizations/new'
     | '/'
     | '/dashboard'
@@ -335,6 +346,7 @@ export interface FileRouteTypes {
     | '/dashboard/organization-settings'
     | '/dashboard/overview'
     | '/dashboard/profile'
+    | '/dashboard/students'
     | '/organizations/new'
     | '/(app)/'
     | '/dashboard/'
@@ -514,6 +526,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardProfileRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
+    '/dashboard/students': {
+      id: '/dashboard/students'
+      path: '/students'
+      fullPath: '/dashboard/students'
+      preLoaderRoute: typeof DashboardStudentsRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
     '/organizations/new': {
       id: '/organizations/new'
       path: '/organizations/new'
@@ -598,6 +617,7 @@ interface DashboardRouteRouteChildren {
   DashboardOrganizationSettingsRoute: typeof DashboardOrganizationSettingsRoute
   DashboardOverviewRoute: typeof DashboardOverviewRoute
   DashboardProfileRoute: typeof DashboardProfileRoute
+  DashboardStudentsRoute: typeof DashboardStudentsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardClientsOrganizationIdRoute: typeof DashboardClientsOrganizationIdRoute
 }
@@ -611,6 +631,7 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardOrganizationSettingsRoute: DashboardOrganizationSettingsRoute,
   DashboardOverviewRoute: DashboardOverviewRoute,
   DashboardProfileRoute: DashboardProfileRoute,
+  DashboardStudentsRoute: DashboardStudentsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardClientsOrganizationIdRoute: DashboardClientsOrganizationIdRoute,
 }

@@ -176,6 +176,6 @@ describe('MembersPage', () => {
     signInAs(buildUser({ memberships: [{ ...membership, role: 'ADMIN' }] }))
     const { router } = renderRoute('/dashboard/members')
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/students'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/academic-periods'))
   })
 })

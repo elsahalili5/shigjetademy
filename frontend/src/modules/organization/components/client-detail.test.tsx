@@ -96,7 +96,7 @@ describe('suspended organization', () => {
   it('shows its owner a notice instead of the modules', async () => {
     const [membership] = OWNER_MEMBERSHIPS
     signInAs(buildUser({ memberships: [{ ...membership, organization: { ...membership.organization, status: 'SUSPENDED' } }] }))
-    renderRoute('/dashboard/students')
+    renderRoute('/dashboard/academic-periods')
 
     expect(await screen.findByRole('heading', { name: 'This organization is suspended' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Students & enrolment' })).not.toBeInTheDocument()

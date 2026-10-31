@@ -25,6 +25,10 @@ export const ACTIVITY_ACTIONS = [
   'OWNERSHIP_TRANSFERRED',
   'ORGANIZATION_DEACTIVATED_BY_OWNER',
   'ORGANIZATION_REACTIVATED_BY_OWNER',
+  'STUDENT_ADDED',
+  'STUDENT_UPDATED',
+  'STUDENT_ARCHIVED',
+  'STUDENT_RESTORED',
 ] as const
 
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number]
@@ -48,6 +52,6 @@ export type ActivityEntry = {
   actor: ActivityUser | null
   organization: { id: string; name: string } | null
   target_user: ActivityUser | null
-  /** The location's, department's or academic period's name for those entries */
+  /** The location's, department's, academic period's or student's name for those entries */
   subject_name: string | null
 }

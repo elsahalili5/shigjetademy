@@ -125,7 +125,7 @@ describe('organization settings: general preferences', () => {
     signInAs(buildUser({ memberships: [{ ...OWNER_MEMBERSHIP, role: 'ADMIN' }] }))
     const { router } = renderRoute('/dashboard/organization-settings')
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/students'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/academic-periods'))
     const sidebar = await screen.findByRole('navigation', { name: 'Modules' })
     expect(within(sidebar).queryByRole('link', { name: 'Organization settings' })).not.toBeInTheDocument()
   })
@@ -191,7 +191,7 @@ describe('organization settings: transfer ownership', () => {
     await user.type(within(dialog).getByLabelText('Your password'), 'password123')
     await user.click(within(dialog).getByRole('button', { name: 'Transfer ownership' }))
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/students'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/academic-periods'))
     expect(sent).toEqual({ membership_id: ADMIN_MEMBERSHIP_ID, password: 'password123' })
     const sidebar = await screen.findByRole('navigation', { name: 'Modules' })
     expect(within(sidebar).queryByRole('group', { name: 'Organization' })).not.toBeInTheDocument()
@@ -300,7 +300,7 @@ describe('organization settings: deactivate and reactivate', () => {
 
   it('shows a school admin of a deactivated organization the notice, without a way to reactivate', async () => {
     signInAs(buildUser({ memberships: [{ ...withStatus('DEACTIVATED')[0], role: 'ADMIN' }] }))
-    renderRoute('/dashboard/students')
+    renderRoute('/dashboard/academic-periods')
 
     expect(await screen.findByRole('heading', { name: 'This organization is deactivated' })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Open organization settings' })).not.toBeInTheDocument()
