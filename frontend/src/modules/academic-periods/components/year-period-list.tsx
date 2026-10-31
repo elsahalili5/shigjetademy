@@ -5,6 +5,7 @@ import { formatDayRange } from '../utils/format'
 import { YEAR_PERIOD_KINDS } from '../utils/year-periods'
 import type { YearPeriod, YearPeriodKind } from '../utils/year-periods'
 import { RowAction } from './row-actions'
+import { useFormatDay } from '#/lib/use-format-date'
 
 const COPY = {
   term: { title: 'Terms', addLabel: 'Add term', empty: 'No terms yet.' },
@@ -64,12 +65,13 @@ interface YearPeriodRowProps {
 }
 
 function YearPeriodRow({ change, isEditable, onEdit, onRemove }: YearPeriodRowProps) {
+  const formatDay = useFormatDay()
   const { period } = change
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-rule py-2.5 first:border-t-0">
       <span className="grid min-w-[160px] flex-1 leading-tight">
         <span className="font-semibold">{period.name}</span>
-        <span className="text-[0.88rem] text-ink-3">{formatDayRange(period)}</span>
+        <span className="text-[0.88rem] text-ink-3">{formatDayRange({ range: period, formatDay })}</span>
       </span>
       {isEditable ? <YearPeriodActions change={change} onEdit={onEdit} onRemove={onRemove} /> : null}
     </li>

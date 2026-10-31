@@ -2,7 +2,7 @@ import { Building2, Lock } from 'lucide-react'
 import type { OrganizationProfile } from '@shigjetademy/shared/organization'
 import { DashboardPageHeader } from '#/components/DashboardPageHeader'
 import { LoadError } from '#/components/LoadError'
-import { formatDate } from '#/lib/format'
+import { useFormatDate } from '#/lib/use-format-date'
 import { useOrganizationProfile } from '../hooks/use-organization-profile'
 import { ORGANIZATION_STATUS_CHIPS, ORGANIZATION_STATUS_LABELS } from '../utils/labels'
 import { OrganizationProfileDetails } from './organization-profile-details'
@@ -60,6 +60,7 @@ interface ProfileStatusProps {
 
 /** Status and join date are shown but belong to Shigjetademy, not the owner */
 function ProfileStatus({ profile }: ProfileStatusProps) {
+  const formatDate = useFormatDate()
   return (
     <section className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-card border border-rule px-5 py-4" aria-labelledby="profile-status-title">
       <h2 id="profile-status-title" className="text-[1.15rem] font-[650]">

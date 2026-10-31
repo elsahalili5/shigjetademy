@@ -1,4 +1,4 @@
-import type { SafeUser } from '@lib/types.ts'
+import type { SessionUser } from '@lib/session-user.ts'
 import type { AuthTokens } from '@shigjetademy/shared/auth'
 
 export type {
@@ -13,7 +13,7 @@ export type {
 } from '@shigjetademy/shared/auth'
 
 export type LoginUserResponse = AuthTokens & {
-  user: SafeUser
+  user: SessionUser
 }
 
 export type RegisterUserResponse = LoginUserResponse

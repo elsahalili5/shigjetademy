@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router'
 import { Building2, Search } from 'lucide-react'
 import { MEMBER_ROLES } from '@shigjetademy/shared/auth'
 import type { ClientOrganization, OrganizationStatus, OrganizationTypeValue } from '@shigjetademy/shared/organization'
-import { formatDate } from '#/lib/format'
+import { useFormatDate } from '#/lib/use-format-date'
 import { DashboardPageHeader } from '#/components/DashboardPageHeader'
 import { LoadError } from '#/components/LoadError'
 import { initials } from '#/lib/initials'
@@ -193,6 +193,7 @@ interface ClientRowProps {
 }
 
 function ClientRow({ client }: ClientRowProps) {
+  const formatDate = useFormatDate()
   const members = totalMembers(client)
   return (
     // The name link stretches over the whole row, so any cell opens the client

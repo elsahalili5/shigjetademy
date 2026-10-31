@@ -1,4 +1,4 @@
-import { Building2, CalendarRange, LayoutDashboard, MapPin, UserCog } from 'lucide-react'
+import { Building2, CalendarRange, LayoutDashboard, MapPin, Settings, UserCog } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ModuleSlug } from './modules'
 
@@ -8,7 +8,13 @@ import type { ModuleSlug } from './modules'
 export type OwnerNavItem =
   | {
       kind: 'page'
-      to: '/dashboard/overview' | '/dashboard/organization-profile' | '/dashboard/locations' | '/dashboard/academic-periods' | '/dashboard/members'
+      to:
+        | '/dashboard/overview'
+        | '/dashboard/organization-profile'
+        | '/dashboard/locations'
+        | '/dashboard/academic-periods'
+        | '/dashboard/members'
+        | '/dashboard/organization-settings'
       label: string
       icon: LucideIcon
     }
@@ -29,6 +35,7 @@ export const OWNER_NAV_SECTIONS: OwnerNavSection[] = [
       { kind: 'page', to: '/dashboard/academic-periods', label: 'Academic periods', icon: CalendarRange },
       { kind: 'page', to: '/dashboard/members', label: 'Members and permissions', icon: UserCog },
       { kind: 'module', slug: 'messages' },
+      { kind: 'page', to: '/dashboard/organization-settings', label: 'Organization settings', icon: Settings },
     ],
   },
   {

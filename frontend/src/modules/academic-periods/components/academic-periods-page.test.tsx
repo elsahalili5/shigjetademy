@@ -60,7 +60,7 @@ describe('AcademicPeriodsPage: school years', () => {
     expect(within(sidebar).getByRole('link', { name: 'Academic periods' })).toHaveAttribute('href', '/dashboard/academic-periods')
     const current = await yearRegion('2026–27')
     expect(current).toHaveTextContent('Current')
-    expect(current).toHaveTextContent(/Sep 1, 2026.+Jun 30, 2027/)
+    expect(current).toHaveTextContent(/1 Sep 2026.+30 Jun 2027/)
     expect(await yearRegion('2027–28')).not.toHaveTextContent('Current')
     expect(await yearNames()).toEqual(['2026–27', '2027–28'])
   })
@@ -334,7 +334,7 @@ describe('AcademicPeriodsPage: terms', () => {
 
     const [autumn, spring] = within(await termsOf('2026–27')).getAllByRole('listitem')
     expect(autumn).toHaveTextContent('Autumn term')
-    expect(autumn).toHaveTextContent(/Sep 1, 2026.+Jan 31, 2027/)
+    expect(autumn).toHaveTextContent(/1 Sep 2026.+31 Jan 2027/)
     expect(spring).toHaveTextContent('Spring term')
     expect(within(await termsOf('2027–28')).getByText('No terms yet.')).toBeInTheDocument()
   })
@@ -477,9 +477,19 @@ describe('AcademicPeriodsPage: holidays', () => {
 
     const [winter, independence] = within(await holidaysOf('2026–27')).getAllByRole('listitem')
     expect(winter).toHaveTextContent('Winter break')
-    expect(winter).toHaveTextContent(/Dec 24, 2026.+Jan 6, 2027/)
-    expect(independence).toHaveTextContent('Independence DayFeb 17, 2027')
+    expect(winter).toHaveTextContent(/24 Dec 2026.+6 Jan 2027/)
+    expect(independence).toHaveTextContent('Independence Day17 Feb 2027')
     expect(within(await holidaysOf('2027–28')).getByText('No holidays yet.')).toBeInTheDocument()
+  })
+
+  it('writes holiday days in the organization’s date format', async () => {
+    const [membership] = membershipFor({})
+    signInAs(buildUser({ memberships: [{ ...membership, organization: { ...membership.organization, date_format: 'MONTH_DAY_YEAR' } }] }))
+    server.use(http.get(YEARS_PATH, () => HttpResponse.json({ data: [{ ...YEAR_2026, holidays: [INDEPENDENCE_DAY] }] })))
+    renderRoute('/dashboard/academic-periods')
+
+    const [independence] = within(await holidaysOf('2026–27')).getAllByRole('listitem')
+    expect(independence).toHaveTextContent('Independence DayFeb 17, 2027')
   })
 
   it('adds a one-day holiday', async () => {

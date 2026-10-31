@@ -2,6 +2,7 @@ import { useId, useState } from 'react'
 import { CalendarRange, CalendarCheck, Pencil, Trash2 } from 'lucide-react'
 import type { AcademicYear } from '@shigjetademy/shared/academic-periods'
 import { LoadError } from '#/components/LoadError'
+import { useFormatDay } from '#/lib/use-format-date'
 import { formatDayRange } from '../utils/format'
 import { RowAction } from './row-actions'
 import { SkeletonRows } from './skeleton-rows'
@@ -63,6 +64,7 @@ interface AcademicYearRowProps {
 
 function AcademicYearRow({ year, otherYears, isEditable, onEdit, onMakeCurrent, onRemove, onAddPeriod, onEditPeriod, onRemovePeriod }: AcademicYearRowProps) {
   const titleId = useId()
+  const formatDay = useFormatDay()
 
   return (
     <li className="border-b border-rule last:border-b-0">
@@ -78,7 +80,7 @@ function AcademicYearRow({ year, otherYears, isEditable, onEdit, onMakeCurrent, 
               </h3>
               {year.is_current ? <span className="chip chip--green">Current</span> : null}
             </span>
-            <span className="text-[0.88rem] text-ink-3">{formatDayRange(year)}</span>
+            <span className="text-[0.88rem] text-ink-3">{formatDayRange({ range: year, formatDay })}</span>
           </span>
           {isEditable ? <AcademicYearActions year={year} otherYears={otherYears} onEdit={onEdit} onMakeCurrent={onMakeCurrent} onRemove={onRemove} /> : null}
         </div>

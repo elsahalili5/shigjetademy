@@ -2,11 +2,11 @@ import { useId } from 'react'
 import type { RefObject } from 'react'
 import type { AcademicYear, AcademicYearInput } from '@shigjetademy/shared/academic-periods'
 import { FormAlert } from '#/components/FormAlert'
+import { FormDialog } from '#/components/FormDialog'
 import { getErrorMessage, getFieldError } from '#/lib/error-message'
 import { AuthField } from '#/modules/auth/components/auth-field'
 import { useAcademicYearForm } from '../hooks/use-academic-year-form'
 import { useSaveAcademicYear } from '../hooks/use-save-academic-year'
-import { FormDialog } from './form-dialog'
 
 export type AcademicYearDialogMode = { kind: 'add'; isFirst: boolean } | { kind: 'edit'; year: AcademicYear }
 

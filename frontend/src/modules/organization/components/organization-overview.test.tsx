@@ -179,6 +179,7 @@ describe('dashboard sidebar', () => {
       'Academic periods',
       'Members and permissions',
       'Messages',
+      'Organization settings',
     ])
     expect(within(organization).getByRole('link', { name: 'Messages' })).toHaveAttribute('href', '/dashboard/messages')
     expect(within(organization).getByRole('link', { name: 'Members and permissions' })).toHaveAttribute('href', '/dashboard/members')

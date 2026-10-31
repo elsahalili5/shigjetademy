@@ -2,12 +2,12 @@ import { useId } from 'react'
 import type { RefObject } from 'react'
 import type { DepartmentInput, OrganizationDepartment, OrganizationLocation } from '@shigjetademy/shared/location'
 import { FormAlert } from '#/components/FormAlert'
+import { FormDialog } from '#/components/FormDialog'
 import { SelectField } from '#/components/SelectField'
 import { getErrorMessage, getFieldError } from '#/lib/error-message'
 import { AuthField } from '#/modules/auth/components/auth-field'
 import { useDepartmentForm } from '../hooks/use-department-form'
 import { useSaveDepartment } from '../hooks/use-save-department'
-import { FormDialog } from './form-dialog'
 
 export type DepartmentDialogMode = { kind: 'add' } | { kind: 'edit'; department: OrganizationDepartment }
 

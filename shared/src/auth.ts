@@ -1,6 +1,7 @@
 // The sign-up and login forms and the auth endpoints share these schemas and response shapes.
 import { z } from 'zod'
 import type { OrganizationStatus, OrganizationTypeValue } from './organization.ts'
+import type { OrganizationSettings } from './organization-settings.ts'
 
 export const ROLES = {
   PLATFORM_ADMIN: 'PLATFORM_ADMIN',
@@ -101,7 +102,8 @@ export type AuthUser = {
     id: string
     role: MemberRole
     permissions: Permission[]
-    organization: { id: string; name: string; type: OrganizationTypeValue; status: OrganizationStatus }
+    /** The organization with its settings, or their defaults when the owner hasn't saved any */
+    organization: { id: string; name: string; type: OrganizationTypeValue; status: OrganizationStatus } & OrganizationSettings
   }[]
 }
 

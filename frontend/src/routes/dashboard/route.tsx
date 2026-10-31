@@ -1,6 +1,7 @@
 import { LogOut } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { Link, Outlet, createFileRoute, useNavigate } from '@tanstack/react-router'
+import type { OrganizationStatus } from '@shigjetademy/shared/organization'
+import { Link, Outlet, createFileRoute, useMatchRoute, useNavigate } from '@tanstack/react-router'
 import wordmark from '#/assets/brand/shigjetademy-wordmark.png'
 import { initials } from '#/lib/initials'
 import { ADMIN_MODULES } from '#/lib/admin-modules'
@@ -13,6 +14,7 @@ import { useAuth } from '#/modules/auth/hooks/use-auth'
 import { isOrganizationOwner, isPlatformAdmin } from '#/modules/auth/utils/session-user'
 import { ROLE_LABELS } from '#/modules/auth/utils/role-labels'
 import { OrganizationSuspended } from '#/modules/organization/components/organization-suspended'
+import { OrganizationDeactivated } from '#/modules/organization-settings/components/organization-deactivated'
 import { OrganizationMark } from '#/modules/organization/components/organization-mark'
 import { OrganizationSwitcher } from '#/modules/organization/components/organization-switcher'
 
@@ -46,7 +48,7 @@ function DashboardLayout() {
   const roleLabel = membership ? ROLE_LABELS[membership.role] : 'Platform admin'
   // The platform admin runs the platform, so their sidebar lists clients and statistics instead of school modules
   const isAdmin = auth.user ? isPlatformAdmin(auth.user) : false
-  const isSuspended = !isAdmin && membership?.organization.status === 'SUSPENDED'
+  const organizationStatus = isAdmin ? 'ACTIVE' : (membership?.organization.status ?? 'ACTIVE')
   const isOwner = isOrganizationOwner(membership)
 
   const handleLogout = async () => {
@@ -115,12 +117,37 @@ function DashboardLayout() {
         <main className="relative min-h-0 overflow-hidden rounded-l-[24px] bg-white max-[860px]:min-h-[70svh] max-[860px]:rounded-l-none max-[860px]:rounded-t-[24px]">
           {/* data-flush-end opts out of the marketing pages' bottom padding on main's last child */}
           <div className="h-full" data-flush-end>
-            {isSuspended ? <OrganizationSuspended organizationName={organizationName} /> : <Outlet />}
+            <DashboardPanel organizationStatus={organizationStatus} organizationName={organizationName} isOwner={isOwner} />
           </div>
         </main>
       </div>
     </div>
   )
+}
+
+interface DashboardPanelProps {
+  organizationStatus: OrganizationStatus
+  organizationName: string
+  isOwner: boolean
+}
+
+/** The active page, or a notice in its place while the organization can't be used */
+function DashboardPanel({ organizationStatus, organizationName, isOwner }: DashboardPanelProps) {
+  const matchRoute = useMatchRoute()
+  switch (organizationStatus) {
+    case 'ACTIVE':
+      return <Outlet />
+    case 'SUSPENDED':
+      return <OrganizationSuspended organizationName={organizationName} />
+    case 'DEACTIVATED':
+      // The owner still reaches Organization settings, where they reactivate it
+      if (isOwner && matchRoute({ to: '/dashboard/organization-settings' })) return <Outlet />
+      return <OrganizationDeactivated organizationName={organizationName} isOwner={isOwner} />
+    default: {
+      const unknown: never = organizationStatus
+      throw new Error(`Unknown organization status: ${String(unknown)}`)
+    }
+  }
 }
 
 /** The owner's sidebar, grouped by area */

@@ -2,13 +2,14 @@ import { useId } from 'react'
 import type { RefObject } from 'react'
 import type { AcademicYear } from '@shigjetademy/shared/academic-periods'
 import { FormAlert } from '#/components/FormAlert'
+import { FormDialog } from '#/components/FormDialog'
 import { getErrorMessage, getFieldError } from '#/lib/error-message'
+import { useFormatDay } from '#/lib/use-format-date'
 import { AuthField } from '#/modules/auth/components/auth-field'
 import { useSaveYearPeriod } from '../hooks/use-save-year-period'
 import { useYearPeriodForm } from '../hooks/use-year-period-form'
 import { formatDayRange } from '../utils/format'
 import type { YearPeriod, YearPeriodInput, YearPeriodKind } from '../utils/year-periods'
-import { FormDialog } from './form-dialog'
 
 const COPY = {
   term: { addTitle: 'Add a term to', addButton: 'Add term', placeholder: 'Autumn term', hint: '' },
@@ -29,11 +30,16 @@ interface YearPeriodDialogProps {
 
 const getTitle = (mode: YearPeriodDialogMode) => (mode.action === 'edit' ? `Edit ${mode.period.name}` : `${COPY[mode.periodKind].addTitle} ${mode.year.name}`)
 
-const getSubtitle = (mode: YearPeriodDialogMode) => `Inside ${mode.year.name}: ${formatDayRange(mode.year)}.${COPY[mode.periodKind].hint}`
+type GetSubtitleParams = {
+  mode: YearPeriodDialogMode
+  formatDay: (day: string) => string
+}
 
+const getSubtitle = ({ mode, formatDay }: GetSubtitleParams) => `Inside ${mode.year.name}: ${formatDayRange({ range: mode.year, formatDay })}.${COPY[mode.periodKind].hint}`
 
 /** Adds or edits a term or a holiday inside its year */
 export function YearPeriodDialog({ dialogRef, organizationId, mode, formSession, onSaved }: YearPeriodDialogProps) {
+  const formatDay = useFormatDay()
   const handleClose = () => dialogRef.current?.close()
 
   const handleSaved = (saved: YearPeriod) => {
@@ -43,7 +49,7 @@ export function YearPeriodDialog({ dialogRef, organizationId, mode, formSession,
 
   // The key changes on every open, so the form remounts from that mode's values
   return (
-    <FormDialog dialogRef={dialogRef} title={mode ? getTitle(mode) : ''} subtitle={mode ? getSubtitle(mode) : ''} onClose={handleClose}>
+    <FormDialog dialogRef={dialogRef} title={mode ? getTitle(mode) : ''} subtitle={mode ? getSubtitle({ mode, formatDay }) : ''} onClose={handleClose}>
       {mode ? <YearPeriodForm key={formSession} organizationId={organizationId} mode={mode} onSaved={handleSaved} onCancel={handleClose} /> : null}
     </FormDialog>
   )

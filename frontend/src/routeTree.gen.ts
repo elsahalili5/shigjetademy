@@ -29,6 +29,7 @@ import { Route as DashboardAcademicPeriodsRouteImport } from './routes/dashboard
 import { Route as DashboardLocationsRouteImport } from './routes/dashboard/locations'
 import { Route as DashboardMembersRouteImport } from './routes/dashboard/members'
 import { Route as DashboardOrganizationProfileRouteImport } from './routes/dashboard/organization-profile'
+import { Route as DashboardOrganizationSettingsRouteImport } from './routes/dashboard/organization-settings'
 import { Route as DashboardOverviewRouteImport } from './routes/dashboard/overview'
 import { Route as DashboardProfileRouteImport } from './routes/dashboard/profile'
 import { Route as OrganizationsNewRouteImport } from './routes/organizations/new'
@@ -136,6 +137,12 @@ const DashboardOrganizationProfileRoute =
     path: '/organization-profile',
     getParentRoute: () => DashboardRouteRoute,
   } as any)
+const DashboardOrganizationSettingsRoute =
+  DashboardOrganizationSettingsRouteImport.update({
+    id: '/organization-settings',
+    path: '/organization-settings',
+    getParentRoute: () => DashboardRouteRoute,
+  } as any)
 const DashboardOverviewRoute = DashboardOverviewRouteImport.update({
   id: '/overview',
   path: '/overview',
@@ -185,6 +192,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/locations': typeof DashboardLocationsRoute
   '/dashboard/members': typeof DashboardMembersRoute
   '/dashboard/organization-profile': typeof DashboardOrganizationProfileRoute
+  '/dashboard/organization-settings': typeof DashboardOrganizationSettingsRoute
   '/dashboard/overview': typeof DashboardOverviewRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/organizations/new': typeof OrganizationsNewRoute
@@ -210,6 +218,7 @@ export interface FileRoutesByTo {
   '/dashboard/locations': typeof DashboardLocationsRoute
   '/dashboard/members': typeof DashboardMembersRoute
   '/dashboard/organization-profile': typeof DashboardOrganizationProfileRoute
+  '/dashboard/organization-settings': typeof DashboardOrganizationSettingsRoute
   '/dashboard/overview': typeof DashboardOverviewRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/organizations/new': typeof OrganizationsNewRoute
@@ -239,6 +248,7 @@ export interface FileRoutesById {
   '/dashboard/locations': typeof DashboardLocationsRoute
   '/dashboard/members': typeof DashboardMembersRoute
   '/dashboard/organization-profile': typeof DashboardOrganizationProfileRoute
+  '/dashboard/organization-settings': typeof DashboardOrganizationSettingsRoute
   '/dashboard/overview': typeof DashboardOverviewRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/organizations/new': typeof OrganizationsNewRoute
@@ -267,6 +277,7 @@ export interface FileRouteTypes {
     | '/dashboard/locations'
     | '/dashboard/members'
     | '/dashboard/organization-profile'
+    | '/dashboard/organization-settings'
     | '/dashboard/overview'
     | '/dashboard/profile'
     | '/organizations/new'
@@ -292,6 +303,7 @@ export interface FileRouteTypes {
     | '/dashboard/locations'
     | '/dashboard/members'
     | '/dashboard/organization-profile'
+    | '/dashboard/organization-settings'
     | '/dashboard/overview'
     | '/dashboard/profile'
     | '/organizations/new'
@@ -320,6 +332,7 @@ export interface FileRouteTypes {
     | '/dashboard/locations'
     | '/dashboard/members'
     | '/dashboard/organization-profile'
+    | '/dashboard/organization-settings'
     | '/dashboard/overview'
     | '/dashboard/profile'
     | '/organizations/new'
@@ -480,6 +493,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardOrganizationProfileRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
+    '/dashboard/organization-settings': {
+      id: '/dashboard/organization-settings'
+      path: '/organization-settings'
+      fullPath: '/dashboard/organization-settings'
+      preLoaderRoute: typeof DashboardOrganizationSettingsRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
     '/dashboard/overview': {
       id: '/dashboard/overview'
       path: '/overview'
@@ -575,6 +595,7 @@ interface DashboardRouteRouteChildren {
   DashboardLocationsRoute: typeof DashboardLocationsRoute
   DashboardMembersRoute: typeof DashboardMembersRoute
   DashboardOrganizationProfileRoute: typeof DashboardOrganizationProfileRoute
+  DashboardOrganizationSettingsRoute: typeof DashboardOrganizationSettingsRoute
   DashboardOverviewRoute: typeof DashboardOverviewRoute
   DashboardProfileRoute: typeof DashboardProfileRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
@@ -587,6 +608,7 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardLocationsRoute: DashboardLocationsRoute,
   DashboardMembersRoute: DashboardMembersRoute,
   DashboardOrganizationProfileRoute: DashboardOrganizationProfileRoute,
+  DashboardOrganizationSettingsRoute: DashboardOrganizationSettingsRoute,
   DashboardOverviewRoute: DashboardOverviewRoute,
   DashboardProfileRoute: DashboardProfileRoute,
   DashboardIndexRoute: DashboardIndexRoute,

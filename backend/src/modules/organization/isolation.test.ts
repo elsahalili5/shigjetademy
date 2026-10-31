@@ -27,6 +27,7 @@ type ScopedEndpoint = {
 
 const PROFILE = { name: 'Taken over', type: 'School', country: 'XK', currency: 'EUR' } as const
 const LOCATION = { name: 'Taken over', address: '', city: '', phone: '', is_main: true } as const
+const SETTINGS = { time_zone: 'America/New_York', week_start: 'SUNDAY', date_format: 'MONTH_DAY_YEAR' } as const
 const YEAR = { name: 'Taken over', start_date: '2030-09-01', end_date: '2031-06-30', is_current: true } as const
 const TERM = { name: 'Taken over', start_date: '2026-09-01', end_date: '2026-12-20' } as const
 const HOLIDAY = { name: 'Taken over', start_date: '2026-12-24', end_date: '2026-12-24' } as const
@@ -60,6 +61,11 @@ const SCOPED_ENDPOINTS: ScopedEndpoint[] = [
   { method: 'post', route: '/:organizationId/academic-periods/years/:yearId/holidays', body: HOLIDAY },
   { method: 'put', route: '/:organizationId/academic-periods/years/:yearId/holidays/:holidayId', body: HOLIDAY },
   { method: 'delete', route: '/:organizationId/academic-periods/years/:yearId/holidays/:holidayId' },
+  { method: 'get', route: '/:organizationId/settings' },
+  { method: 'put', route: '/:organizationId/settings', body: SETTINGS },
+  { method: 'post', route: '/:organizationId/settings/transfer-ownership', body: { membership_id: '00000000-0000-4000-8000-000000000000', password: 'password123' } },
+  { method: 'post', route: '/:organizationId/settings/deactivate', body: { confirm_name: 'Yllka Kindergarten', password: 'password123' } },
+  { method: 'post', route: '/:organizationId/settings/reactivate', body: { password: 'password123' } },
 ]
 
 type ToPathParams = {
@@ -139,6 +145,7 @@ const yllkaAsItsOwnerSeesIt = async () => {
     locations: await read('/:organizationId/locations'),
     departments: await read('/:organizationId/departments'),
     academicYears: await read('/:organizationId/academic-periods/years'),
+    settings: await read('/:organizationId/settings'),
   }
 }
 
@@ -195,11 +202,21 @@ describe('organization isolation', () => {
       .delete(toPath({ route: '/:organizationId/academic-periods/years/:yearId', ids: oxford }))
       .query({ newCurrentId: yllka.yearId })
       .set('Authorization', oxfordOwnerAuth)
+    const transferred = await send({
+      method: 'post',
+      route: '/:organizationId/settings/transfer-ownership',
+      body: { membership_id: yllka.membershipId, password: 'password123' },
+      ids: oxford,
+      auth: oxfordOwnerAuth,
+    })
 
     expect(created.status).toBe(400)
     expect(updated.status).toBe(400)
     expect(removedMain.status).toBe(400)
     expect(removedCurrentYear.status).toBe(400)
+    expect(transferred.status).toBe(404)
+    expect(await prisma.membership.findUniqueOrThrow({ where: { id: yllka.membershipId }, select: { role: true } })).toEqual({ role: 'ADMIN' })
+    expect((await request(app).get(toPath({ route: '/:organizationId/settings', ids: oxford })).set('Authorization', oxfordOwnerAuth)).status).toBe(200)
     expect(await yllkaAsItsOwnerSeesIt()).toEqual(before)
   })
 })

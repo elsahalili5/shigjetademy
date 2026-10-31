@@ -2,8 +2,8 @@ import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { AlertCircle, Circle, CircleCheck, History, LayoutDashboard, Mail, RotateCw, ShieldCheck } from 'lucide-react'
 import type { OrganizationOverview as Overview, OverviewInvitation } from '@shigjetademy/shared/organization'
-import { formatDate } from '#/lib/format'
 import type { ModuleSlug } from '#/lib/modules'
+import { useFormatDate } from '#/lib/use-format-date'
 import { ActivityRow, ActivityRowSkeleton } from '#/modules/activity/components/activity-row'
 import { useOrganizationOverview } from '../hooks/use-organization-overview'
 
@@ -137,6 +137,8 @@ interface AttentionListProps {
 }
 
 function AttentionList({ invitations }: AttentionListProps) {
+  const formatDate = useFormatDate()
+
   if (invitations.length === 0) {
     return (
       <div className="grid justify-items-center gap-2 px-5 py-10 text-center">

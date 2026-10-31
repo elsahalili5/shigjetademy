@@ -23,4 +23,8 @@ export const ACTIVITY_ACTION_LABELS = {
   ACADEMIC_HOLIDAY_CREATED: 'Holiday added',
   ACADEMIC_HOLIDAY_UPDATED: 'Holiday changed',
   ACADEMIC_HOLIDAY_REMOVED: 'Holiday removed',
+  ORGANIZATION_SETTINGS_UPDATED: 'Settings updated',
+  OWNERSHIP_TRANSFERRED: 'Ownership transferred',
+  ORGANIZATION_DEACTIVATED_BY_OWNER: 'Deactivated by owner',
+  ORGANIZATION_REACTIVATED_BY_OWNER: 'Reactivated by owner',
 } as const satisfies Record<ActivityAction, string>

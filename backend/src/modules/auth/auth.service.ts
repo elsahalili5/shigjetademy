@@ -3,7 +3,8 @@ import { prisma } from '@lib/prisma.ts'
 import { SALT_ROUNDS, safeUserSelect } from '@lib/constants.ts'
 import { HttpError } from '@lib/httpError.ts'
 import { generateAccessToken, generateRefreshToken, REFRESH_TOKEN_EXPIRY_MS, verifyRefreshToken } from '@lib/jwt.ts'
-import type { SafeUser } from '@lib/types.ts'
+import { toSessionUser } from '@lib/session-user.ts'
+import type { SessionUser } from '@lib/session-user.ts'
 import type {
   AuthTokens,
   ChangePasswordInput,
@@ -67,7 +68,7 @@ export const AuthService = {
       select: safeUserSelect,
     })
 
-    return { user, ...(await issueTokens(user.id)) }
+    return { user: toSessionUser(user), ...(await issueTokens(user.id)) }
   },
 
   loginUser: async ({ email, password }: LoginUserInput): Promise<LoginUserResponse> => {
@@ -130,7 +131,7 @@ export const AuthService = {
     }
 
     const safeUser = await prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: safeUserSelect })
-    return { user: safeUser, ...(await issueTokens(user.id)) }
+    return { user: toSessionUser(safeUser), ...(await issueTokens(user.id)) }
   },
 
   // Each refresh token works once: it is revoked and replaced by a new pair
@@ -182,25 +183,26 @@ export const AuthService = {
     return { message: 'Logged out successfully' }
   },
 
-  getCurrentUser: async (userId: string): Promise<SafeUser> => {
+  getCurrentUser: async (userId: string): Promise<SessionUser> => {
     const user = await prisma.user.findUnique({ where: { id: userId }, select: safeUserSelect })
     if (!user) {
       throw new HttpError(404, 'User not found')
     }
-    return user
+    return toSessionUser(user)
   },
 
-  updateProfile: async ({ userId, data }: UpdateProfileParams): Promise<SafeUser> => {
+  updateProfile: async ({ userId, data }: UpdateProfileParams): Promise<SessionUser> => {
     const emailOwner = await prisma.user.findUnique({ where: { email: data.email } })
     if (emailOwner && emailOwner.id !== userId) {
       throw new HttpError(409, 'Another account already uses this email')
     }
 
-    return prisma.user.update({
+    const user = await prisma.user.update({
       where: { id: userId },
       data: { first_name: data.first_name, last_name: data.last_name, email: data.email },
       select: safeUserSelect,
     })
+    return toSessionUser(user)
   },
 
   // A new password logs out every other device: all refresh tokens are revoked and this one gets a fresh pair

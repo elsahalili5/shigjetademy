@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Building2, CalendarCog, CalendarPlus, CalendarRange, CalendarX, CirclePause, CirclePlay, KeyRound, Lock, MapPin, MapPinOff, MapPinPen, Network, SquarePen, Trash2, TreePalm, UserMinus, UserPen } from 'lucide-react'
+import { Building2, CalendarCog, CalendarPlus, CalendarRange, CalendarX, CirclePause, CirclePlay, Crown, KeyRound, Lock, MapPin, MapPinOff, MapPinPen, Network, Power, PowerOff, Settings, SquarePen, Trash2, TreePalm, UserMinus, UserPen } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ActivityAction, ActivityEntry, ActivityUser } from '@shigjetademy/shared/activity'
-import { formatDateTime } from '../utils/format'
+import { useFormatDateTime } from '#/lib/use-format-date'
 
 const ACTION_ICONS = {
   ORGANIZATION_SUSPENDED: CirclePause,
@@ -28,6 +28,10 @@ const ACTION_ICONS = {
   ACADEMIC_HOLIDAY_CREATED: TreePalm,
   ACADEMIC_HOLIDAY_UPDATED: CalendarCog,
   ACADEMIC_HOLIDAY_REMOVED: CalendarX,
+  ORGANIZATION_SETTINGS_UPDATED: Settings,
+  OWNERSHIP_TRANSFERRED: Crown,
+  ORGANIZATION_DEACTIVATED_BY_OWNER: PowerOff,
+  ORGANIZATION_REACTIVATED_BY_OWNER: Power,
 } as const satisfies Record<ActivityAction, LucideIcon>
 
 type FullNameParams = {
@@ -49,6 +53,7 @@ interface ActivityRowProps {
 }
 
 export function ActivityRow({ entry, shouldLinkOrganization }: ActivityRowProps) {
+  const formatDateTime = useFormatDateTime()
   const Icon = ACTION_ICONS[entry.action]
   return (
     <li className="flex items-center gap-3 border-b border-rule py-3">
@@ -135,6 +140,30 @@ function ActivitySentence({ entry, shouldLinkOrganization }: ActivityRowProps) {
       return <SubjectSentence entry={entry} verb="changed" noun="holiday" organization={subjectOrganization} />
     case 'ACADEMIC_HOLIDAY_REMOVED':
       return <SubjectSentence entry={entry} verb="removed" noun="holiday" organization={subjectOrganization} />
+    case 'ORGANIZATION_SETTINGS_UPDATED':
+      return (
+        <>
+          {fullName({ user: entry.actor, fallback: DELETED_ACTOR })} updated the settings of {organization}
+        </>
+      )
+    case 'OWNERSHIP_TRANSFERRED':
+      return (
+        <>
+          {fullName({ user: entry.actor, fallback: DELETED_ACTOR })} made {fullName({ user: entry.target_user, fallback: DELETED_TARGET })} the owner of {organization}
+        </>
+      )
+    case 'ORGANIZATION_DEACTIVATED_BY_OWNER':
+      return (
+        <>
+          {fullName({ user: entry.actor, fallback: DELETED_ACTOR })} deactivated {organization}
+        </>
+      )
+    case 'ORGANIZATION_REACTIVATED_BY_OWNER':
+      return (
+        <>
+          {fullName({ user: entry.actor, fallback: DELETED_ACTOR })} reactivated {organization}
+        </>
+      )
     default: {
       const unknown: never = entry.action
       throw new Error(`Unknown activity action: ${String(unknown)}`)
