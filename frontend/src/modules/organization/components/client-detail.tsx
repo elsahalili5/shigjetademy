@@ -4,7 +4,7 @@ import { Link } from '@tanstack/react-router'
 import type { ClientOrganizationDetail } from '@shigjetademy/shared/organization'
 import { isApiError } from '#/api/client'
 import { showErrorToast } from '#/lib/error-toast'
-import { formatDate } from '#/lib/format'
+import { useFormatDate } from '#/lib/use-format-date'
 import { initials } from '#/lib/initials'
 import { ROLE_LABELS } from '#/modules/auth/utils/role-labels'
 import { useClient } from '../hooks/use-client'
@@ -69,6 +69,8 @@ interface ClientProfileProps {
 }
 
 function ClientProfile({ client }: ClientProfileProps) {
+  const formatDate = useFormatDate()
+
   return (
     <>
       <header className="bg-linear-to-b from-green-wash to-white px-[clamp(20px,3.4vw,44px)] pt-5 pb-6">

@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import type { AuthUser } from '@shigjetademy/shared/auth'
+import type { OrganizationSettings } from '@shigjetademy/shared/organization-settings'
 import { storeTokens } from '#/modules/auth/utils/auth-storage'
 import { server } from './server'
 
@@ -16,6 +17,9 @@ export const buildUser = (overrides: Partial<AuthUser> = {}): AuthUser => ({
   ...overrides,
 })
 
+/** What an organization's settings are until its owner saves their own */
+export const DEFAULT_SETTINGS: OrganizationSettings = { time_zone: 'Europe/Belgrade', week_start: 'MONDAY', date_format: 'DAY_MONTH_YEAR' }
+
 export const PLATFORM_ADMIN_ROLES: AuthUser['user_roles'] = [{ role: { name: 'PLATFORM_ADMIN' } }]
 
 export const OWNER_MEMBERSHIPS: AuthUser['memberships'] = [
@@ -23,7 +27,7 @@ export const OWNER_MEMBERSHIPS: AuthUser['memberships'] = [
     id: 'membership-1',
     role: 'OWNER',
     permissions: [],
-    organization: { id: 'org-1', name: 'Oxford Academy', type: 'ACADEMY', status: 'ACTIVE' },
+    organization: { id: 'org-1', name: 'Oxford Academy', type: 'ACADEMY', status: 'ACTIVE', ...DEFAULT_SETTINGS },
   },
 ]
 
@@ -38,5 +42,5 @@ export const YLLKA_ADMIN_MEMBERSHIP: AuthUser['memberships'][number] = {
   id: 'membership-2',
   role: 'ADMIN',
   permissions: [],
-  organization: { id: 'org-2', name: 'Yllka Kindergarten', type: 'KINDERGARTEN', status: 'ACTIVE' },
+  organization: { id: 'org-2', name: 'Yllka Kindergarten', type: 'KINDERGARTEN', status: 'ACTIVE', ...DEFAULT_SETTINGS },
 }

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { emailSchema, PERMISSIONS } from './auth.ts'
 import type { ActivityEntry } from './activity.ts'
 import type { MemberRole, Permission } from './auth.ts'
+import type { TimeZone } from './organization-settings.ts'
 
 export const ORGANIZATION_TYPES = ['School', 'Kindergarten', 'Academy', 'Training centre', 'Independent lecturer', 'Other'] as const
 
@@ -14,19 +15,19 @@ export const CURRENCIES = ['EUR', 'ALL', 'MKD', 'CHF', 'GBP', 'USD'] as const
 
 export type Currency = (typeof CURRENCIES)[number]
 
-/** Countries an organization can register in, each with the currency it bills in by default */
+/** Countries an organization can register in, each with the currency it bills in and the time zone it starts with */
 export const COUNTRIES = [
-  { code: 'XK', currency: 'EUR' },
-  { code: 'AL', currency: 'ALL' },
-  { code: 'MK', currency: 'MKD' },
-  { code: 'ME', currency: 'EUR' },
-  { code: 'DE', currency: 'EUR' },
-  { code: 'AT', currency: 'EUR' },
-  { code: 'CH', currency: 'CHF' },
-  { code: 'IT', currency: 'EUR' },
-  { code: 'GB', currency: 'GBP' },
-  { code: 'US', currency: 'USD' },
-] as const satisfies ReadonlyArray<{ code: string; currency: Currency }>
+  { code: 'XK', currency: 'EUR', time_zone: 'Europe/Belgrade' },
+  { code: 'AL', currency: 'ALL', time_zone: 'Europe/Tirane' },
+  { code: 'MK', currency: 'MKD', time_zone: 'Europe/Skopje' },
+  { code: 'ME', currency: 'EUR', time_zone: 'Europe/Podgorica' },
+  { code: 'DE', currency: 'EUR', time_zone: 'Europe/Berlin' },
+  { code: 'AT', currency: 'EUR', time_zone: 'Europe/Vienna' },
+  { code: 'CH', currency: 'CHF', time_zone: 'Europe/Zurich' },
+  { code: 'IT', currency: 'EUR', time_zone: 'Europe/Rome' },
+  { code: 'GB', currency: 'GBP', time_zone: 'Europe/London' },
+  { code: 'US', currency: 'USD', time_zone: 'America/New_York' },
+] as const satisfies ReadonlyArray<{ code: string; currency: Currency; time_zone: TimeZone }>
 
 export type CountryCode = (typeof COUNTRIES)[number]['code']
 

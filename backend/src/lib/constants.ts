@@ -18,7 +18,16 @@ export const safeUserSelect = {
       id: true,
       role: true,
       permissions: true,
-      organization: { select: { id: true, name: true, type: true, status: true } },
+      organization: {
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          status: true,
+          country: true,
+          settings: { select: { time_zone: true, week_start: true, date_format: true } },
+        },
+      },
     },
   },
 } satisfies Prisma.UserSelect

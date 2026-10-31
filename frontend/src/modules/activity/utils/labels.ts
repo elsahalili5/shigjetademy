@@ -14,4 +14,8 @@ export const ACTIVITY_ACTION_LABELS = {
   DEPARTMENT_CREATED: 'Department added',
   DEPARTMENT_UPDATED: 'Department changed',
   DEPARTMENT_REMOVED: 'Department removed',
+  ORGANIZATION_SETTINGS_UPDATED: 'Settings updated',
+  OWNERSHIP_TRANSFERRED: 'Ownership transferred',
+  ORGANIZATION_DEACTIVATED_BY_OWNER: 'Deactivated by owner',
+  ORGANIZATION_REACTIVATED_BY_OWNER: 'Reactivated by owner',
 } as const satisfies Record<ActivityAction, string>

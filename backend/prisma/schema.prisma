@@ -88,6 +88,20 @@ enum ActivityAction {
   DEPARTMENT_CREATED
   DEPARTMENT_UPDATED
   DEPARTMENT_REMOVED
+  ORGANIZATION_SETTINGS_UPDATED
+  OWNERSHIP_TRANSFERRED
+  ORGANIZATION_DEACTIVATED_BY_OWNER
+  ORGANIZATION_REACTIVATED_BY_OWNER
+}
+
+enum WeekStart {
+  MONDAY
+  SUNDAY
+}
+
+enum DateFormat {
+  DAY_MONTH_YEAR
+  MONTH_DAY_YEAR
 }
 
 // ─────────────────────────────────────────
@@ -195,6 +209,21 @@ model Organization {
   activity     ActivityLog[]
   locations    Location[]
   departments  Department[]
+  settings     OrganizationSettings?
+}
+
+/// How one organization runs. Created with defaults the first time it is read, so older organizations need no row.
+model OrganizationSettings {
+  organization_id String       @id @db.Uuid
+  /// An IANA time zone, like Europe/Belgrade
+  time_zone       String
+  week_start      WeekStart    @default(MONDAY)
+  date_format     DateFormat   @default(DAY_MONTH_YEAR)
+
+  created_at      DateTime     @default(now())
+  updated_at      DateTime     @updatedAt
+
+  organization    Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
 }
 
 /// A campus or branch. While an organization has any, exactly one is its main location (kept by the location service).

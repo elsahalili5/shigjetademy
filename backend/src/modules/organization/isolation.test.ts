@@ -24,6 +24,7 @@ type ScopedEndpoint = {
 
 const PROFILE = { name: 'Taken over', type: 'School', country: 'XK', currency: 'EUR' } as const
 const LOCATION = { name: 'Taken over', address: '', city: '', phone: '', is_main: true } as const
+const SETTINGS = { time_zone: 'America/New_York', week_start: 'SUNDAY', date_format: 'MONTH_DAY_YEAR' } as const
 
 // One line per organization-scoped endpoint; the coverage test below fails when a route is missing here
 const SCOPED_ENDPOINTS: ScopedEndpoint[] = [
@@ -44,6 +45,11 @@ const SCOPED_ENDPOINTS: ScopedEndpoint[] = [
   { method: 'post', route: '/:organizationId/departments', body: { name: 'Taken over', description: '', location_id: null } },
   { method: 'put', route: '/:organizationId/departments/:departmentId', body: { name: 'Taken over', description: '', location_id: null } },
   { method: 'delete', route: '/:organizationId/departments/:departmentId' },
+  { method: 'get', route: '/:organizationId/settings' },
+  { method: 'put', route: '/:organizationId/settings', body: SETTINGS },
+  { method: 'post', route: '/:organizationId/settings/transfer-ownership', body: { membership_id: '00000000-0000-4000-8000-000000000000', password: 'password123' } },
+  { method: 'post', route: '/:organizationId/settings/deactivate', body: { confirm_name: 'Yllka Kindergarten', password: 'password123' } },
+  { method: 'post', route: '/:organizationId/settings/reactivate', body: { password: 'password123' } },
 ]
 
 type ToPathParams = {
@@ -114,6 +120,7 @@ const yllkaAsItsOwnerSeesIt = async () => {
     overview: await read('/:organizationId/overview'),
     locations: await read('/:organizationId/locations'),
     departments: await read('/:organizationId/departments'),
+    settings: await read('/:organizationId/settings'),
   }
 }
 
@@ -166,9 +173,20 @@ describe('organization isolation', () => {
       .query({ newMainId: yllka.locationId })
       .set('Authorization', oxfordOwnerAuth)
 
+    const transferred = await send({
+      method: 'post',
+      route: '/:organizationId/settings/transfer-ownership',
+      body: { membership_id: yllka.membershipId, password: 'password123' },
+      ids: oxford,
+      auth: oxfordOwnerAuth,
+    })
+
     expect(created.status).toBe(400)
     expect(updated.status).toBe(400)
     expect(removedMain.status).toBe(400)
+    expect(transferred.status).toBe(404)
+    expect(await prisma.membership.findUniqueOrThrow({ where: { id: yllka.membershipId }, select: { role: true } })).toEqual({ role: 'ADMIN' })
+    expect((await request(app).get(toPath({ route: '/:organizationId/settings', ids: oxford })).set('Authorization', oxfordOwnerAuth)).status).toBe(200)
     expect(await yllkaAsItsOwnerSeesIt()).toEqual(before)
   })
 })

@@ -8,7 +8,8 @@
     "./organization": "./src/organization.ts",
     "./auth": "./src/auth.ts",
     "./activity": "./src/activity.ts",
-    "./location": "./src/location.ts"
+    "./location": "./src/location.ts",
+    "./organization-settings": "./src/organization-settings.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

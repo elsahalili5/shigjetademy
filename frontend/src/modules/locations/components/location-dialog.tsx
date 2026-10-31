@@ -2,11 +2,11 @@ import { useId } from 'react'
 import type { RefObject } from 'react'
 import type { LocationInput, OrganizationLocation } from '@shigjetademy/shared/location'
 import { FormAlert } from '#/components/FormAlert'
+import { FormDialog } from '#/components/FormDialog'
 import { getErrorMessage, getFieldError } from '#/lib/error-message'
 import { AuthField } from '#/modules/auth/components/auth-field'
 import { useLocationForm } from '../hooks/use-location-form'
 import { useSaveLocation } from '../hooks/use-save-location'
-import { FormDialog } from './form-dialog'
 
 export type LocationDialogMode = { kind: 'add'; isFirst: boolean } | { kind: 'edit'; location: OrganizationLocation }
 

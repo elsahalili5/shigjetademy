@@ -8,8 +8,9 @@ import { LoadError } from '#/components/LoadError'
 import { NoticeBar } from '#/components/NoticeBar'
 import type { Notice } from '#/components/NoticeBar'
 import { showErrorToast } from '#/lib/error-toast'
-import { formatDate } from '#/lib/format'
+import { fullName } from '#/lib/full-name'
 import { initials } from '#/lib/initials'
+import { useFormatDate } from '#/lib/use-format-date'
 import { ROLE_LABELS } from '#/modules/auth/utils/role-labels'
 import { useOrganizationMembers } from '../hooks/use-organization-members'
 import { usePendingInvitations } from '../hooks/use-pending-invitations'
@@ -20,8 +21,6 @@ import type { AdminAccessDialogMode } from './admin-access-dialog'
 
 const SHOWN_PERMISSIONS = 3
 const SKELETON_ROWS = 2
-
-const fullName = (member: OrganizationMember) => `${member.first_name} ${member.last_name}`
 
 interface MembersPageProps {
   organizationId: string
@@ -162,6 +161,8 @@ interface InvitationListProps {
 }
 
 function InvitationList({ query, onInvite }: InvitationListProps) {
+  const formatDate = useFormatDate()
+
   if (query.status === 'pending') return <SkeletonRows />
   if (query.status === 'error') return <LoadError what="invitations" onRetry={() => void query.refetch()} />
 
@@ -226,6 +227,7 @@ interface MemberRowProps {
 }
 
 function MemberRow({ member, isRemoving, onEdit, onRemove }: MemberRowProps) {
+  const formatDate = useFormatDate()
   const isOwner = member.role === 'OWNER'
   const name = fullName(member)
 

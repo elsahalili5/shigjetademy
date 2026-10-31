@@ -66,7 +66,7 @@ describe('OrganizationProfilePage', () => {
 
     const status = await screen.findByRole('region', { name: 'Status' })
     expect(within(status).getByText('Active')).toBeInTheDocument()
-    expect(within(status).getByText('Oct 1, 2026', { exact: false })).toBeInTheDocument()
+    expect(within(status).getByText('1 Oct 2026', { exact: false })).toBeInTheDocument()
     expect(within(status).queryByRole('combobox')).not.toBeInTheDocument()
   })
 
