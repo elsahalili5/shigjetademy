@@ -6,6 +6,7 @@ import authRoutes from '@modules/auth/auth.routes.ts'
 import locationRoutes from '@modules/location/location.routes.ts'
 import organizationRoutes from '@modules/organization/organization.routes.ts'
 import organizationSettingsRoutes from '@modules/organization-settings/organization-settings.routes.ts'
+import studentRoutes from '@modules/students/students.routes.ts'
 import userRoutes from '@modules/users/user.routes.ts'
 
 export const app = express()
@@ -19,6 +20,7 @@ app.use('/api/organizations', organizationRoutes)
 app.use('/api/organizations', locationRoutes)
 app.use('/api/organizations', academicPeriodsRoutes)
 app.use('/api/organizations', organizationSettingsRoutes)
+app.use('/api/organizations', studentRoutes)
 app.use('/api/users', userRoutes)
 
 app.get('/api/health', (_req, res) => {

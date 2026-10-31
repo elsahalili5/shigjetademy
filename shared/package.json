@@ -10,7 +10,9 @@
     "./activity": "./src/activity.ts",
     "./location": "./src/location.ts",
     "./academic-periods": "./src/academic-periods.ts",
-    "./organization-settings": "./src/organization-settings.ts"
+    "./organization-settings": "./src/organization-settings.ts",
+    "./students": "./src/students.ts",
+    "./calendar-day": "./src/calendar-day.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

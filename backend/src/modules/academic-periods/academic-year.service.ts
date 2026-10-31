@@ -2,8 +2,10 @@ import type { Prisma } from '@generated/prisma/client.ts'
 import { prisma } from '@lib/prisma.ts'
 import { HttpError } from '@lib/httpError.ts'
 import type { AcademicYearInput } from './academic-periods.types.ts'
-import type { OrganizationScope } from './academic-periods.utils.ts'
-import { findYear, lockOrganization, outside, overlapping, periodSelect, toDate, toPeriodJson } from './academic-periods.utils.ts'
+import { toDate } from '@lib/calendar-day.ts'
+import { lockOrganization } from '@lib/organization-lock.ts'
+import type { OrganizationScope } from '@lib/organization-lock.ts'
+import { findYear, outside, overlapping, periodSelect, toPeriodJson } from './academic-periods.utils.ts'
 
 const byDate = { start_date: 'asc' } as const
 

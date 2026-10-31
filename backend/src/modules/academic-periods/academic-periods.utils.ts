@@ -1,11 +1,6 @@
-import type { Prisma } from '@generated/prisma/client.ts'
+import { toDay } from '@lib/calendar-day.ts'
 import { HttpError } from '@lib/httpError.ts'
-
-/** A 'YYYY-MM-DD' calendar day as the Date Prisma stores in a @db.Date column */
-export const toDate = (day: string) => new Date(`${day}T00:00:00.000Z`)
-
-/** A @db.Date column back as its 'YYYY-MM-DD' calendar day */
-export const toDay = (date: Date) => date.toISOString().slice(0, 10)
+import type { OrganizationScope } from '@lib/organization-lock.ts'
 
 type Period = {
   start_date: Date
@@ -16,15 +11,6 @@ type Period = {
 export const toPeriodJson = <T extends Period>(period: T) => ({ ...period, start_date: toDay(period.start_date), end_date: toDay(period.end_date) })
 
 export const periodSelect = { id: true, name: true, start_date: true, end_date: true } as const
-
-export type OrganizationScope = {
-  tx: Prisma.TransactionClient
-  organizationId: string
-}
-
-/** Academic period writes for one organization run one at a time, so overlap and current-year checks can't race */
-export const lockOrganization = ({ tx, organizationId }: OrganizationScope) =>
-  tx.$queryRaw`SELECT id FROM "Organization" WHERE id = ${organizationId}::uuid FOR UPDATE`
 
 type FindYearParams = OrganizationScope & {
   yearId: string

@@ -31,7 +31,7 @@ describe('active organization', () => {
     storeActiveOrganizationId('org-2')
     const { router } = renderRoute('/dashboard')
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/students'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/academic-periods'))
     const aside = await sidebar()
     expect(within(aside).getByText('Yllka Kindergarten')).toBeInTheDocument()
     expect(within(aside).getByText('School admin')).toBeInTheDocument()
@@ -43,7 +43,7 @@ describe('active organization', () => {
     storeActiveOrganizationId('org-2')
     const { router } = renderRoute('/dashboard/overview')
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/students'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/academic-periods'))
   })
 
   it('opens Yllka’s locations, read-only, when Yllka is active', async () => {

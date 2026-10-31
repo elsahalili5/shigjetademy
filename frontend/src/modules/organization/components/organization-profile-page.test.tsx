@@ -97,7 +97,7 @@ describe('OrganizationProfilePage', () => {
     signInAs(buildUser({ memberships: [{ ...OWNER_MEMBERSHIP, role: 'LECTURER' }] }))
     const { router } = renderRoute('/dashboard/organization-profile')
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/students'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/academic-periods'))
   })
 })
 
@@ -109,7 +109,7 @@ describe('school admin sidebar', () => {
       http.get('*/api/organizations/org-1/locations', () => HttpResponse.json({ data: [] })),
       http.get('*/api/organizations/org-1/departments', () => HttpResponse.json({ data: [] })),
     )
-    const { user, router } = renderRoute('/dashboard/students')
+    const { user, router } = renderRoute('/dashboard/academic-periods')
 
     const sidebar = await screen.findByRole('navigation', { name: 'Modules' })
     expect(within(sidebar).getByRole('link', { name: 'Organization profile' })).toHaveAttribute('href', '/dashboard/organization-profile')

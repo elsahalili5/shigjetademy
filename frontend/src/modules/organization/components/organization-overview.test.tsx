@@ -159,7 +159,7 @@ describe('owner Overview', () => {
     signInAsSchoolAdmin()
     const { router } = renderRoute('/dashboard/overview')
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/students'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/academic-periods'))
   })
 })
 
@@ -186,12 +186,13 @@ describe('dashboard sidebar', () => {
     expect(within(sidebar).getByRole('group', { name: 'Finance' })).toHaveTextContent('PaymentsFinancial recordsReports')
   })
 
-  it('keeps the flat module list for a school admin, without members', async () => {
+  it('keeps the flat module list for a school admin, without members, or students unless they may keep them', async () => {
     signInAsSchoolAdmin()
-    renderRoute('/dashboard/students')
+    renderRoute('/dashboard/academic-periods')
 
     const sidebar = await screen.findByRole('navigation', { name: 'Modules' })
-    expect(within(sidebar).getByRole('link', { name: 'Students & enrolment' })).toBeInTheDocument()
+    expect(within(sidebar).getByRole('link', { name: 'Lecturers' })).toBeInTheDocument()
+    expect(within(sidebar).queryByRole('link', { name: 'Students & enrolment' })).not.toBeInTheDocument()
     expect(within(sidebar).queryByRole('group')).not.toBeInTheDocument()
     expect(within(sidebar).queryByRole('link', { name: /Members/ })).not.toBeInTheDocument()
   })
@@ -199,7 +200,6 @@ describe('dashboard sidebar', () => {
 
 describe('modules that are not built yet', () => {
   it.each([
-    ['students', 'Students & enrolment'],
     ['lecturers', 'Lecturers'],
     ['financial-records', 'Financial records'],
   ])('shows /dashboard/%s as not built yet', async (slug, name) => {

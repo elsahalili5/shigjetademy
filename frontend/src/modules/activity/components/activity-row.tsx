@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Building2, CalendarCog, CalendarPlus, CalendarRange, CalendarX, CirclePause, CirclePlay, Crown, KeyRound, Lock, MapPin, MapPinOff, MapPinPen, Network, Power, PowerOff, Settings, SquarePen, Trash2, TreePalm, UserMinus, UserPen } from 'lucide-react'
+import { Archive, ArchiveRestore, Building2, CalendarCog, CalendarPlus, CalendarRange, CalendarX, CirclePause, CirclePlay, Crown, KeyRound, Lock, MapPin, MapPinOff, MapPinPen, Network, Power, PowerOff, Settings, SquarePen, Trash2, TreePalm, UserMinus, UserPen, UserPlus } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ActivityAction, ActivityEntry, ActivityUser } from '@shigjetademy/shared/activity'
 import { useFormatDateTime } from '#/lib/use-format-date'
@@ -32,6 +32,10 @@ const ACTION_ICONS = {
   OWNERSHIP_TRANSFERRED: Crown,
   ORGANIZATION_DEACTIVATED_BY_OWNER: PowerOff,
   ORGANIZATION_REACTIVATED_BY_OWNER: Power,
+  STUDENT_ADDED: UserPlus,
+  STUDENT_UPDATED: UserPen,
+  STUDENT_ARCHIVED: Archive,
+  STUDENT_RESTORED: ArchiveRestore,
 } as const satisfies Record<ActivityAction, LucideIcon>
 
 type FullNameParams = {
@@ -164,6 +168,14 @@ function ActivitySentence({ entry, shouldLinkOrganization }: ActivityRowProps) {
           {fullName({ user: entry.actor, fallback: DELETED_ACTOR })} reactivated {organization}
         </>
       )
+    case 'STUDENT_ADDED':
+      return <SubjectSentence entry={entry} verb="added" noun="student" organization={subjectOrganization} />
+    case 'STUDENT_UPDATED':
+      return <SubjectSentence entry={entry} verb="changed" noun="student" organization={subjectOrganization} />
+    case 'STUDENT_ARCHIVED':
+      return <SubjectSentence entry={entry} verb="archived" noun="student" organization={subjectOrganization} />
+    case 'STUDENT_RESTORED':
+      return <SubjectSentence entry={entry} verb="restored" noun="student" organization={subjectOrganization} />
     default: {
       const unknown: never = entry.action
       throw new Error(`Unknown activity action: ${String(unknown)}`)
@@ -173,8 +185,8 @@ function ActivitySentence({ entry, shouldLinkOrganization }: ActivityRowProps) {
 
 interface SubjectSentenceProps {
   entry: ActivityEntry
-  verb: 'added' | 'changed' | 'removed'
-  noun: 'location' | 'department' | 'school year' | 'term' | 'holiday'
+  verb: 'added' | 'changed' | 'removed' | 'archived' | 'restored'
+  noun: 'location' | 'department' | 'school year' | 'term' | 'holiday' | 'student'
   organization: ReactNode
 }
 

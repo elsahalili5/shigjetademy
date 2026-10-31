@@ -45,7 +45,7 @@ describe('organization switcher', () => {
     await user.click(await switcherButton())
     await user.click(screen.getByRole('menuitemradio', { name: /Yllka Kindergarten/ }))
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/students'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/academic-periods'))
     const aside = await sidebar()
     expect(within(aside).getByText('Yllka Kindergarten')).toBeInTheDocument()
     expect(within(aside).getByText('School admin')).toBeInTheDocument()
@@ -80,7 +80,7 @@ describe('organization switcher', () => {
     expect(screen.getByRole('menuitemradio', { name: /Yllka Kindergarten/ })).toHaveFocus()
     await user.keyboard('{Enter}')
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/students'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/academic-periods'))
   })
 
   it('remembers the choice after a reload', async () => {
@@ -88,12 +88,12 @@ describe('organization switcher', () => {
     const first = renderRoute('/dashboard/overview')
     await first.user.click(await switcherButton())
     await first.user.click(screen.getByRole('menuitemradio', { name: /Yllka Kindergarten/ }))
-    await waitFor(() => expect(first.router.state.location.pathname).toBe('/dashboard/students'))
+    await waitFor(() => expect(first.router.state.location.pathname).toBe('/dashboard/academic-periods'))
 
     cleanup()
     const { router } = renderRoute('/dashboard')
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/students'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/academic-periods'))
     expect(within(await sidebar()).getByText('Yllka Kindergarten')).toBeInTheDocument()
   })
 

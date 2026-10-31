@@ -17,6 +17,7 @@ import { OrganizationSuspended } from '#/modules/organization/components/organiz
 import { OrganizationDeactivated } from '#/modules/organization-settings/components/organization-deactivated'
 import { OrganizationMark } from '#/modules/organization/components/organization-mark'
 import { OrganizationSwitcher } from '#/modules/organization/components/organization-switcher'
+import { isStudentsManager } from '#/modules/students/utils/permissions'
 
 const SIDEBAR_LINK_CLASS =
   'flex items-center gap-3 rounded-xl px-3.5 py-[10px] font-[550] text-on-navy-2 no-underline transition-colors duration-[180ms] ease-out hover:text-white aria-[current=page]:bg-navy-2 aria-[current=page]:text-white max-[860px]:flex-none max-[860px]:whitespace-nowrap [&_svg]:flex-none aria-[current=page]:[&_svg]:text-green'
@@ -26,6 +27,7 @@ const BUILT_MODULE_PAGES = {
   'organization-profile': '/dashboard/organization-profile',
   locations: '/dashboard/locations',
   'academic-periods': '/dashboard/academic-periods',
+  students: '/dashboard/students',
 } as const
 
 const isBuiltModule = (slug: string): slug is keyof typeof BUILT_MODULE_PAGES => slug in BUILT_MODULE_PAGES
@@ -86,7 +88,7 @@ function DashboardLayout() {
             className="-mx-1 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-1 [scrollbar-width:none] max-[860px]:flex-row max-[860px]:gap-1.5 max-[860px]:overflow-x-auto [&::-webkit-scrollbar]:hidden"
             aria-label="Modules"
           >
-            {isOwner ? <OwnerNavigation /> : <ModuleNavigation isAdmin={isAdmin} />}
+            {isOwner ? <OwnerNavigation /> : <ModuleNavigation isAdmin={isAdmin} shouldShowStudents={isStudentsManager(membership)} />}
           </nav>
 
           <div className="flex items-center gap-2 border-t border-white/10 px-1 pt-4 max-[860px]:hidden">
@@ -208,11 +210,12 @@ function SidebarLinkContent({ icon: Icon, label }: SidebarLinkContentProps) {
 
 interface ModuleNavigationProps {
   isAdmin: boolean
+  shouldShowStudents: boolean
 }
 
 /** The platform admin's modules, or the flat school module list for everyone else in an organization */
-function ModuleNavigation({ isAdmin }: ModuleNavigationProps) {
-  const modules = isAdmin ? ADMIN_MODULES : MODULES
+function ModuleNavigation({ isAdmin, shouldShowStudents }: ModuleNavigationProps) {
+  const modules = isAdmin ? ADMIN_MODULES : MODULES.filter((m) => m.slug !== 'students' || shouldShowStudents)
   return (
     <>
       <span className={SIDEBAR_HEADING_CLASS} aria-hidden="true">

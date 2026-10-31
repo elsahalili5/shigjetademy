@@ -102,6 +102,15 @@ enum ActivityAction {
   OWNERSHIP_TRANSFERRED
   ORGANIZATION_DEACTIVATED_BY_OWNER
   ORGANIZATION_REACTIVATED_BY_OWNER
+  STUDENT_ADDED
+  STUDENT_UPDATED
+  STUDENT_ARCHIVED
+  STUDENT_RESTORED
+}
+
+enum StudentStatus {
+  ACTIVE
+  ARCHIVED
 }
 
 enum WeekStart {
@@ -141,6 +150,7 @@ model User {
   sent_invitations    Invitation[] @relation("InvitedBy")
   activity_as_actor   ActivityLog[] @relation("ActivityActor")
   activity_as_target  ActivityLog[] @relation("ActivityTarget")
+  student_records     Student[]
 }
 
 /// Platform-wide roles (PLATFORM_ADMIN); organization roles live on Membership
@@ -221,6 +231,7 @@ model Organization {
   departments    Department[]
   academic_years AcademicYear[]
   settings       OrganizationSettings?
+  students       Student[]
 }
 
 /// How one organization runs. An organization without a row reads the defaults; the row is written on its first save.
@@ -330,6 +341,38 @@ model AcademicHoliday {
   @@index([academic_year_id])
 }
 
+// ─────────────────────────────────────────
+// STUDENTS
+// ─────────────────────────────────────────
+
+/// A student the organization keeps a record of. It is not an account: academic data hangs on the student's id, never on a user's,
+/// so linking a login later never creates a second record or changes history.
+model Student {
+  id              String        @id @default(uuid()) @db.Uuid
+  organization_id String        @db.Uuid
+  first_name      String
+  last_name       String
+  date_of_birth   DateTime?     @db.Date
+  /// Unique in the organization; assigned as STU-0001, STU-0002… unless staff type their own
+  student_number  String
+  enrolled_on     DateTime      @default(dbgenerated("CURRENT_DATE")) @db.Date
+  status          StudentStatus @default(ACTIVE)
+  /// The login linked to this record, at most one; none until student logins exist
+  user_id         String?       @db.Uuid
+  notes           String?
+
+  created_at      DateTime      @default(now())
+  updated_at      DateTime      @updatedAt
+
+  organization    Organization  @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  user            User?         @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@unique([organization_id, student_number])
+  @@unique([organization_id, user_id])
+  @@index([organization_id, status])
+  @@index([organization_id, last_name])
+}
+
 /// A user's place in one organization. One user can belong to many organizations, once each.
 model Membership {
   id              String           @id @default(uuid()) @db.Uuid
@@ -383,7 +426,7 @@ model ActivityLog {
   action          ActivityAction
   organization_id String?        @db.Uuid
   target_user_id  String?        @db.Uuid
-  /// The location's, department's or academic period's name, so the entry still reads right after it is removed
+  /// The location's, department's, academic period's or student's name, so the entry still reads right after it is removed
   subject_name    String?
   created_at      DateTime       @default(now())
 
