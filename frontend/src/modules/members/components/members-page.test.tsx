@@ -68,6 +68,26 @@ describe('MembersPage', () => {
     expect(within(screen.getByRole('region', { name: 'People with access' })).getByText('Students')).toBeInTheDocument()
   })
 
+  it('offers academic periods under Organization, and saves it', async () => {
+    signInAsOwnerWithMembers()
+    let savedPermissions: unknown = null
+    server.use(
+      http.patch('*/api/organizations/org-1/members/membership-2', async ({ request }) => {
+        savedPermissions = Reflect.get(Object(await request.json()), 'permissions')
+        return HttpResponse.json({ data: { ...ADMIN, permissions: [...ADMIN.permissions, 'MANAGE_ACADEMIC_PERIODS'] } })
+      }),
+    )
+    const { user } = renderRoute('/dashboard/members')
+
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+    expect(within(editDialog()).getByText('Organization')).toBeInTheDocument()
+    await user.click(screen.getByRole('checkbox', { name: /Academic periods/ }))
+    await user.click(screen.getByRole('button', { name: 'Save changes' }))
+
+    expect(await screen.findByText('Saved changes for Admin One.')).toBeInTheDocument()
+    expect(savedPermissions).toEqual(['MANAGE_STUDENTS', 'VIEW_REPORTS', 'MANAGE_ACADEMIC_PERIODS'])
+  })
+
   it('asks for at least one permission when editing', async () => {
     signInAsOwnerWithMembers()
     const { user } = renderRoute('/dashboard/members')

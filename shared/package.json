@@ -8,7 +8,8 @@
     "./organization": "./src/organization.ts",
     "./auth": "./src/auth.ts",
     "./activity": "./src/activity.ts",
-    "./location": "./src/location.ts"
+    "./location": "./src/location.ts",
+    "./academic-periods": "./src/academic-periods.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
