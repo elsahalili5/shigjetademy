@@ -30,6 +30,7 @@ import { Route as DashboardMembersRouteImport } from './routes/dashboard/members
 import { Route as DashboardOrganizationProfileRouteImport } from './routes/dashboard/organization-profile'
 import { Route as DashboardOverviewRouteImport } from './routes/dashboard/overview'
 import { Route as DashboardProfileRouteImport } from './routes/dashboard/profile'
+import { Route as OrganizationsNewRouteImport } from './routes/organizations/new'
 import { Route as appPlatformIndexRouteImport } from './routes/(app)/platform/index'
 import { Route as appPlatformSlugRouteImport } from './routes/(app)/platform/$slug'
 import { Route as DashboardClientsOrganizationIdRouteImport } from './routes/dashboard/clients/$organizationId'
@@ -138,6 +139,11 @@ const DashboardProfileRoute = DashboardProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
+const OrganizationsNewRoute = OrganizationsNewRouteImport.update({
+  id: '/organizations/new',
+  path: '/organizations/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const appPlatformIndexRoute = appPlatformIndexRouteImport.update({
   id: '/platform/',
   path: '/platform/',
@@ -173,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/organization-profile': typeof DashboardOrganizationProfileRoute
   '/dashboard/overview': typeof DashboardOverviewRoute
   '/dashboard/profile': typeof DashboardProfileRoute
+  '/organizations/new': typeof OrganizationsNewRoute
   '/': typeof appIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/platform/$slug': typeof appPlatformSlugRoute
@@ -196,6 +203,7 @@ export interface FileRoutesByTo {
   '/dashboard/organization-profile': typeof DashboardOrganizationProfileRoute
   '/dashboard/overview': typeof DashboardOverviewRoute
   '/dashboard/profile': typeof DashboardProfileRoute
+  '/organizations/new': typeof OrganizationsNewRoute
   '/': typeof appIndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/platform/$slug': typeof appPlatformSlugRoute
@@ -223,6 +231,7 @@ export interface FileRoutesById {
   '/dashboard/organization-profile': typeof DashboardOrganizationProfileRoute
   '/dashboard/overview': typeof DashboardOverviewRoute
   '/dashboard/profile': typeof DashboardProfileRoute
+  '/organizations/new': typeof OrganizationsNewRoute
   '/(app)/': typeof appIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/(app)/platform/$slug': typeof appPlatformSlugRoute
@@ -249,6 +258,7 @@ export interface FileRouteTypes {
     | '/dashboard/organization-profile'
     | '/dashboard/overview'
     | '/dashboard/profile'
+    | '/organizations/new'
     | '/'
     | '/dashboard/'
     | '/platform/$slug'
@@ -272,6 +282,7 @@ export interface FileRouteTypes {
     | '/dashboard/organization-profile'
     | '/dashboard/overview'
     | '/dashboard/profile'
+    | '/organizations/new'
     | '/'
     | '/dashboard'
     | '/platform/$slug'
@@ -298,6 +309,7 @@ export interface FileRouteTypes {
     | '/dashboard/organization-profile'
     | '/dashboard/overview'
     | '/dashboard/profile'
+    | '/organizations/new'
     | '/(app)/'
     | '/dashboard/'
     | '/(app)/platform/$slug'
@@ -310,6 +322,7 @@ export interface RootRouteChildren {
   authRouteRoute: typeof authRouteRouteWithChildren
   DashboardRouteRoute: typeof DashboardRouteRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
+  OrganizationsNewRoute: typeof OrganizationsNewRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -461,6 +474,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardProfileRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
+    '/organizations/new': {
+      id: '/organizations/new'
+      path: '/organizations/new'
+      fullPath: '/organizations/new'
+      preLoaderRoute: typeof OrganizationsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/(app)/platform/': {
       id: '/(app)/platform/'
       path: '/platform'
@@ -560,6 +580,7 @@ const rootRouteChildren: RootRouteChildren = {
   authRouteRoute: authRouteRouteWithChildren,
   DashboardRouteRoute: DashboardRouteRouteWithChildren,
   OnboardingRoute: OnboardingRoute,
+  OrganizationsNewRoute: OrganizationsNewRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

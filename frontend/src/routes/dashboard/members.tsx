@@ -1,26 +1,20 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
-import { getSessionUser } from '#/lib/route-guard'
+import { Navigate, createFileRoute } from '@tanstack/react-router'
+import { requireOrganizationOwner } from '#/lib/route-guard'
 import { useTitle } from '#/lib/use-title'
-import { useAuth } from '#/modules/auth/hooks/use-auth'
-import { getOwnedOrganization } from '#/modules/auth/utils/session-user'
+import { useActiveMembership } from '#/modules/auth/hooks/use-active-membership'
+import { isOrganizationOwner } from '#/modules/auth/utils/session-user'
 import { MembersPage } from '#/modules/members/components/members-page'
 
 // Only the organization's owner manages who has access
 export const Route = createFileRoute('/dashboard/members')({
-  beforeLoad: ({ context }) => {
-    const user = getSessionUser(context.queryClient)
-    if (!user || !getOwnedOrganization(user)) {
-      throw redirect({ to: '/dashboard' })
-    }
-  },
+  beforeLoad: ({ context }) => requireOrganizationOwner(context.queryClient),
   component: DashboardMembersPage,
 })
 
 function DashboardMembersPage() {
   useTitle('Members · Shigjetademy')
-  const auth = useAuth()
-  const ownedOrganization = auth.user ? getOwnedOrganization(auth.user) : undefined
-  // The route guard already sent anyone without an owned organization away
-  if (!ownedOrganization) return null
-  return <MembersPage organizationId={ownedOrganization.id} organizationName={ownedOrganization.name} />
+  const membership = useActiveMembership()
+  // Switching to an organization the user doesn't own, here or in another tab, sends them to its home
+  if (!membership || !isOrganizationOwner(membership)) return <Navigate to="/dashboard" />
+  return <MembersPage organizationId={membership.organization.id} organizationName={membership.organization.name} />
 }

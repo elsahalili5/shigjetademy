@@ -7,8 +7,9 @@ import { useTitle } from '#/lib/use-title'
 import { moduleBySlug } from '#/lib/modules'
 import type { Module } from '#/lib/modules'
 import { ActivityModule } from '#/modules/activity/components/activity-module'
+import { useActiveMembership } from '#/modules/auth/hooks/use-active-membership'
 import { useAuth } from '#/modules/auth/hooks/use-auth'
-import { getOwnedOrganization, isPlatformAdmin } from '#/modules/auth/utils/session-user'
+import { isOrganizationOwner, isPlatformAdmin } from '#/modules/auth/utils/session-user'
 import { ClientsModule } from '#/modules/organization/components/clients-module'
 import { StatisticsModule } from '#/modules/organization/components/statistics-module'
 
@@ -30,10 +31,11 @@ export const Route = createFileRoute('/dashboard/$module')({
 /** One module on the dashboard's white panel */
 function DashboardModulePage() {
   const auth = useAuth()
+  const membership = useActiveMembership()
   const { module: slug } = Route.useParams()
   const adminModule = auth.user && isPlatformAdmin(auth.user) ? adminModuleBySlug(slug) : undefined
   const schoolModule = moduleBySlug(slug)
-  const isOwner = !!auth.user && !!getOwnedOrganization(auth.user)
+  const isOwner = isOrganizationOwner(membership)
 
   if (adminModule) return <AdminModulePage module={adminModule} />
   // The route guard already sent unknown modules back to the dashboard

@@ -2,12 +2,19 @@ import { redirect } from '@tanstack/react-router'
 import type { QueryClient } from '@tanstack/react-query'
 import type { AuthUser } from '@shigjetademy/shared/auth'
 import { ME_QUERY_KEY } from '#/modules/auth/hooks/use-me-query'
+import { readActiveOrganizationId } from '#/modules/auth/utils/active-organization-storage'
 import { readStoredTokens } from '#/modules/auth/utils/auth-storage'
-import { getHomePath, getManagedMembership, hasOrganization, isPlatformAdmin } from '#/modules/auth/utils/session-user'
+import { getActiveMembership, getHomePath, hasOrganization, isOrganizationManager, isOrganizationOwner, isPlatformAdmin } from '#/modules/auth/utils/session-user'
 
 // Guards read the query cache, not React state, so a navigate right after login already sees the new session
 export const getSessionUser = (queryClient: QueryClient) =>
   readStoredTokens() ? (queryClient.getQueryData<AuthUser | null>(ME_QUERY_KEY) ?? null) : null
+
+/** The session user's membership in the active organization, read the same way as useActiveMembership */
+export const getSessionMembership = (queryClient: QueryClient) => {
+  const user = getSessionUser(queryClient)
+  return user ? getActiveMembership({ user, activeOrganizationId: readActiveOrganizationId() }) : undefined
+}
 
 export function requireAuthenticated(queryClient: QueryClient) {
   const user = getSessionUser(queryClient)
@@ -41,10 +48,16 @@ export function requireOrganization(queryClient: QueryClient) {
   }
 }
 
-/** Pages for the people who run an organization, its owner and school admins; anyone else goes back to their dashboard */
+/** Pages for the people who run the active organization, its owner and school admins; anyone else goes back to their dashboard */
 export function requireOrganizationManager(queryClient: QueryClient) {
-  const user = getSessionUser(queryClient)
-  if (!user || !getManagedMembership(user)) {
+  if (!isOrganizationManager(getSessionMembership(queryClient))) {
+    throw redirect({ to: '/dashboard' })
+  }
+}
+
+/** Pages only the active organization's owner may open; anyone else goes back to their dashboard */
+export function requireOrganizationOwner(queryClient: QueryClient) {
+  if (!isOrganizationOwner(getSessionMembership(queryClient))) {
     throw redirect({ to: '/dashboard' })
   }
 }

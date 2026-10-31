@@ -32,3 +32,11 @@ export const signInAs = (user: AuthUser) => {
   storeTokens({ accessToken: 'access-token', refreshToken: 'refresh-token' })
   server.use(http.get('*/api/auth/me', () => HttpResponse.json({ data: user })))
 }
+
+/** A second organization where the same user is a school admin, for multi-organization tests */
+export const YLLKA_ADMIN_MEMBERSHIP: AuthUser['memberships'][number] = {
+  id: 'membership-2',
+  role: 'ADMIN',
+  permissions: [],
+  organization: { id: 'org-2', name: 'Yllka Kindergarten', type: 'KINDERGARTEN', status: 'ACTIVE' },
+}

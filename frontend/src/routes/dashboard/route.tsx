@@ -8,10 +8,13 @@ import { MODULES, moduleBySlug } from '#/lib/modules'
 import { OWNER_NAV_SECTIONS } from '#/lib/owner-navigation'
 import type { OwnerNavItem } from '#/lib/owner-navigation'
 import { requireOrganization } from '#/lib/route-guard'
+import { useActiveMembership } from '#/modules/auth/hooks/use-active-membership'
 import { useAuth } from '#/modules/auth/hooks/use-auth'
-import { getOwnedOrganization, isPlatformAdmin } from '#/modules/auth/utils/session-user'
+import { isOrganizationOwner, isPlatformAdmin } from '#/modules/auth/utils/session-user'
 import { ROLE_LABELS } from '#/modules/auth/utils/role-labels'
 import { OrganizationSuspended } from '#/modules/organization/components/organization-suspended'
+import { OrganizationMark } from '#/modules/organization/components/organization-mark'
+import { OrganizationSwitcher } from '#/modules/organization/components/organization-switcher'
 
 const SIDEBAR_LINK_CLASS =
   'flex items-center gap-3 rounded-xl px-3.5 py-[10px] font-[550] text-on-navy-2 no-underline transition-colors duration-[180ms] ease-out hover:text-white aria-[current=page]:bg-navy-2 aria-[current=page]:text-white max-[860px]:flex-none max-[860px]:whitespace-nowrap [&_svg]:flex-none aria-[current=page]:[&_svg]:text-green'
@@ -36,14 +39,14 @@ function DashboardLayout() {
   const auth = useAuth()
   const navigate = useNavigate()
 
-  const membership = auth.user?.memberships[0]
+  const membership = useActiveMembership()
   const fullName = auth.user ? `${auth.user.first_name} ${auth.user.last_name}` : ''
   const organizationName = membership?.organization.name ?? 'Shigjetademy'
   const roleLabel = membership ? ROLE_LABELS[membership.role] : 'Platform admin'
   // The platform admin runs the platform, so their sidebar lists clients and statistics instead of school modules
   const isAdmin = auth.user ? isPlatformAdmin(auth.user) : false
   const isSuspended = !isAdmin && membership?.organization.status === 'SUSPENDED'
-  const isOwner = !!auth.user && !!getOwnedOrganization(auth.user)
+  const isOwner = isOrganizationOwner(membership)
 
   const handleLogout = async () => {
     await auth.logout()
@@ -64,15 +67,17 @@ function DashboardLayout() {
             </Link>
           </div>
 
-          <div className="flex items-center gap-3 rounded-xl bg-navy-2 px-3 py-2.5 max-[860px]:hidden">
-            <span className="grid size-9 flex-none place-items-center rounded-[10px] bg-kraft font-display font-bold text-navy" aria-hidden="true">
-              {organizationName.slice(0, 1)}
-            </span>
-            <span className="grid min-w-0 leading-tight">
-              <span className="truncate font-semibold text-white">{organizationName}</span>
-              <span className="truncate text-[0.87rem] text-on-navy-2">{roleLabel}</span>
-            </span>
-          </div>
+          {auth.user && membership && !isAdmin ? (
+            <OrganizationSwitcher memberships={auth.user.memberships} activeMembership={membership} />
+          ) : (
+            <div className="flex items-center gap-3 rounded-xl bg-navy-2 px-3 py-2.5">
+              <OrganizationMark name={organizationName} />
+              <span className="grid min-w-0 leading-tight">
+                <span className="truncate font-semibold text-white">{organizationName}</span>
+                <span className="truncate text-[0.87rem] text-on-navy-2">{roleLabel}</span>
+              </span>
+            </div>
+          )}
 
           <nav
             className="-mx-1 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-1 [scrollbar-width:none] max-[860px]:flex-row max-[860px]:gap-1.5 max-[860px]:overflow-x-auto [&::-webkit-scrollbar]:hidden"

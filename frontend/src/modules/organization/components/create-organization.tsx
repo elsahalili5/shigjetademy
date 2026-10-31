@@ -1,6 +1,6 @@
 import { useId } from 'react'
 import type { ReactNode } from 'react'
-import { ArrowRight, Baby, ChevronDown, GraduationCap, Loader2, Presentation, School, Shapes, UserRound } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Baby, ChevronDown, GraduationCap, Loader2, Presentation, School, Shapes, UserRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { ORGANIZATION_TYPES, STUDENT_COUNTS } from '@shigjetademy/shared'
@@ -24,20 +24,37 @@ const TYPE_DETAILS = {
   Other: { icon: Shapes, hint: 'Something else, it adapts' },
 } as const satisfies Record<OrganizationType, { icon: LucideIcon; hint: string }>
 
+const VARIANT_COPY = {
+  onboarding: {
+    eyebrow: 'Step 2 of 2 · Your organization',
+    title: 'Set up your organization',
+    intro: 'You’ll be its owner. You can invite admins and lecturers once it’s ready.',
+  },
+  another: {
+    eyebrow: 'New organization',
+    title: 'Create another organization',
+    intro: 'You’ll be its owner too. Its members, locations and activity stay separate from your other organizations.',
+  },
+} as const
+
+type CreateOrganizationVariant = keyof typeof VARIANT_COPY
+
 interface CreateOrganizationProps {
+  variant: CreateOrganizationVariant
   onCreate: (input: CreateOrganizationInput) => void
   onEdit: () => void
   isPending: boolean
   backendError: unknown
 }
 
-/** Onboarding step where a new owner names their organization: form on the left, a live workspace preview on the right. */
-export function CreateOrganization({ onCreate, onEdit, isPending, backendError }: CreateOrganizationProps) {
+/** Where an owner names a new organization: form on the left, a live workspace preview on the right. */
+export function CreateOrganization({ variant, onCreate, onEdit, isPending, backendError }: CreateOrganizationProps) {
   const createOrganizationForm = useCreateOrganizationForm({ onSubmit: onCreate })
   const { form } = createOrganizationForm
   const { errors } = form.formState
   const fieldError = (fieldName: keyof CreateOrganizationInput) =>
     getFieldError<CreateOrganizationInput>({ fieldName, formErrors: errors, backendError })
+  const copy = VARIANT_COPY[variant]
   const ids = { name: useId(), type: useId(), country: useId(), currency: useId(), size: useId() }
 
   const name = form.watch('name')
@@ -52,9 +69,15 @@ export function CreateOrganization({ onCreate, onEdit, isPending, backendError }
         </Link>
 
         <div className="mx-auto mt-[clamp(32px,6vh,72px)] w-[min(100%,560px)] pb-10">
-          <p className="font-data text-[0.807rem] tracking-[0.06em] text-ink-3 uppercase">Step 2 of 2 · Your organization</p>
-          <h1 className="mt-3 text-[clamp(2rem,3.4vw,2.8rem)] font-bold tracking-[-0.034em]">Set up your organization</h1>
-          <p className="mt-2.5 text-ink-2">You’ll be its owner. You can invite admins and lecturers once it’s ready.</p>
+          {variant === 'another' ? (
+            <Link className="mb-6 inline-flex items-center gap-1.5 font-semibold text-ink-2 no-underline hover:text-ink" to="/dashboard">
+              <ArrowLeft size={16} strokeWidth={2} aria-hidden="true" />
+              Back to your dashboard
+            </Link>
+          ) : null}
+          <p className="font-data text-[0.807rem] tracking-[0.06em] text-ink-3 uppercase">{copy.eyebrow}</p>
+          <h1 className="mt-3 text-[clamp(2rem,3.4vw,2.8rem)] font-bold tracking-[-0.034em]">{copy.title}</h1>
+          <p className="mt-2.5 text-ink-2">{copy.intro}</p>
 
           <form className="mt-9 grid gap-7" noValidate onSubmit={createOrganizationForm.handleSubmit} onChange={onEdit}>
             <Field label="Organization name" htmlFor={ids.name} error={fieldError('name')}>

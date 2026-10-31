@@ -30,5 +30,5 @@ function OnboardingPage() {
     if (createOrganization.isError) createOrganization.reset()
   }
 
-  return <CreateOrganization onCreate={handleCreate} onEdit={handleEdit} isPending={createOrganization.isPending} backendError={createOrganization.error} />
+  return <CreateOrganization variant="onboarding" onCreate={handleCreate} onEdit={handleEdit} isPending={createOrganization.isPending} backendError={createOrganization.error} />
 }

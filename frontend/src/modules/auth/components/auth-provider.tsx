@@ -6,6 +6,7 @@ import { AuthContext } from './auth-context'
 import type { AuthContextValue } from './auth-context'
 import { authApi } from '../api/auth-api'
 import { ME_QUERY_KEY, useMeQuery } from '../hooks/use-me-query'
+import { clearActiveOrganizationId } from '../utils/active-organization-storage'
 import { clearStoredTokens, readStoredTokens, storeTokens } from '../utils/auth-storage'
 import { LoadingUser } from './loading-user'
 import { LoadUserError } from './load-user-error'
@@ -28,6 +29,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const logout = async () => {
     const tokens = readStoredTokens()
     clearStoredTokens()
+    clearActiveOrganizationId()
     setHasStoredTokens(false)
     queryClient.clear()
     if (!tokens) return
