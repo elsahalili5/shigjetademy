@@ -1,6 +1,8 @@
+import type { Prisma } from '@generated/prisma/client.ts'
 import type { ActivityAction, MemberRole, OrganizationType } from '@generated/prisma/enums.ts'
 import { prisma } from '@lib/prisma.ts'
 import { HttpError } from '@lib/httpError.ts'
+import { ActivityService } from '@modules/activity/activity.service.ts'
 import type { CreateOrganizationInput, UpdateMemberInput, UpdateOrganizationStatusInput } from './organization.types.ts'
 
 // The form sends readable labels; the database stores enum values
@@ -14,7 +16,10 @@ const ORGANIZATION_TYPE_VALUES = {
 } as const satisfies Record<CreateOrganizationInput['type'], OrganizationType>
 
 const STATS_WEEKS = 12
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000
+const HOUR_MS = 60 * 60 * 1000
+const WEEK_MS = 7 * 24 * HOUR_MS
+const EXPIRING_SOON_MS = 48 * HOUR_MS
+const OVERVIEW_ACTIVITY_LIMIT = 10
 
 const emptyMemberCounts = (): Record<MemberRole, number> => ({ OWNER: 0, ADMIN: 0, LECTURER: 0, STUDENT: 0, GUARDIAN: 0 })
 
@@ -40,7 +45,11 @@ type MembershipParams = {
   membershipId: string
 }
 
-type UpdateMemberParams = MembershipParams & {
+type MemberChangeParams = MembershipParams & {
+  actorId: string
+}
+
+type UpdateMemberParams = MemberChangeParams & {
   data: UpdateMemberInput
 }
 
@@ -63,15 +72,20 @@ type MemberRecord = {
 const toMember = ({ id, role, permissions, created_at, user }: MemberRecord) => ({ ...user, membership_id: id, role, permissions, joined_at: created_at })
 
 /** Only an active School Admin in this organization can have their access changed or be removed */
-const findEditableAdmin = async ({ organizationId, membershipId }: MembershipParams) => {
-  const membership = await prisma.membership.findFirst({ where: { id: membershipId, organization_id: organizationId, status: 'ACTIVE' } })
+const editableAdmin = ({ organizationId, membershipId }: MembershipParams) =>
+  ({ id: membershipId, organization_id: organizationId, status: 'ACTIVE', role: 'ADMIN' }) as const
+
+type RefuseMemberChangeParams = MembershipParams & {
+  tx: Prisma.TransactionClient
+}
+
+/** Explains why a guarded member write changed nothing */
+const refuseMemberChange = async ({ tx, organizationId, membershipId }: RefuseMemberChangeParams): Promise<never> => {
+  const membership = await tx.membership.findFirst({ where: { id: membershipId, organization_id: organizationId, status: 'ACTIVE' }, select: { id: true } })
   if (!membership) {
     throw new HttpError(404, 'Member not found')
   }
-  if (membership.role !== 'ADMIN') {
-    throw new HttpError(400, 'Only school admins can be changed here')
-  }
-  return membership
+  throw new HttpError(400, 'Only school admins can be changed here')
 }
 
 type CreateOrganizationParams = {
@@ -240,6 +254,31 @@ export const OrganizationService = {
     return memberships.map(toMember)
   },
 
+  getOverview: async (organizationId: string) => {
+    const now = new Date()
+    const openInvitation = { organization_id: organizationId, status: 'PENDING', expires_at: { gt: now } } as const
+    const [members, admins, pendingInvitations, adminInvitations, activity] = await Promise.all([
+      prisma.membership.count({ where: { organization_id: organizationId, status: 'ACTIVE' } }),
+      prisma.membership.count({ where: { organization_id: organizationId, status: 'ACTIVE', role: 'ADMIN' } }),
+      prisma.invitation.count({ where: openInvitation }),
+      prisma.invitation.findMany({
+        where: { ...openInvitation, role: 'ADMIN' },
+        orderBy: { expires_at: 'asc' },
+        select: { id: true, email: true, expires_at: true },
+      }),
+      ActivityService.listOrganizationActivity({ organizationId, limit: OVERVIEW_ACTIVITY_LIMIT }),
+    ])
+
+    return {
+      counts: { members, admins, pending_invitations: pendingInvitations },
+      pending_invitations: adminInvitations.map((invitation) => ({
+        ...invitation,
+        is_expiring_soon: invitation.expires_at.getTime() - now.getTime() <= EXPIRING_SOON_MS,
+      })),
+      activity,
+    }
+  },
+
   listPendingInvitations: (organizationId: string) =>
     prisma.invitation.findMany({
       where: { organization_id: organizationId, status: 'PENDING', expires_at: { gt: new Date() } },
@@ -247,18 +286,27 @@ export const OrganizationService = {
       select: { id: true, email: true, role: true, permissions: true, created_at: true, expires_at: true },
     }),
 
-  updateMember: async ({ organizationId, membershipId, data }: UpdateMemberParams) => {
-    const editable = await findEditableAdmin({ organizationId, membershipId })
-    const [, membership] = await prisma.$transaction([
-      prisma.user.update({ where: { id: editable.user_id }, data: { first_name: data.first_name, last_name: data.last_name } }),
-      prisma.membership.update({ where: { id: membershipId }, data: { permissions: data.permissions }, select: memberSelect }),
-    ])
-    return toMember(membership)
-  },
+  // Guarded writes, so a removal at the same moment can't be overwritten or logged twice
+  updateMember: ({ organizationId, membershipId, actorId, data }: UpdateMemberParams) =>
+    prisma.$transaction(async (tx) => {
+      const { count } = await tx.membership.updateMany({ where: editableAdmin({ organizationId, membershipId }), data: { permissions: data.permissions } })
+      if (count === 0) {
+        return refuseMemberChange({ tx, organizationId, membershipId })
+      }
+      const membership = await tx.membership.findUniqueOrThrow({ where: { id: membershipId }, select: { user_id: true } })
+      await tx.user.update({ where: { id: membership.user_id }, data: { first_name: data.first_name, last_name: data.last_name } })
+      await tx.activityLog.create({ data: { actor_id: actorId, action: 'MEMBER_UPDATED', organization_id: organizationId, target_user_id: membership.user_id } })
+      return toMember(await tx.membership.findUniqueOrThrow({ where: { id: membershipId }, select: memberSelect }))
+    }),
 
   // Removing keeps the membership row as REMOVED, so history (and the activity log) still points at it
-  removeMember: async ({ organizationId, membershipId }: MembershipParams) => {
-    await findEditableAdmin({ organizationId, membershipId })
-    await prisma.membership.update({ where: { id: membershipId }, data: { status: 'REMOVED' } })
-  },
+  removeMember: ({ organizationId, membershipId, actorId }: MemberChangeParams) =>
+    prisma.$transaction(async (tx) => {
+      const { count } = await tx.membership.updateMany({ where: editableAdmin({ organizationId, membershipId }), data: { status: 'REMOVED' } })
+      if (count === 0) {
+        return refuseMemberChange({ tx, organizationId, membershipId })
+      }
+      const membership = await tx.membership.findUniqueOrThrow({ where: { id: membershipId }, select: { user_id: true } })
+      await tx.activityLog.create({ data: { actor_id: actorId, action: 'MEMBER_REMOVED', organization_id: organizationId, target_user_id: membership.user_id } })
+    }),
 }

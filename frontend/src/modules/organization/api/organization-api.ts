@@ -3,6 +3,7 @@ import type {
   ClientOrganization,
   ClientOrganizationDetail,
   CreateOrganizationInput,
+  OrganizationOverview,
   OrganizationStatus,
   PlatformStats,
   UpdateOrganizationStatusInput,
@@ -23,6 +24,7 @@ export const organizationApi = {
   list: () => apiClient.get<ClientOrganization[]>('/organizations'),
   stats: () => apiClient.get<PlatformStats>('/organizations/stats'),
   get: (organizationId: string) => apiClient.get<ClientOrganizationDetail>(`/organizations/${organizationId}`),
+  overview: (organizationId: string) => apiClient.get<OrganizationOverview>(`/organizations/${organizationId}/overview`),
   updateStatus: ({ organizationId, status }: UpdateStatusParams) =>
     apiClient.patch<{ id: string; status: OrganizationStatus }, UpdateOrganizationStatusInput>(`/organizations/${organizationId}/status`, { status }),
 }

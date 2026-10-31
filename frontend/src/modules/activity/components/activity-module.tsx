@@ -1,26 +1,15 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { Link } from '@tanstack/react-router'
-import { AlertCircle, CirclePause, CirclePlay, History, KeyRound, Lock, RotateCw } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
-import type { ActivityAction, ActivityEntry, ActivityUser } from '@shigjetademy/shared/activity'
+import { AlertCircle, History, RotateCw } from 'lucide-react'
+import type { ActivityAction, ActivityEntry } from '@shigjetademy/shared/activity'
 import { useClients } from '#/modules/organization/hooks/use-clients'
 import { useActivity } from '../hooks/use-activity'
-import { formatDateTime } from '../utils/format'
 import { ACTIVITY_ACTION_LABELS } from '../utils/labels'
+import { ActivityRow, ActivityRowSkeleton } from './activity-row'
 
 const SKELETON_ROWS = 6
 
-const ACTION_ICONS = {
-  ORGANIZATION_SUSPENDED: CirclePause,
-  ORGANIZATION_REACTIVATED: CirclePlay,
-  PASSWORD_CHANGED: KeyRound,
-  ACCOUNT_LOCKED: Lock,
-} as const satisfies Record<ActivityAction, LucideIcon>
-
 const isActivityAction = (value: string): value is ActivityAction => value in ACTIVITY_ACTION_LABELS
-
-const fullName = (user: ActivityUser | null) => (user ? `${user.first_name} ${user.last_name}` : 'A deleted user')
 
 export function ActivityModule() {
   const clients = useClients()
@@ -157,8 +146,8 @@ function ActivityList({ status, entries, hasFilters, hasNextPage, isLoadingMore,
     <div className="grid justify-items-center gap-6">
       <ol className="w-full" aria-label="Activity" aria-busy={status === 'pending'}>
         {status === 'pending'
-          ? Array.from({ length: SKELETON_ROWS }, (_, index) => <SkeletonRow key={index} />)
-          : entries.map((entry) => <ActivityRow key={entry.id} entry={entry} />)}
+          ? Array.from({ length: SKELETON_ROWS }, (_, index) => <ActivityRowSkeleton key={index} />)
+          : entries.map((entry) => <ActivityRow key={entry.id} entry={entry} shouldLinkOrganization />)}
       </ol>
       {hasNextPage ? (
         <button type="button" className="button button--ghost min-h-11 px-4 text-base" onClick={onLoadMore} disabled={isLoadingMore}>
@@ -166,87 +155,5 @@ function ActivityList({ status, entries, hasFilters, hasNextPage, isLoadingMore,
         </button>
       ) : null}
     </div>
-  )
-}
-
-interface ActivityRowProps {
-  entry: ActivityEntry
-}
-
-function ActivityRow({ entry }: ActivityRowProps) {
-  const Icon = ACTION_ICONS[entry.action]
-  return (
-    <li className="flex items-center gap-3 border-b border-rule py-3">
-      <span className="grid size-10 flex-none place-items-center rounded-[10px] bg-kraft-wash text-kraft-ink" aria-hidden="true">
-        <Icon size={18} strokeWidth={1.9} />
-      </span>
-      <p className="min-w-0 flex-1 text-ink">
-        <ActivitySentence entry={entry} />
-      </p>
-      <time className="tabular text-[0.95rem] whitespace-nowrap text-ink-2" dateTime={entry.created_at}>
-        {formatDateTime(entry.created_at)}
-      </time>
-    </li>
-  )
-}
-
-interface ActivitySentenceProps {
-  entry: ActivityEntry
-}
-
-/** "Platform Admin suspended Oxford Academy", with the client's name linking to its page */
-function ActivitySentence({ entry }: ActivitySentenceProps) {
-  switch (entry.action) {
-    case 'ORGANIZATION_SUSPENDED':
-      return (
-        <>
-          {fullName(entry.actor)} suspended <OrganizationLink organization={entry.organization} />
-        </>
-      )
-    case 'ORGANIZATION_REACTIVATED':
-      return (
-        <>
-          {fullName(entry.actor)} reactivated <OrganizationLink organization={entry.organization} />
-        </>
-      )
-    case 'PASSWORD_CHANGED':
-      return <>{fullName(entry.actor)} changed their password</>
-    case 'ACCOUNT_LOCKED':
-      return (
-        <>
-          {fullName(entry.target_user)}’s account was locked after too many failed logins
-        </>
-      )
-    default: {
-      const unknown: never = entry.action
-      throw new Error(`Unknown activity action: ${String(unknown)}`)
-    }
-  }
-}
-
-interface OrganizationLinkProps {
-  organization: ActivityEntry['organization']
-}
-
-function OrganizationLink({ organization }: OrganizationLinkProps) {
-  if (!organization) return <>a deleted client</>
-  return (
-    <Link
-      to="/dashboard/clients/$organizationId"
-      params={{ organizationId: organization.id }}
-      className="font-semibold text-ink no-underline hover:underline"
-    >
-      {organization.name}
-    </Link>
-  )
-}
-
-function SkeletonRow() {
-  return (
-    <li className="flex items-center gap-3 border-b border-rule py-3" aria-hidden="true">
-      <span className="size-10 flex-none animate-pulse rounded-[10px] bg-mist" />
-      <span className="h-3.5 w-72 max-w-full flex-1 animate-pulse rounded bg-mist" />
-      <span className="h-3.5 w-28 animate-pulse rounded bg-mist" />
-    </li>
   )
 }

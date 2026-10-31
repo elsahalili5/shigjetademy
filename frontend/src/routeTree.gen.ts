@@ -26,8 +26,8 @@ import { Route as authSignupRouteImport } from './routes/(auth)/signup'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as DashboardModuleRouteImport } from './routes/dashboard/$module'
 import { Route as DashboardMembersRouteImport } from './routes/dashboard/members'
+import { Route as DashboardOverviewRouteImport } from './routes/dashboard/overview'
 import { Route as DashboardProfileRouteImport } from './routes/dashboard/profile'
-import { Route as InviteTokenRouteImport } from './routes/invite/$token'
 import { Route as appPlatformIndexRouteImport } from './routes/(app)/platform/index'
 import { Route as appPlatformSlugRouteImport } from './routes/(app)/platform/$slug'
 import { Route as DashboardClientsOrganizationIdRouteImport } from './routes/dashboard/clients/$organizationId'
@@ -115,15 +115,15 @@ const DashboardMembersRoute = DashboardMembersRouteImport.update({
   path: '/members',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
+const DashboardOverviewRoute = DashboardOverviewRouteImport.update({
+  id: '/overview',
+  path: '/overview',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
 const DashboardProfileRoute = DashboardProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
   getParentRoute: () => DashboardRouteRoute,
-} as any)
-const InviteTokenRoute = InviteTokenRouteImport.update({
-  id: '/invite/$token',
-  path: '/invite/$token',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const appPlatformIndexRoute = appPlatformIndexRouteImport.update({
   id: '/platform/',
@@ -156,8 +156,8 @@ export interface FileRoutesByFullPath {
   '/signup': typeof authSignupRoute
   '/dashboard/$module': typeof DashboardModuleRoute
   '/dashboard/members': typeof DashboardMembersRoute
+  '/dashboard/overview': typeof DashboardOverviewRoute
   '/dashboard/profile': typeof DashboardProfileRoute
-  '/invite/$token': typeof InviteTokenRoute
   '/': typeof appIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/platform/$slug': typeof appPlatformSlugRoute
@@ -177,8 +177,8 @@ export interface FileRoutesByTo {
   '/signup': typeof authSignupRoute
   '/dashboard/$module': typeof DashboardModuleRoute
   '/dashboard/members': typeof DashboardMembersRoute
+  '/dashboard/overview': typeof DashboardOverviewRoute
   '/dashboard/profile': typeof DashboardProfileRoute
-  '/invite/$token': typeof InviteTokenRoute
   '/': typeof appIndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/platform/$slug': typeof appPlatformSlugRoute
@@ -202,8 +202,8 @@ export interface FileRoutesById {
   '/(auth)/signup': typeof authSignupRoute
   '/dashboard/$module': typeof DashboardModuleRoute
   '/dashboard/members': typeof DashboardMembersRoute
+  '/dashboard/overview': typeof DashboardOverviewRoute
   '/dashboard/profile': typeof DashboardProfileRoute
-  '/invite/$token': typeof InviteTokenRoute
   '/(app)/': typeof appIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/(app)/platform/$slug': typeof appPlatformSlugRoute
@@ -226,8 +226,8 @@ export interface FileRouteTypes {
     | '/signup'
     | '/dashboard/$module'
     | '/dashboard/members'
+    | '/dashboard/overview'
     | '/dashboard/profile'
-    | '/invite/$token'
     | '/'
     | '/dashboard/'
     | '/platform/$slug'
@@ -247,8 +247,8 @@ export interface FileRouteTypes {
     | '/signup'
     | '/dashboard/$module'
     | '/dashboard/members'
+    | '/dashboard/overview'
     | '/dashboard/profile'
-    | '/invite/$token'
     | '/'
     | '/dashboard'
     | '/platform/$slug'
@@ -271,8 +271,8 @@ export interface FileRouteTypes {
     | '/(auth)/signup'
     | '/dashboard/$module'
     | '/dashboard/members'
+    | '/dashboard/overview'
     | '/dashboard/profile'
-    | '/invite/$token'
     | '/(app)/'
     | '/dashboard/'
     | '/(app)/platform/$slug'
@@ -285,7 +285,6 @@ export interface RootRouteChildren {
   authRouteRoute: typeof authRouteRouteWithChildren
   DashboardRouteRoute: typeof DashboardRouteRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
-  InviteTokenRoute: typeof InviteTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -409,19 +408,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardMembersRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
+    '/dashboard/overview': {
+      id: '/dashboard/overview'
+      path: '/overview'
+      fullPath: '/dashboard/overview'
+      preLoaderRoute: typeof DashboardOverviewRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
     '/dashboard/profile': {
       id: '/dashboard/profile'
       path: '/profile'
       fullPath: '/dashboard/profile'
       preLoaderRoute: typeof DashboardProfileRouteImport
       parentRoute: typeof DashboardRouteRoute
-    }
-    '/invite/$token': {
-      id: '/invite/$token'
-      path: '/invite/$token'
-      fullPath: '/invite/$token'
-      preLoaderRoute: typeof InviteTokenRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/(app)/platform/': {
       id: '/(app)/platform/'
@@ -494,6 +493,7 @@ const authRouteRouteWithChildren = authRouteRoute._addFileChildren(
 interface DashboardRouteRouteChildren {
   DashboardModuleRoute: typeof DashboardModuleRoute
   DashboardMembersRoute: typeof DashboardMembersRoute
+  DashboardOverviewRoute: typeof DashboardOverviewRoute
   DashboardProfileRoute: typeof DashboardProfileRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardClientsOrganizationIdRoute: typeof DashboardClientsOrganizationIdRoute
@@ -502,6 +502,7 @@ interface DashboardRouteRouteChildren {
 const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardModuleRoute: DashboardModuleRoute,
   DashboardMembersRoute: DashboardMembersRoute,
+  DashboardOverviewRoute: DashboardOverviewRoute,
   DashboardProfileRoute: DashboardProfileRoute,
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardClientsOrganizationIdRoute: DashboardClientsOrganizationIdRoute,
@@ -516,7 +517,6 @@ const rootRouteChildren: RootRouteChildren = {
   authRouteRoute: authRouteRouteWithChildren,
   DashboardRouteRoute: DashboardRouteRouteWithChildren,
   OnboardingRoute: OnboardingRoute,
-  InviteTokenRoute: InviteTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

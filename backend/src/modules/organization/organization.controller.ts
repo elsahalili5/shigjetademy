@@ -8,6 +8,10 @@ type CreateOrganizationRequest = AuthRequest & { body: CreateOrganizationInput }
 
 type UpdateOrganizationStatusRequest = AuthRequest & TypedRequest<UpdateOrganizationStatusInput, OrganizationIdParam>
 
+type UpdateMemberRequest = AuthRequest & TypedRequest<UpdateMemberInput, MembershipParam>
+
+type RemoveMemberRequest = AuthRequest & TypedRequest<unknown, MembershipParam>
+
 export const OrganizationController = {
   createOrganization: async (req: CreateOrganizationRequest, res: Response) => {
     try {
@@ -75,6 +79,15 @@ export const OrganizationController = {
     }
   },
 
+  getOverview: async (req: TypedRequest<unknown, OrganizationIdParam>, res: Response) => {
+    try {
+      const overview = await OrganizationService.getOverview(req.params.organizationId)
+      return res.status(200).json({ data: overview })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to fetch the overview' })
+    }
+  },
+
   listPendingInvitations: async (req: TypedRequest<unknown, OrganizationIdParam>, res: Response) => {
     try {
       const invitations = await OrganizationService.listPendingInvitations(req.params.organizationId)
@@ -84,18 +97,26 @@ export const OrganizationController = {
     }
   },
 
-  updateMember: async (req: TypedRequest<UpdateMemberInput, MembershipParam>, res: Response) => {
+  updateMember: async (req: UpdateMemberRequest, res: Response) => {
     try {
-      const member = await OrganizationService.updateMember({ ...req.params, data: req.body })
+      const actorId = req.user?.id
+      if (!actorId) {
+        return res.status(401).json({ error: 'Unauthorized' })
+      }
+      const member = await OrganizationService.updateMember({ ...req.params, actorId, data: req.body })
       return res.status(200).json({ data: member })
     } catch (error) {
       return sendError({ res, error, fallback: 'Failed to update member' })
     }
   },
 
-  removeMember: async (req: TypedRequest<unknown, MembershipParam>, res: Response) => {
+  removeMember: async (req: RemoveMemberRequest, res: Response) => {
     try {
-      await OrganizationService.removeMember(req.params)
+      const actorId = req.user?.id
+      if (!actorId) {
+        return res.status(401).json({ error: 'Unauthorized' })
+      }
+      await OrganizationService.removeMember({ ...req.params, actorId })
       return res.status(200).json({ message: 'Member removed' })
     } catch (error) {
       return sendError({ res, error, fallback: 'Failed to remove member' })

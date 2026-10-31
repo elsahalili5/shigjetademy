@@ -16,35 +16,7 @@ type Testimonial = {
  * Shigjetademy has no published reviews yet; until this list has entries the section shows an
  * honest invitation to be among the first, never invented quotes.
  */
-const REAL: Testimonial[] = []
-
-/**
- * Design previews for local development only. Vite drops this branch from production builds,
- * so these never reach the live site. Replace with REAL entries before launch.
- */
-const DEV_SAMPLES: Testimonial[] = [
-  {
-    quote: 'Taking the register used to eat the first ten minutes of every lesson. Now it is done before the class settles.',
-    name: 'Sample teacher',
-    role: 'Mathematics teacher',
-    organization: 'Example secondary school',
-  },
-  {
-    quote: 'For the first time I can see who has paid, who is due and who has missed class, all on one screen.',
-    name: 'Sample director',
-    role: 'Director',
-    organization: 'Example language academy',
-  },
-  {
-    quote: 'I get a message the moment my son is marked absent, and his grades are there when I want them.',
-    name: 'Sample parent',
-    role: 'Parent',
-    organization: 'Example primary school',
-  },
-]
-
-const IS_SAMPLE = REAL.length === 0 && import.meta.env.DEV
-const TESTIMONIALS: Testimonial[] = REAL.length ? REAL : import.meta.env.DEV ? DEV_SAMPLES : []
+const TESTIMONIALS: Testimonial[] = []
 
 const TONES = ['var(--green)', 'var(--kraft)', 'var(--coral)']
 const EVERY = 5500
@@ -196,11 +168,7 @@ export function Testimonials() {
                       } as CSSProperties
                     }
                   >
-                    <div className="flex items-center justify-between">
-                      <Quote className="text-(--tone)" size={26} strokeWidth={2} aria-hidden="true" />
-                      {IS_SAMPLE && // Sample marker: impossible to mistake for a real review
-                        <span className="rounded-full bg-coral-wash px-2.5 py-[3px] text-[0.785rem] font-bold text-coral-deep">Sample · dev only</span>}
-                    </div>
+                    <Quote className="text-(--tone)" size={26} strokeWidth={2} aria-hidden="true" />
                     <blockquote>
                       <p className="font-display text-[clamp(1.35rem,2.2vw,1.9rem)] leading-[1.28] font-[620] tracking-[-0.02em] text-pretty text-ink">{t.quote}</p>
                     </blockquote>

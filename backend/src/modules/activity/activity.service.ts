@@ -4,6 +4,22 @@ import type { ListActivityQuery } from './activity.types.ts'
 
 const activityUserSelect = { id: true, first_name: true, last_name: true, email: true } as const
 
+const activityEntrySelect = {
+  id: true,
+  action: true,
+  created_at: true,
+  actor: { select: activityUserSelect },
+  organization: { select: { id: true, name: true } },
+  target_user: { select: activityUserSelect },
+} as const
+
+const newestFirst = [{ created_at: 'desc' }, { id: 'desc' }] as const satisfies Prisma.ActivityLogOrderByWithRelationInput[]
+
+type ListOrganizationActivityParams = {
+  organizationId: string
+  limit: number
+}
+
 // Password changes and lockouts carry no organization, so a client's own entries also include those of its members
 const forOrganization = (organizationId: string): Prisma.ActivityLogWhereInput => ({
   OR: [
@@ -29,15 +45,12 @@ export const ActivityService = {
         action,
         AND: [organizationId ? forOrganization(organizationId) : {}, before && beforeId ? olderThan({ before, beforeId }) : {}],
       },
-      orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
+      orderBy: newestFirst,
       take: limit,
-      select: {
-        id: true,
-        action: true,
-        created_at: true,
-        actor: { select: activityUserSelect },
-        organization: { select: { id: true, name: true } },
-        target_user: { select: activityUserSelect },
-      },
+      select: activityEntrySelect,
     }),
+
+  // An owner sees only what happened in their organization, not its members' personal security events
+  listOrganizationActivity: ({ organizationId, limit }: ListOrganizationActivityParams) =>
+    prisma.activityLog.findMany({ where: { organization_id: organizationId }, orderBy: newestFirst, take: limit, select: activityEntrySelect }),
 }

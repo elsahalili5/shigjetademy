@@ -1,6 +1,7 @@
 // The create-organization form and the endpoint that stores it share this schema.
 import { z } from 'zod'
 import { PERMISSIONS } from './auth.ts'
+import type { ActivityEntry } from './activity.ts'
 import type { MemberRole, Permission } from './auth.ts'
 
 export const ORGANIZATION_TYPES = ['School', 'Kindergarten', 'Academy', 'Training centre', 'Independent lecturer', 'Other'] as const
@@ -130,3 +131,18 @@ export const updateMemberSchema = z.object({
 })
 
 export type UpdateMemberInput = z.infer<typeof updateMemberSchema>
+
+/** An open School Admin invitation on the owner's Overview */
+export type OverviewInvitation = {
+  id: string
+  email: string
+  expires_at: string
+  is_expiring_soon: boolean
+}
+
+/** The owner's Overview: real counts, open admin invitations (soonest to expire first) and the latest activity */
+export type OrganizationOverview = {
+  counts: { members: number; admins: number; pending_invitations: number }
+  pending_invitations: OverviewInvitation[]
+  activity: ActivityEntry[]
+}

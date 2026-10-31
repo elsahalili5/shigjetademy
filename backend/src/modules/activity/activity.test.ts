@@ -70,6 +70,44 @@ describe('recording activity', () => {
     ])
   })
 
+  it('records the owner editing and then removing a school admin', async () => {
+    const adminUserId = (await createUser({ email: 'admin1@oxford.test' })).id
+    const { id: membershipId } = await prisma.membership.create({ data: { user_id: adminUserId, organization_id: organizationId, role: 'ADMIN' } })
+    const ownerAuth = await loginAs('owner@oxford.test')
+    const memberPath = `/api/organizations/${organizationId}/members/${membershipId}`
+
+    await request(app).patch(memberPath).set('Authorization', ownerAuth).send({ first_name: 'Drita', last_name: 'Berisha', permissions: ['MANAGE_STUDENTS'] })
+    await request(app).delete(memberPath).set('Authorization', ownerAuth)
+
+    expect(await readLog()).toEqual([
+      { actor_id: ownerId, action: 'MEMBER_UPDATED', organization_id: organizationId, target_user_id: adminUserId, created_at: expect.any(Date) },
+      { actor_id: ownerId, action: 'MEMBER_REMOVED', organization_id: organizationId, target_user_id: adminUserId, created_at: expect.any(Date) },
+    ])
+  })
+
+  it('records one removal when a school admin is removed twice, and refuses editing them afterwards', async () => {
+    const adminUserId = (await createUser({ email: 'admin1@oxford.test' })).id
+    const { id: membershipId } = await prisma.membership.create({ data: { user_id: adminUserId, organization_id: organizationId, role: 'ADMIN' } })
+    const ownerAuth = await loginAs('owner@oxford.test')
+    const memberPath = `/api/organizations/${organizationId}/members/${membershipId}`
+
+    const removals = await Promise.all([request(app).delete(memberPath).set('Authorization', ownerAuth), request(app).delete(memberPath).set('Authorization', ownerAuth)])
+    const edit = await request(app).patch(memberPath).set('Authorization', ownerAuth).send({ first_name: 'Drita', last_name: 'Berisha', permissions: ['MANAGE_STUDENTS'] })
+
+    expect(removals.map((removal) => removal.status).sort()).toEqual([200, 404])
+    expect(edit.status).toBe(404)
+    expect((await readLog()).map((entry) => entry.action)).toEqual(['MEMBER_REMOVED'])
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: adminUserId } })).first_name).toBe('Test')
+  })
+
+  it('records nothing when the owner tries to remove themselves', async () => {
+    const ownerMembership = await prisma.membership.findFirstOrThrow({ where: { organization_id: organizationId, role: 'OWNER' } })
+
+    await request(app).delete(`/api/organizations/${organizationId}/members/${ownerMembership.id}`).set('Authorization', await loginAs('owner@oxford.test'))
+
+    expect(await readLog()).toEqual([])
+  })
+
   it('records a lockout after too many failed logins, with no actor', async () => {
     for (let count = 0; count < MAX_FAILED_ATTEMPTS; count += 1) {
       await request(app).post('/api/auth/login').send({ email: 'owner@oxford.test', password: 'wrong-password' })

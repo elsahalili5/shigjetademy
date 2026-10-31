@@ -48,6 +48,14 @@ router.get(
 )
 
 router.get(
+  '/:organizationId/overview',
+  authMiddleware,
+  validateRequestMiddleware(organizationIdParamSchema, 'params'),
+  requireMembership(['OWNER']),
+  OrganizationController.getOverview,
+)
+
+router.get(
   '/:organizationId/invitations',
   authMiddleware,
   validateRequestMiddleware(organizationIdParamSchema, 'params'),

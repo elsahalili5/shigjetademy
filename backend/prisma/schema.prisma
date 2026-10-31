@@ -79,6 +79,8 @@ enum ActivityAction {
   ORGANIZATION_REACTIVATED
   PASSWORD_CHANGED
   ACCOUNT_LOCKED
+  MEMBER_UPDATED
+  MEMBER_REMOVED
 }
 
 // ─────────────────────────────────────────

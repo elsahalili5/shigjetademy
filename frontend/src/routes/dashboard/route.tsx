@@ -1,14 +1,22 @@
-import { LogOut, Users } from 'lucide-react'
+import { LogOut } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { Link, Outlet, createFileRoute, useNavigate } from '@tanstack/react-router'
 import wordmark from '#/assets/brand/shigjetademy-wordmark.png'
 import { initials } from '#/lib/initials'
 import { ADMIN_MODULES } from '#/lib/admin-modules'
-import { MODULES } from '#/lib/modules'
+import { MODULES, moduleBySlug } from '#/lib/modules'
+import { OWNER_NAV_SECTIONS } from '#/lib/owner-navigation'
+import type { OwnerNavItem } from '#/lib/owner-navigation'
 import { requireOrganization } from '#/lib/route-guard'
 import { useAuth } from '#/modules/auth/hooks/use-auth'
-import { isPlatformAdmin } from '#/modules/auth/utils/get-home-path'
+import { getOwnedOrganization, isPlatformAdmin } from '#/modules/auth/utils/get-home-path'
 import { ROLE_LABELS } from '#/modules/auth/utils/role-labels'
 import { OrganizationSuspended } from '#/modules/organization/components/organization-suspended'
+
+const SIDEBAR_LINK_CLASS =
+  'flex items-center gap-3 rounded-xl px-3.5 py-[10px] font-[550] text-on-navy-2 no-underline transition-colors duration-[180ms] ease-out hover:text-white aria-[current=page]:bg-navy-2 aria-[current=page]:text-white max-[860px]:flex-none max-[860px]:whitespace-nowrap [&_svg]:flex-none aria-[current=page]:[&_svg]:text-green'
+
+const SIDEBAR_HEADING_CLASS = 'px-3.5 pb-2.5 font-data text-[0.807rem] tracking-[0.06em] text-on-navy-2 uppercase max-[860px]:hidden'
 
 export const Route = createFileRoute('/dashboard')({
   beforeLoad: ({ context }) => requireOrganization(context.queryClient),
@@ -20,16 +28,14 @@ function DashboardLayout() {
   const auth = useAuth()
   const navigate = useNavigate()
 
-  // Students module still shows sample data; the sidebar shows the real account
   const membership = auth.user?.memberships[0]
   const fullName = auth.user ? `${auth.user.first_name} ${auth.user.last_name}` : ''
   const organizationName = membership?.organization.name ?? 'Shigjetademy'
   const roleLabel = membership ? ROLE_LABELS[membership.role] : 'Platform admin'
   // The platform admin runs the platform, so their sidebar lists clients and statistics instead of school modules
   const isAdmin = auth.user ? isPlatformAdmin(auth.user) : false
-  const sidebarModules = isAdmin ? ADMIN_MODULES : MODULES
   const isSuspended = !isAdmin && membership?.organization.status === 'SUSPENDED'
-  const isOwner = membership?.role === 'OWNER'
+  const isOwner = !!auth.user && !!getOwnedOrganization(auth.user)
 
   const handleLogout = async () => {
     await auth.logout()
@@ -64,39 +70,7 @@ function DashboardLayout() {
             className="-mx-1 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-1 [scrollbar-width:none] max-[860px]:flex-row max-[860px]:gap-1.5 max-[860px]:overflow-x-auto [&::-webkit-scrollbar]:hidden"
             aria-label="Modules"
           >
-            {isOwner ? (
-              <>
-                <span className="px-3.5 pb-2.5 font-data text-[0.807rem] tracking-[0.06em] text-on-navy-2 uppercase max-[860px]:hidden" aria-hidden="true">
-                  Organization
-                </span>
-                <Link
-                  to="/dashboard/members"
-                  className="flex items-center gap-3 rounded-xl px-3.5 py-[10px] font-[550] text-on-navy-2 no-underline transition-colors duration-[180ms] ease-out hover:text-white aria-[current=page]:bg-navy-2 aria-[current=page]:text-white max-[860px]:flex-none max-[860px]:whitespace-nowrap [&_svg]:flex-none aria-[current=page]:[&_svg]:text-green"
-                >
-                  <Users size={18} strokeWidth={1.9} aria-hidden="true" />
-                  Members
-                </Link>
-                <span className="pb-3 max-[860px]:hidden" aria-hidden="true" />
-              </>
-            ) : null}
-            <span className="px-3.5 pb-2.5 font-data text-[0.807rem] tracking-[0.06em] text-on-navy-2 uppercase max-[860px]:hidden" aria-hidden="true">
-              {isAdmin ? 'Platform' : 'Dashboard'}
-            </span>
-            {sidebarModules.map((m) => {
-              const Icon = m.icon
-              return (
-                <Link
-                  key={m.slug}
-                  to="/dashboard/$module"
-                  params={{ module: m.slug }}
-                  activeOptions={{ exact: true }}
-                  className="flex items-center gap-3 rounded-xl px-3.5 py-[10px] font-[550] text-on-navy-2 no-underline transition-colors duration-[180ms] ease-out hover:text-white aria-[current=page]:bg-navy-2 aria-[current=page]:text-white max-[860px]:flex-none max-[860px]:whitespace-nowrap [&_svg]:flex-none aria-[current=page]:[&_svg]:text-green"
-                >
-                  <Icon size={18} strokeWidth={1.9} aria-hidden="true" />
-                  {m.name}
-                </Link>
-              )
-            })}
+            {isOwner ? <OwnerNavigation /> : <ModuleNavigation isAdmin={isAdmin} />}
           </nav>
 
           <div className="flex items-center gap-2 border-t border-white/10 px-1 pt-4 max-[860px]:hidden">
@@ -132,5 +106,82 @@ function DashboardLayout() {
         </main>
       </div>
     </div>
+  )
+}
+
+/** The owner's sidebar, grouped by area */
+function OwnerNavigation() {
+  return OWNER_NAV_SECTIONS.map((section) => (
+    <div key={section.title} role="group" aria-label={section.title} className="flex flex-col gap-0.5 pb-3 max-[860px]:flex-none max-[860px]:flex-row max-[860px]:gap-1.5 max-[860px]:pb-0">
+      <span className={SIDEBAR_HEADING_CLASS} aria-hidden="true">
+        {section.title}
+      </span>
+      {section.items.map((item) => (
+        <OwnerNavLink key={item.kind === 'page' ? item.to : item.slug} item={item} />
+      ))}
+    </div>
+  ))
+}
+
+interface OwnerNavLinkProps {
+  item: OwnerNavItem
+}
+
+function OwnerNavLink({ item }: OwnerNavLinkProps) {
+  switch (item.kind) {
+    case 'page':
+      return (
+        <Link to={item.to} className={SIDEBAR_LINK_CLASS}>
+          <SidebarLinkContent icon={item.icon} label={item.label} />
+        </Link>
+      )
+    case 'module': {
+      const mod = moduleBySlug(item.slug)
+      if (!mod) return null
+      return (
+        <Link to="/dashboard/$module" params={{ module: item.slug }} activeOptions={{ exact: true }} className={SIDEBAR_LINK_CLASS}>
+          <SidebarLinkContent icon={mod.icon} label={item.label ?? mod.name} />
+        </Link>
+      )
+    }
+    default: {
+      const unknown: never = item
+      throw new Error(`Unknown sidebar item: ${String(unknown)}`)
+    }
+  }
+}
+
+interface SidebarLinkContentProps {
+  icon: LucideIcon
+  label: string
+}
+
+function SidebarLinkContent({ icon: Icon, label }: SidebarLinkContentProps) {
+  return (
+    <>
+      <Icon size={18} strokeWidth={1.9} aria-hidden="true" />
+      {label}
+    </>
+  )
+}
+
+interface ModuleNavigationProps {
+  isAdmin: boolean
+}
+
+/** The platform admin's modules, or the flat school module list for everyone else in an organization */
+function ModuleNavigation({ isAdmin }: ModuleNavigationProps) {
+  const modules = isAdmin ? ADMIN_MODULES : MODULES
+  return (
+    <>
+      <span className={SIDEBAR_HEADING_CLASS} aria-hidden="true">
+        {isAdmin ? 'Platform' : 'Dashboard'}
+      </span>
+      {modules.map((m) => (
+        <Link key={m.slug} to="/dashboard/$module" params={{ module: m.slug }} activeOptions={{ exact: true }} className={SIDEBAR_LINK_CLASS}>
+          <SidebarLinkContent icon={m.icon} label={m.name} />
+        </Link>
+      ))}
+    </>
   )
 }

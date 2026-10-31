@@ -1,15 +1,14 @@
 import { Construction } from 'lucide-react'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
-import { StudentsModule } from '#/components/StudentsModule'
 import { adminModuleBySlug } from '#/lib/admin-modules'
 import type { AdminModule } from '#/lib/admin-modules'
 import { getSessionUser } from '#/lib/route-guard'
 import { useTitle } from '#/lib/use-title'
-import { MODULES, moduleBySlug } from '#/lib/modules'
+import { moduleBySlug } from '#/lib/modules'
 import type { Module } from '#/lib/modules'
 import { ActivityModule } from '#/modules/activity/components/activity-module'
 import { useAuth } from '#/modules/auth/hooks/use-auth'
-import { isPlatformAdmin } from '#/modules/auth/utils/get-home-path'
+import { getOwnedOrganization, isPlatformAdmin } from '#/modules/auth/utils/get-home-path'
 import { ClientsModule } from '#/modules/organization/components/clients-module'
 import { StatisticsModule } from '#/modules/organization/components/statistics-module'
 
@@ -21,8 +20,8 @@ export const Route = createFileRoute('/dashboard/$module')({
     if (isAdmin && !adminModuleBySlug(params.module)) {
       throw redirect({ to: '/dashboard/$module', params: { module: 'clients' } })
     }
-    if (!isAdmin && adminModuleBySlug(params.module)) {
-      throw redirect({ to: '/dashboard/$module', params: { module: 'students' } })
+    if (!isAdmin && !moduleBySlug(params.module)) {
+      throw redirect({ to: '/dashboard' })
     }
   },
   component: DashboardModulePage,
@@ -33,9 +32,13 @@ function DashboardModulePage() {
   const auth = useAuth()
   const { module: slug } = Route.useParams()
   const adminModule = auth.user && isPlatformAdmin(auth.user) ? adminModuleBySlug(slug) : undefined
+  const schoolModule = moduleBySlug(slug)
+  const isOwner = !!auth.user && !!getOwnedOrganization(auth.user)
 
   if (adminModule) return <AdminModulePage module={adminModule} />
-  return <SchoolModulePage mod={moduleBySlug(slug) ?? MODULES[0]} />
+  // The route guard already sent unknown modules back to the dashboard
+  if (!schoolModule) return null
+  return <NotBuilt mod={schoolModule} isOwner={isOwner} />
 }
 
 interface AdminModulePageProps {
@@ -58,23 +61,14 @@ function AdminModulePage({ module }: AdminModulePageProps) {
   }
 }
 
-interface SchoolModulePageProps {
-  mod: Module
-}
-
-/** Only Students & enrolment is built so far */
-function SchoolModulePage({ mod }: SchoolModulePageProps) {
-  useTitle(`${mod.name} · Shigjetademy`)
-  if (mod.slug === 'students') return <StudentsModule mod={mod} />
-  return <NotBuilt mod={mod} />
-}
-
 interface NotBuiltProps {
   mod: Module
+  isOwner: boolean
 }
 
-/** Modules that only exist on the sidebar so far. */
-function NotBuilt({ mod }: NotBuiltProps) {
+/** School modules only exist on the sidebar so far */
+function NotBuilt({ mod, isOwner }: NotBuiltProps) {
+  useTitle(`${mod.name} · Shigjetademy`)
   const Icon = mod.icon
   return (
     <div className="grid h-full place-items-center bg-linear-to-b from-green-wash to-white to-40% p-8 text-center">
@@ -86,11 +80,13 @@ function NotBuilt({ mod }: NotBuiltProps) {
         <p className="text-ink-2">{mod.tagline}</p>
         <p className="inline-flex items-center gap-2 text-[0.95rem] text-ink-3">
           <Construction size={16} strokeWidth={1.9} aria-hidden="true" />
-          This module isn’t built yet. Students & enrolment is ready to try.
+          This module isn’t built yet.
         </p>
-        <Link className="button button--primary" to="/dashboard/$module" params={{ module: 'students' }}>
-          Open Students & enrolment
-        </Link>
+        {isOwner ? (
+          <Link className="button button--primary" to="/dashboard/overview">
+            Back to Overview
+          </Link>
+        ) : null}
       </div>
     </div>
   )

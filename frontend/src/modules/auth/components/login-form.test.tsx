@@ -17,10 +17,13 @@ describe('LoginForm', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Invalid email or password')
   })
 
-  it('takes an owner to the dashboard after logging in', async () => {
+  it('takes an owner to their Overview after logging in', async () => {
     const owner = buildUser({ memberships: OWNER_MEMBERSHIPS })
     server.use(
       http.post('*/api/auth/login', () => HttpResponse.json({ data: { user: owner, accessToken: 'a', refreshToken: 'r' } })),
+      http.get('*/api/organizations/org-1/overview', () =>
+        HttpResponse.json({ data: { counts: { members: 1, admins: 0, pending_invitations: 0 }, pending_invitations: [], activity: [] } }),
+      ),
     )
     const { router, user } = renderRoute('/login')
 
@@ -28,7 +31,7 @@ describe('LoginForm', () => {
     await user.type(screen.getByLabelText('Password'), 'password123')
     await user.click(screen.getByRole('button', { name: 'Log in' }))
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/students'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/overview'))
   })
 })
 

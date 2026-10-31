@@ -61,11 +61,16 @@ describe('platform admin dashboard', () => {
     expect(screen.queryByText('Yllka Kindergarten')).not.toBeInTheDocument()
   })
 
-  it('keeps owners on the school modules', async () => {
+  it('keeps owners on their own dashboard', async () => {
     signInAs(buildUser({ memberships: OWNER_MEMBERSHIPS }))
+    server.use(
+      http.get('*/api/organizations/org-1/overview', () =>
+        HttpResponse.json({ data: { counts: { members: 1, admins: 0, pending_invitations: 0 }, pending_invitations: [], activity: [] } }),
+      ),
+    )
     const { router } = renderRoute('/dashboard/clients')
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/students'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/overview'))
     const sidebar = await screen.findByRole('navigation', { name: 'Modules' })
     expect(within(sidebar).queryByRole('link', { name: 'Clients' })).not.toBeInTheDocument()
   })
