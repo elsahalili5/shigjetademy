@@ -25,6 +25,7 @@ import { Route as authLoginRouteImport } from './routes/(auth)/login'
 import { Route as authSignupRouteImport } from './routes/(auth)/signup'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as DashboardModuleRouteImport } from './routes/dashboard/$module'
+import { Route as DashboardAcademicPeriodsRouteImport } from './routes/dashboard/academic-periods'
 import { Route as DashboardLocationsRouteImport } from './routes/dashboard/locations'
 import { Route as DashboardMembersRouteImport } from './routes/dashboard/members'
 import { Route as DashboardOrganizationProfileRouteImport } from './routes/dashboard/organization-profile'
@@ -114,6 +115,12 @@ const DashboardModuleRoute = DashboardModuleRouteImport.update({
   path: '/$module',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
+const DashboardAcademicPeriodsRoute =
+  DashboardAcademicPeriodsRouteImport.update({
+    id: '/academic-periods',
+    path: '/academic-periods',
+    getParentRoute: () => DashboardRouteRoute,
+  } as any)
 const DashboardLocationsRoute = DashboardLocationsRouteImport.update({
   id: '/locations',
   path: '/locations',
@@ -181,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
   '/dashboard/$module': typeof DashboardModuleRoute
+  '/dashboard/academic-periods': typeof DashboardAcademicPeriodsRoute
   '/dashboard/locations': typeof DashboardLocationsRoute
   '/dashboard/members': typeof DashboardMembersRoute
   '/dashboard/organization-profile': typeof DashboardOrganizationProfileRoute
@@ -206,6 +214,7 @@ export interface FileRoutesByTo {
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
   '/dashboard/$module': typeof DashboardModuleRoute
+  '/dashboard/academic-periods': typeof DashboardAcademicPeriodsRoute
   '/dashboard/locations': typeof DashboardLocationsRoute
   '/dashboard/members': typeof DashboardMembersRoute
   '/dashboard/organization-profile': typeof DashboardOrganizationProfileRoute
@@ -235,6 +244,7 @@ export interface FileRoutesById {
   '/(auth)/login': typeof authLoginRoute
   '/(auth)/signup': typeof authSignupRoute
   '/dashboard/$module': typeof DashboardModuleRoute
+  '/dashboard/academic-periods': typeof DashboardAcademicPeriodsRoute
   '/dashboard/locations': typeof DashboardLocationsRoute
   '/dashboard/members': typeof DashboardMembersRoute
   '/dashboard/organization-profile': typeof DashboardOrganizationProfileRoute
@@ -263,6 +273,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/dashboard/$module'
+    | '/dashboard/academic-periods'
     | '/dashboard/locations'
     | '/dashboard/members'
     | '/dashboard/organization-profile'
@@ -288,6 +299,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/dashboard/$module'
+    | '/dashboard/academic-periods'
     | '/dashboard/locations'
     | '/dashboard/members'
     | '/dashboard/organization-profile'
@@ -316,6 +328,7 @@ export interface FileRouteTypes {
     | '/(auth)/login'
     | '/(auth)/signup'
     | '/dashboard/$module'
+    | '/dashboard/academic-periods'
     | '/dashboard/locations'
     | '/dashboard/members'
     | '/dashboard/organization-profile'
@@ -452,6 +465,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardModuleRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
+    '/dashboard/academic-periods': {
+      id: '/dashboard/academic-periods'
+      path: '/academic-periods'
+      fullPath: '/dashboard/academic-periods'
+      preLoaderRoute: typeof DashboardAcademicPeriodsRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
     '/dashboard/locations': {
       id: '/dashboard/locations'
       path: '/locations'
@@ -571,6 +591,7 @@ const authRouteRouteWithChildren = authRouteRoute._addFileChildren(
 
 interface DashboardRouteRouteChildren {
   DashboardModuleRoute: typeof DashboardModuleRoute
+  DashboardAcademicPeriodsRoute: typeof DashboardAcademicPeriodsRoute
   DashboardLocationsRoute: typeof DashboardLocationsRoute
   DashboardMembersRoute: typeof DashboardMembersRoute
   DashboardOrganizationProfileRoute: typeof DashboardOrganizationProfileRoute
@@ -583,6 +604,7 @@ interface DashboardRouteRouteChildren {
 
 const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardModuleRoute: DashboardModuleRoute,
+  DashboardAcademicPeriodsRoute: DashboardAcademicPeriodsRoute,
   DashboardLocationsRoute: DashboardLocationsRoute,
   DashboardMembersRoute: DashboardMembersRoute,
   DashboardOrganizationProfileRoute: DashboardOrganizationProfileRoute,

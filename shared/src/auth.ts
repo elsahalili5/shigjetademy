@@ -26,6 +26,7 @@ export const PERMISSIONS = [
   'MANAGE_TESTS',
   'VIEW_PERFORMANCE',
   'VIEW_REPORTS',
+  'MANAGE_ACADEMIC_PERIODS',
 ] as const
 
 export type Permission = (typeof PERMISSIONS)[number]
@@ -111,3 +112,12 @@ export type LoginUserResponse = AuthTokens & { user: AuthUser }
 export type RegisterUserResponse = LoginUserResponse
 
 export type RefreshTokenResponse = AuthTokens
+
+type HasOrganizationPermissionParams = {
+  membership: { role: MemberRole; permissions: Permission[] }
+  permission: Permission
+}
+
+/** The owner always may; a school admin only with the permission in that organization; nobody else */
+export const hasOrganizationPermission = ({ membership, permission }: HasOrganizationPermissionParams) =>
+  membership.role === 'OWNER' || (membership.role === 'ADMIN' && membership.permissions.includes(permission))

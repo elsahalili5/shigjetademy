@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt'
 import request from 'supertest'
-import type { MemberRole } from '@generated/prisma/enums.ts'
+import type { MemberRole, Permission } from '@generated/prisma/enums.ts'
 import { app } from '../src/app.ts'
 import { prisma } from '@lib/prisma.ts'
 import { ROLES } from '@lib/roles.ts'
@@ -37,7 +37,7 @@ type CreateOrganizationParams = {
   name: string
   ownerId: string
   type?: 'SCHOOL' | 'KINDERGARTEN' | 'ACADEMY'
-  members?: { userId: string; role: MemberRole }[]
+  members?: { userId: string; role: MemberRole; permissions?: Permission[] }[]
 }
 
 export const createOrganization = ({ name, ownerId, type = 'SCHOOL', members = [] }: CreateOrganizationParams) =>
@@ -48,7 +48,7 @@ export const createOrganization = ({ name, ownerId, type = 'SCHOOL', members = [
       country: 'XK',
       currency: 'EUR',
       memberships: {
-        create: [{ user_id: ownerId, role: 'OWNER' }, ...members.map((member) => ({ user_id: member.userId, role: member.role }))],
+        create: [{ user_id: ownerId, role: 'OWNER' }, ...members.map((member) => ({ user_id: member.userId, role: member.role, permissions: member.permissions }))],
       },
     },
   })

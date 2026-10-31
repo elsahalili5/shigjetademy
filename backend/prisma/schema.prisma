@@ -65,6 +65,7 @@ enum Permission {
   MANAGE_TESTS
   VIEW_PERFORMANCE
   VIEW_REPORTS
+  MANAGE_ACADEMIC_PERIODS
 }
 
 enum InvitationStatus {
@@ -88,6 +89,15 @@ enum ActivityAction {
   DEPARTMENT_CREATED
   DEPARTMENT_UPDATED
   DEPARTMENT_REMOVED
+  ACADEMIC_YEAR_CREATED
+  ACADEMIC_YEAR_UPDATED
+  ACADEMIC_YEAR_REMOVED
+  ACADEMIC_TERM_CREATED
+  ACADEMIC_TERM_UPDATED
+  ACADEMIC_TERM_REMOVED
+  ACADEMIC_HOLIDAY_CREATED
+  ACADEMIC_HOLIDAY_UPDATED
+  ACADEMIC_HOLIDAY_REMOVED
   ORGANIZATION_SETTINGS_UPDATED
   OWNERSHIP_TRANSFERRED
   ORGANIZATION_DEACTIVATED_BY_OWNER
@@ -207,12 +217,13 @@ model Organization {
   memberships  Membership[]
   invitations  Invitation[]
   activity     ActivityLog[]
-  locations    Location[]
-  departments  Department[]
-  settings     OrganizationSettings?
+  locations      Location[]
+  departments    Department[]
+  academic_years AcademicYear[]
+  settings       OrganizationSettings?
 }
 
-/// How one organization runs. Created with defaults the first time it is read, so older organizations need no row.
+/// How one organization runs. An organization without a row reads the defaults; the row is written on its first save.
 model OrganizationSettings {
   organization_id String       @id @db.Uuid
   /// An IANA time zone, like Europe/Belgrade
@@ -261,6 +272,62 @@ model Department {
 
   @@unique([organization_id, name])
   @@index([location_id])
+}
+
+// ─────────────────────────────────────────
+// ACADEMIC PERIODS
+// ─────────────────────────────────────────
+
+/// A school year. Years in one organization don't overlap, and while it has any, exactly one is current (kept by the academic periods service).
+model AcademicYear {
+  id              String   @id @default(uuid()) @db.Uuid
+  organization_id String   @db.Uuid
+  name            String
+  /// Calendar days, so time zones never shift them
+  start_date      DateTime @db.Date
+  end_date        DateTime @db.Date
+  is_current      Boolean  @default(false)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  organization Organization      @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  terms        AcademicTerm[]
+  holidays     AcademicHoliday[]
+
+  @@index([organization_id])
+}
+
+/// A term inside its year; terms of one year don't overlap
+model AcademicTerm {
+  id               String   @id @default(uuid()) @db.Uuid
+  academic_year_id String   @db.Uuid
+  name             String
+  start_date       DateTime @db.Date
+  end_date         DateTime @db.Date
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  academic_year AcademicYear @relation(fields: [academic_year_id], references: [id], onDelete: Cascade)
+
+  @@index([academic_year_id])
+}
+
+/// A holiday or break inside its year, one day or several; it may overlap terms
+model AcademicHoliday {
+  id               String   @id @default(uuid()) @db.Uuid
+  academic_year_id String   @db.Uuid
+  name             String
+  start_date       DateTime @db.Date
+  end_date         DateTime @db.Date
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  academic_year AcademicYear @relation(fields: [academic_year_id], references: [id], onDelete: Cascade)
+
+  @@index([academic_year_id])
 }
 
 /// A user's place in one organization. One user can belong to many organizations, once each.
@@ -316,7 +383,7 @@ model ActivityLog {
   action          ActivityAction
   organization_id String?        @db.Uuid
   target_user_id  String?        @db.Uuid
-  /// The location's or department's name, so the entry still reads right after it is removed
+  /// The location's, department's or academic period's name, so the entry still reads right after it is removed
   subject_name    String?
   created_at      DateTime       @default(now())
 

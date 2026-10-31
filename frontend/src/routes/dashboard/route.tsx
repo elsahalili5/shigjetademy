@@ -25,6 +25,7 @@ const SIDEBAR_LINK_CLASS =
 const BUILT_MODULE_PAGES = {
   'organization-profile': '/dashboard/organization-profile',
   locations: '/dashboard/locations',
+  'academic-periods': '/dashboard/academic-periods',
 } as const
 
 const isBuiltModule = (slug: string): slug is keyof typeof BUILT_MODULE_PAGES => slug in BUILT_MODULE_PAGES

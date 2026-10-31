@@ -1,23 +1,31 @@
 import type { DateFormat } from '@shigjetademy/shared/organization-settings'
 
-const dateFormat = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
-const dateTimeFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
-const timeFormat = new Intl.DateTimeFormat(undefined, { timeStyle: 'short' })
+const dateFormatter = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+const dateTimeFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+const timeFormatter = new Intl.DateTimeFormat(undefined, { timeStyle: 'short' })
+// Calendar days are read and shown in UTC, so they never shift a day
+const dayFormatter = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+
+const toUtcDate = (day: string) => new Date(`${day}T00:00:00.000Z`)
 
 /** "31 Oct 2026" in the user's locale */
-export const formatDate = (iso: string) => dateFormat.format(new Date(iso))
+export const formatDate = (iso: string) => dateFormatter.format(new Date(iso))
 
 /** "31 Oct 2026, 09:00" in the user's locale */
-export const formatDateTime = (iso: string) => dateTimeFormat.format(new Date(iso))
+export const formatDateTime = (iso: string) => dateTimeFormatter.format(new Date(iso))
 
-type FormatOrganizationDateParams = {
-  iso: string
-  dateFormat: DateFormat
+/** A calendar day like "2026-09-01" as "1 Sep 2026" in the user's locale */
+export const formatDay = (day: string) => dayFormatter.format(toUtcDate(day))
+
+type WriteInOrderParams = {
+  formatter: Intl.DateTimeFormat
+  date: Date
+  order: DateFormat
 }
 
-/** The date in the order the organization writes dates: "31 Oct 2026" or "Oct 31, 2026", with the month named in the user's locale */
-export const formatOrganizationDate = ({ iso, dateFormat: order }: FormatOrganizationDateParams) => {
-  const parts = dateFormat.formatToParts(new Date(iso))
+/** The date's parts, named in the user's locale, in the organization's order: "31 Oct 2026" or "Oct 31, 2026" */
+const writeInOrder = ({ formatter, date, order }: WriteInOrderParams) => {
+  const parts = formatter.formatToParts(date)
   const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? ''
   switch (order) {
     case 'DAY_MONTH_YEAR':
@@ -31,6 +39,24 @@ export const formatOrganizationDate = ({ iso, dateFormat: order }: FormatOrganiz
   }
 }
 
+type FormatOrganizationDateParams = {
+  iso: string
+  dateFormat: DateFormat
+}
+
+/** The date in the order the organization writes dates: "31 Oct 2026" or "Oct 31, 2026" */
+export const formatOrganizationDate = ({ iso, dateFormat }: FormatOrganizationDateParams) =>
+  writeInOrder({ formatter: dateFormatter, date: new Date(iso), order: dateFormat })
+
 /** "31 Oct 2026, 09:00": the date in the organization's order, the time in the user's locale */
-export const formatOrganizationDateTime = ({ iso, dateFormat: order }: FormatOrganizationDateParams) =>
-  `${formatOrganizationDate({ iso, dateFormat: order })}, ${timeFormat.format(new Date(iso))}`
+export const formatOrganizationDateTime = ({ iso, dateFormat }: FormatOrganizationDateParams) =>
+  `${formatOrganizationDate({ iso, dateFormat })}, ${timeFormatter.format(new Date(iso))}`
+
+type FormatOrganizationDayParams = {
+  day: string
+  dateFormat: DateFormat
+}
+
+/** A calendar day like "2026-09-01" in the organization's order, the same day wherever the user is */
+export const formatOrganizationDay = ({ day, dateFormat }: FormatOrganizationDayParams) =>
+  writeInOrder({ formatter: dayFormatter, date: toUtcDate(day), order: dateFormat })

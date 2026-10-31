@@ -2,7 +2,7 @@ import { screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { ACTIVITY_PAGE_SIZE } from '@shigjetademy/shared/activity'
-import type { ActivityEntry } from '@shigjetademy/shared/activity'
+import type { ActivityAction, ActivityEntry } from '@shigjetademy/shared/activity'
 import type { ClientOrganization } from '@shigjetademy/shared/organization'
 import { buildUser, PLATFORM_ADMIN_ROLES, signInAs } from '#/test/fixtures'
 import { renderRoute } from '#/test/render-route'
@@ -94,6 +94,54 @@ describe('ActivityModule', () => {
     expect(location).toHaveTextContent('Elsa Halili added the location Main campus at Oxford Academy')
     expect(within(location).getByRole('link', { name: 'Oxford Academy' })).toHaveAttribute('href', '/dashboard/clients/org-1')
     expect(department).toHaveTextContent('Elsa Halili removed the department Sciences at Oxford Academy')
+  })
+
+  it('shows academic period changes as sentences that name the client', async () => {
+    signInAs(buildUser({ user_roles: PLATFORM_ADMIN_ROLES }))
+    const oxford = { id: 'org-1', name: 'Oxford Academy' }
+    const entries: [ActivityAction, string][] = [
+      ['ACADEMIC_YEAR_CREATED', '2026–27'],
+      ['ACADEMIC_YEAR_UPDATED', '2026–27'],
+      ['ACADEMIC_YEAR_REMOVED', '2025–26'],
+      ['ACADEMIC_TERM_CREATED', 'Autumn term'],
+      ['ACADEMIC_TERM_UPDATED', 'Autumn term'],
+      ['ACADEMIC_TERM_REMOVED', 'Spring term'],
+      ['ACADEMIC_HOLIDAY_CREATED', 'Winter break'],
+      ['ACADEMIC_HOLIDAY_UPDATED', 'Winter break'],
+      ['ACADEMIC_HOLIDAY_REMOVED', 'Independence Day'],
+    ]
+    server.use(
+      http.get('*/api/organizations', () => HttpResponse.json({ data: CLIENTS })),
+      http.get('*/api/activity', () =>
+        HttpResponse.json({
+          data: entries.map(([action, subjectName]) => ({
+            id: action,
+            action,
+            created_at: '2026-10-04T09:00:00.000Z',
+            actor: ELSA,
+            organization: oxford,
+            target_user: null,
+            subject_name: subjectName,
+          })),
+        }),
+      ),
+    )
+    renderRoute('/dashboard/activity')
+
+    const rows = await within(await screen.findByRole('list', { name: 'Activity' })).findAllByRole('listitem')
+    const sentences = [
+      'Elsa Halili added the school year 2026–27 at Oxford Academy',
+      'Elsa Halili changed the school year 2026–27 at Oxford Academy',
+      'Elsa Halili removed the school year 2025–26 at Oxford Academy',
+      'Elsa Halili added the term Autumn term at Oxford Academy',
+      'Elsa Halili changed the term Autumn term at Oxford Academy',
+      'Elsa Halili removed the term Spring term at Oxford Academy',
+      'Elsa Halili added the holiday Winter break at Oxford Academy',
+      'Elsa Halili changed the holiday Winter break at Oxford Academy',
+      'Elsa Halili removed the holiday Independence Day at Oxford Academy',
+    ]
+    expect(rows).toHaveLength(sentences.length)
+    sentences.forEach((sentence, index) => expect(rows[index]).toHaveTextContent(sentence))
   })
 
   it('asks the API for one client or one action and offers to clear the filters', async () => {
