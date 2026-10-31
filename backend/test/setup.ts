@@ -4,6 +4,6 @@ import { prisma } from '@lib/prisma.ts'
 // Each test starts from empty tables
 beforeEach(async () => {
   await prisma.$executeRawUnsafe(
-    'TRUNCATE "ActivityLog", "Department", "Location", "Invitation", "Membership", "Organization", "RefreshTokens", "UserTokens", "UserRole", "Role", "User" RESTART IDENTITY CASCADE',
+    'TRUNCATE "AcademicHoliday", "AcademicTerm", "AcademicYear", "ActivityLog", "Department", "Location", "Invitation", "Membership", "Organization", "RefreshTokens", "UserTokens", "UserRole", "Role", "User" RESTART IDENTITY CASCADE',
   )
 })

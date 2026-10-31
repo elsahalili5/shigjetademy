@@ -13,6 +13,9 @@ type TargetIds = {
   membershipId: string
   locationId: string
   departmentId: string
+  yearId: string
+  termId: string
+  holidayId: string
 }
 
 type ScopedEndpoint = {
@@ -24,6 +27,9 @@ type ScopedEndpoint = {
 
 const PROFILE = { name: 'Taken over', type: 'School', country: 'XK', currency: 'EUR' } as const
 const LOCATION = { name: 'Taken over', address: '', city: '', phone: '', is_main: true } as const
+const YEAR = { name: 'Taken over', start_date: '2030-09-01', end_date: '2031-06-30', is_current: true } as const
+const TERM = { name: 'Taken over', start_date: '2026-09-01', end_date: '2026-12-20' } as const
+const HOLIDAY = { name: 'Taken over', start_date: '2026-12-24', end_date: '2026-12-24' } as const
 
 // One line per organization-scoped endpoint; the coverage test below fails when a route is missing here
 const SCOPED_ENDPOINTS: ScopedEndpoint[] = [
@@ -44,6 +50,16 @@ const SCOPED_ENDPOINTS: ScopedEndpoint[] = [
   { method: 'post', route: '/:organizationId/departments', body: { name: 'Taken over', description: '', location_id: null } },
   { method: 'put', route: '/:organizationId/departments/:departmentId', body: { name: 'Taken over', description: '', location_id: null } },
   { method: 'delete', route: '/:organizationId/departments/:departmentId' },
+  { method: 'get', route: '/:organizationId/academic-periods/years' },
+  { method: 'post', route: '/:organizationId/academic-periods/years', body: YEAR },
+  { method: 'put', route: '/:organizationId/academic-periods/years/:yearId', body: YEAR },
+  { method: 'delete', route: '/:organizationId/academic-periods/years/:yearId' },
+  { method: 'post', route: '/:organizationId/academic-periods/years/:yearId/terms', body: TERM },
+  { method: 'put', route: '/:organizationId/academic-periods/years/:yearId/terms/:termId', body: TERM },
+  { method: 'delete', route: '/:organizationId/academic-periods/years/:yearId/terms/:termId' },
+  { method: 'post', route: '/:organizationId/academic-periods/years/:yearId/holidays', body: HOLIDAY },
+  { method: 'put', route: '/:organizationId/academic-periods/years/:yearId/holidays/:holidayId', body: HOLIDAY },
+  { method: 'delete', route: '/:organizationId/academic-periods/years/:yearId/holidays/:holidayId' },
 ]
 
 type ToPathParams = {
@@ -56,7 +72,10 @@ const toPath = ({ route, ids }: ToPathParams) =>
     .replace(':organizationId', ids.organizationId)
     .replace(':membershipId', ids.membershipId)
     .replace(':locationId', ids.locationId)
-    .replace(':departmentId', ids.departmentId)}`
+    .replace(':departmentId', ids.departmentId)
+    .replace(':yearId', ids.yearId)
+    .replace(':termId', ids.termId)
+    .replace(':holidayId', ids.holidayId)}`
 
 type SendParams = ScopedEndpoint & {
   ids: TargetIds
@@ -85,7 +104,7 @@ type SeedOrganizationParams = {
   slug: string
 }
 
-/** An organization with an owner, a school admin, a location, a department and an open invitation */
+/** An organization with an owner, a school admin, a location, a department, a school year with a term and a holiday, and an open invitation */
 const seedOrganization = async ({ name, slug }: SeedOrganizationParams) => {
   const owner = await createUser({ email: `owner@${slug}.test` })
   const admin = await createUser({ email: `admin@${slug}.test` })
@@ -93,10 +112,15 @@ const seedOrganization = async ({ name, slug }: SeedOrganizationParams) => {
   const adminMembership = await prisma.membership.findFirstOrThrow({ where: { organization_id: organization.id, user_id: admin.id } })
   const location = await prisma.location.create({ data: { organization_id: organization.id, name: `${name} campus`, is_main: true } })
   const department = await prisma.department.create({ data: { organization_id: organization.id, name: `${name} languages`, location_id: location.id } })
+  const year = await prisma.academicYear.create({
+    data: { organization_id: organization.id, name: `${name} 2026–27`, start_date: new Date('2026-09-01'), end_date: new Date('2027-06-30'), is_current: true },
+  })
+  const term = await prisma.academicTerm.create({ data: { academic_year_id: year.id, name: `${name} autumn term`, start_date: new Date('2026-09-01'), end_date: new Date('2027-01-31') } })
+  const holiday = await prisma.academicHoliday.create({ data: { academic_year_id: year.id, name: `${name} winter break`, start_date: new Date('2026-12-24'), end_date: new Date('2027-01-06') } })
   await prisma.invitation.create({
     data: { organization_id: organization.id, email: `invited@${slug}.test`, role: 'ADMIN', token_hash: slug, invited_by_id: owner.id, expires_at: new Date(Date.now() + 86_400_000) },
   })
-  return { organizationId: organization.id, membershipId: adminMembership.id, locationId: location.id, departmentId: department.id }
+  return { organizationId: organization.id, membershipId: adminMembership.id, locationId: location.id, departmentId: department.id, yearId: year.id, termId: term.id, holidayId: holiday.id }
 }
 
 let oxford: TargetIds
@@ -114,6 +138,7 @@ const yllkaAsItsOwnerSeesIt = async () => {
     overview: await read('/:organizationId/overview'),
     locations: await read('/:organizationId/locations'),
     departments: await read('/:organizationId/departments'),
+    academicYears: await read('/:organizationId/academic-periods/years'),
   }
 }
 
@@ -143,10 +168,10 @@ describe('organization isolation', () => {
 
   it('does not reach another organization’s records through ids in its own paths', async () => {
     const before = await yllkaAsItsOwnerSeesIt()
-    // Oxford's own organization id with Yllka's member, location and department ids
+    // Oxford's own organization id with Yllka's member, location, department and academic period ids
     const mixed: TargetIds = { ...yllka, organizationId: oxford.organizationId }
 
-    for (const endpoint of SCOPED_ENDPOINTS.filter((item) => /:(membership|location|department)Id/.test(item.route))) {
+    for (const endpoint of SCOPED_ENDPOINTS.filter((item) => /:(membership|location|department|year|term|holiday)Id/.test(item.route))) {
       const response = await send({ ...endpoint, ids: mixed, auth: oxfordOwnerAuth })
       expect(response.status, `${endpoint.method.toUpperCase()} ${endpoint.route} answered ${response.status}`).toBe(404)
     }
@@ -165,10 +190,16 @@ describe('organization isolation', () => {
       .delete(toPath({ route: '/:organizationId/locations/:locationId', ids: oxford }))
       .query({ newMainId: yllka.locationId })
       .set('Authorization', oxfordOwnerAuth)
+    await send({ method: 'post', route: '/:organizationId/academic-periods/years', body: { ...YEAR, is_current: false }, ids: oxford, auth: oxfordOwnerAuth })
+    const removedCurrentYear = await request(app)
+      .delete(toPath({ route: '/:organizationId/academic-periods/years/:yearId', ids: oxford }))
+      .query({ newCurrentId: yllka.yearId })
+      .set('Authorization', oxfordOwnerAuth)
 
     expect(created.status).toBe(400)
     expect(updated.status).toBe(400)
     expect(removedMain.status).toBe(400)
+    expect(removedCurrentYear.status).toBe(400)
     expect(await yllkaAsItsOwnerSeesIt()).toEqual(before)
   })
 })

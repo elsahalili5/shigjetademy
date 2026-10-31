@@ -8,6 +8,10 @@ type PermissionGroup = {
 // Grouped the way an owner thinks about a school, not in enum order
 export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
+    title: 'Organization',
+    permissions: [{ value: 'MANAGE_ACADEMIC_PERIODS', label: 'Academic periods', hint: 'School years, terms and holidays' }],
+  },
+  {
     title: 'People',
     permissions: [
       { value: 'MANAGE_STUDENTS', label: 'Students', hint: 'Enrol, edit and withdraw students' },

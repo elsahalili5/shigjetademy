@@ -1,5 +1,6 @@
 import express from 'express'
 import cors from 'cors'
+import academicPeriodsRoutes from '@modules/academic-periods/academic-periods.routes.ts'
 import activityRoutes from '@modules/activity/activity.routes.ts'
 import authRoutes from '@modules/auth/auth.routes.ts'
 import locationRoutes from '@modules/location/location.routes.ts'
@@ -15,6 +16,7 @@ app.use('/api/activity', activityRoutes)
 app.use('/api/auth', authRoutes)
 app.use('/api/organizations', organizationRoutes)
 app.use('/api/organizations', locationRoutes)
+app.use('/api/organizations', academicPeriodsRoutes)
 app.use('/api/users', userRoutes)
 
 app.get('/api/health', (_req, res) => {

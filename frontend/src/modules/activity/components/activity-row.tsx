@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Building2, CirclePause, CirclePlay, KeyRound, Lock, MapPin, MapPinOff, MapPinPen, Network, SquarePen, Trash2, UserMinus, UserPen } from 'lucide-react'
+import { Building2, CalendarCog, CalendarPlus, CalendarRange, CalendarX, CirclePause, CirclePlay, KeyRound, Lock, MapPin, MapPinOff, MapPinPen, Network, SquarePen, Trash2, TreePalm, UserMinus, UserPen } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ActivityAction, ActivityEntry, ActivityUser } from '@shigjetademy/shared/activity'
 import { formatDateTime } from '../utils/format'
@@ -19,6 +19,15 @@ const ACTION_ICONS = {
   DEPARTMENT_CREATED: Network,
   DEPARTMENT_UPDATED: SquarePen,
   DEPARTMENT_REMOVED: Trash2,
+  ACADEMIC_YEAR_CREATED: CalendarPlus,
+  ACADEMIC_YEAR_UPDATED: CalendarCog,
+  ACADEMIC_YEAR_REMOVED: CalendarX,
+  ACADEMIC_TERM_CREATED: CalendarRange,
+  ACADEMIC_TERM_UPDATED: CalendarCog,
+  ACADEMIC_TERM_REMOVED: CalendarX,
+  ACADEMIC_HOLIDAY_CREATED: TreePalm,
+  ACADEMIC_HOLIDAY_UPDATED: CalendarCog,
+  ACADEMIC_HOLIDAY_REMOVED: CalendarX,
 } as const satisfies Record<ActivityAction, LucideIcon>
 
 type FullNameParams = {
@@ -59,7 +68,7 @@ export function ActivityRow({ entry, shouldLinkOrganization }: ActivityRowProps)
 /** "Platform Admin suspended Oxford Academy" */
 function ActivitySentence({ entry, shouldLinkOrganization }: ActivityRowProps) {
   const organization = <OrganizationName organization={entry.organization} shouldLink={shouldLinkOrganization} />
-  // The platform admin reads every client's entries, so location and department sentences say which client; an owner's own feed doesn't
+  // The platform admin reads every client's entries, so sentences about a named subject say which client; an owner's own feed doesn't
   const subjectOrganization = shouldLinkOrganization ? organization : null
   switch (entry.action) {
     case 'ORGANIZATION_SUSPENDED':
@@ -108,6 +117,24 @@ function ActivitySentence({ entry, shouldLinkOrganization }: ActivityRowProps) {
       return <SubjectSentence entry={entry} verb="changed" noun="department" organization={subjectOrganization} />
     case 'DEPARTMENT_REMOVED':
       return <SubjectSentence entry={entry} verb="removed" noun="department" organization={subjectOrganization} />
+    case 'ACADEMIC_YEAR_CREATED':
+      return <SubjectSentence entry={entry} verb="added" noun="school year" organization={subjectOrganization} />
+    case 'ACADEMIC_YEAR_UPDATED':
+      return <SubjectSentence entry={entry} verb="changed" noun="school year" organization={subjectOrganization} />
+    case 'ACADEMIC_YEAR_REMOVED':
+      return <SubjectSentence entry={entry} verb="removed" noun="school year" organization={subjectOrganization} />
+    case 'ACADEMIC_TERM_CREATED':
+      return <SubjectSentence entry={entry} verb="added" noun="term" organization={subjectOrganization} />
+    case 'ACADEMIC_TERM_UPDATED':
+      return <SubjectSentence entry={entry} verb="changed" noun="term" organization={subjectOrganization} />
+    case 'ACADEMIC_TERM_REMOVED':
+      return <SubjectSentence entry={entry} verb="removed" noun="term" organization={subjectOrganization} />
+    case 'ACADEMIC_HOLIDAY_CREATED':
+      return <SubjectSentence entry={entry} verb="added" noun="holiday" organization={subjectOrganization} />
+    case 'ACADEMIC_HOLIDAY_UPDATED':
+      return <SubjectSentence entry={entry} verb="changed" noun="holiday" organization={subjectOrganization} />
+    case 'ACADEMIC_HOLIDAY_REMOVED':
+      return <SubjectSentence entry={entry} verb="removed" noun="holiday" organization={subjectOrganization} />
     default: {
       const unknown: never = entry.action
       throw new Error(`Unknown activity action: ${String(unknown)}`)
@@ -118,7 +145,7 @@ function ActivitySentence({ entry, shouldLinkOrganization }: ActivityRowProps) {
 interface SubjectSentenceProps {
   entry: ActivityEntry
   verb: 'added' | 'changed' | 'removed'
-  noun: 'location' | 'department'
+  noun: 'location' | 'department' | 'school year' | 'term' | 'holiday'
   organization: ReactNode
 }
 

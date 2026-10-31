@@ -1,4 +1,4 @@
-import { Building2, LayoutDashboard, MapPin, UserCog } from 'lucide-react'
+import { Building2, CalendarRange, LayoutDashboard, MapPin, UserCog } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ModuleSlug } from './modules'
 
@@ -6,7 +6,12 @@ import type { ModuleSlug } from './modules'
 // a module opens /dashboard/$module (the "not built yet" page for now) with its icon and name from MODULES.
 
 export type OwnerNavItem =
-  | { kind: 'page'; to: '/dashboard/overview' | '/dashboard/organization-profile' | '/dashboard/locations' | '/dashboard/members'; label: string; icon: LucideIcon }
+  | {
+      kind: 'page'
+      to: '/dashboard/overview' | '/dashboard/organization-profile' | '/dashboard/locations' | '/dashboard/academic-periods' | '/dashboard/members'
+      label: string
+      icon: LucideIcon
+    }
   | { kind: 'module'; slug: ModuleSlug; label?: string }
 
 type OwnerNavSection = {
@@ -21,7 +26,7 @@ export const OWNER_NAV_SECTIONS: OwnerNavSection[] = [
       { kind: 'page', to: '/dashboard/overview', label: 'Overview', icon: LayoutDashboard },
       { kind: 'page', to: '/dashboard/organization-profile', label: 'Organization profile', icon: Building2 },
       { kind: 'page', to: '/dashboard/locations', label: 'Locations and departments', icon: MapPin },
-      { kind: 'module', slug: 'academic-periods' },
+      { kind: 'page', to: '/dashboard/academic-periods', label: 'Academic periods', icon: CalendarRange },
       { kind: 'page', to: '/dashboard/members', label: 'Members and permissions', icon: UserCog },
       { kind: 'module', slug: 'messages' },
     ],
