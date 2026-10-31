@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
+import type { ActivityAction, ActivityEntry } from '@shigjetademy/shared/activity'
 import type { OrganizationOverview } from '@shigjetademy/shared/organization'
 import { buildUser, OWNER_MEMBERSHIPS, signInAs } from '#/test/fixtures'
 import { renderRoute } from '#/test/render-route'
@@ -23,8 +24,8 @@ const BUSY_OVERVIEW: OrganizationOverview = {
     { id: 'inv-2', email: 'later@oxford.test', expires_at: '2026-11-06T09:00:00.000Z', is_expiring_soon: false },
   ],
   activity: [
-    { id: 'a-2', action: 'MEMBER_REMOVED', created_at: '2026-10-31T10:00:00.000Z', actor: OWNER, organization: OXFORD, target_user: ADMIN },
-    { id: 'a-1', action: 'MEMBER_UPDATED', created_at: '2026-10-31T09:00:00.000Z', actor: OWNER, organization: OXFORD, target_user: ADMIN },
+    { id: 'a-2', action: 'MEMBER_REMOVED', created_at: '2026-10-31T10:00:00.000Z', actor: OWNER, organization: OXFORD, target_user: ADMIN, subject_name: null },
+    { id: 'a-1', action: 'MEMBER_UPDATED', created_at: '2026-10-31T09:00:00.000Z', actor: OWNER, organization: OXFORD, target_user: ADMIN, subject_name: null },
   ],
 }
 
@@ -85,6 +86,46 @@ describe('owner Overview', () => {
     const [removed, updated] = await within(activity).findAllByRole('listitem')
     expect(removed).toHaveTextContent('Elsa Halili removed Drita Berisha from Oxford Academy')
     expect(updated).toHaveTextContent('Elsa Halili changed Drita Berisha’s name and access')
+  })
+
+  it('shows profile, location and department changes as sentences', async () => {
+    const entry = (action: ActivityAction, subjectName: string | null): ActivityEntry => ({
+      id: action,
+      action,
+      created_at: '2026-10-31T09:00:00.000Z',
+      actor: OWNER,
+      organization: OXFORD,
+      target_user: null,
+      subject_name: subjectName,
+    })
+    signInAsOwnerWithOverview({
+      ...EMPTY_OVERVIEW,
+      activity: [
+        entry('ORGANIZATION_PROFILE_UPDATED', null),
+        entry('LOCATION_CREATED', 'Main campus'),
+        entry('LOCATION_UPDATED', 'Main campus'),
+        entry('LOCATION_REMOVED', 'Peja branch'),
+        entry('DEPARTMENT_CREATED', 'Languages'),
+        entry('DEPARTMENT_UPDATED', 'Languages'),
+        entry('DEPARTMENT_REMOVED', 'Sciences'),
+      ],
+    })
+    renderRoute('/dashboard/overview')
+
+    const activity = await screen.findByRole('region', { name: 'Recent activity' })
+    const rows = await within(activity).findAllByRole('listitem')
+    const sentences = [
+      'Elsa Halili updated the profile of Oxford Academy',
+      'Elsa Halili added the location Main campus',
+      'Elsa Halili changed the location Main campus',
+      'Elsa Halili removed the location Peja branch',
+      'Elsa Halili added the department Languages',
+      'Elsa Halili changed the department Languages',
+      'Elsa Halili removed the department Sciences',
+    ]
+    expect(rows).toHaveLength(sentences.length)
+    sentences.forEach((sentence, index) => expect(rows[index]).toHaveTextContent(sentence))
+    expect(rows[1]).not.toHaveTextContent('at Oxford Academy')
   })
 
   it('ticks off inviting an admin once there is one, and links the rest to their modules', async () => {

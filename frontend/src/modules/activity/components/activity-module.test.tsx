@@ -13,8 +13,8 @@ const ELSA = { id: 'user-2', first_name: 'Elsa', last_name: 'Halili', email: 'el
 const ARTA = { id: 'user-3', first_name: 'Arta', last_name: 'Gashi', email: 'arta@yllka.test' }
 
 const ENTRIES: ActivityEntry[] = [
-  { id: 'a-3', action: 'ACCOUNT_LOCKED', created_at: '2026-10-03T09:00:00.000Z', actor: null, organization: null, target_user: ARTA },
-  { id: 'a-2', action: 'PASSWORD_CHANGED', created_at: '2026-10-02T09:00:00.000Z', actor: ELSA, organization: null, target_user: ELSA },
+  { id: 'a-3', action: 'ACCOUNT_LOCKED', created_at: '2026-10-03T09:00:00.000Z', actor: null, organization: null, target_user: ARTA, subject_name: null },
+  { id: 'a-2', action: 'PASSWORD_CHANGED', created_at: '2026-10-02T09:00:00.000Z', actor: ELSA, organization: null, target_user: ELSA, subject_name: null },
   {
     id: 'a-1',
     action: 'ORGANIZATION_SUSPENDED',
@@ -22,6 +22,7 @@ const ENTRIES: ActivityEntry[] = [
     actor: ADMIN,
     organization: { id: 'org-1', name: 'Oxford Academy' },
     target_user: null,
+    subject_name: null,
   },
 ]
 
@@ -70,6 +71,29 @@ describe('ActivityModule', () => {
     expect(rows[1]).toHaveTextContent('Elsa Halili changed their password')
     expect(rows[2]).toHaveTextContent('Platform Admin suspended Oxford Academy')
     expect(within(rows[2]).getByRole('link', { name: 'Oxford Academy' })).toHaveAttribute('href', '/dashboard/clients/org-1')
+  })
+
+  it('names the client in location and department sentences', async () => {
+    signInAs(buildUser({ user_roles: PLATFORM_ADMIN_ROLES }))
+    const oxford = { id: 'org-1', name: 'Oxford Academy' }
+    const base = { created_at: '2026-10-04T09:00:00.000Z', actor: ELSA, organization: oxford, target_user: null }
+    server.use(
+      http.get('*/api/organizations', () => HttpResponse.json({ data: CLIENTS })),
+      http.get('*/api/activity', () =>
+        HttpResponse.json({
+          data: [
+            { ...base, id: 'a-5', action: 'LOCATION_CREATED', subject_name: 'Main campus' },
+            { ...base, id: 'a-4', action: 'DEPARTMENT_REMOVED', subject_name: 'Sciences' },
+          ],
+        }),
+      ),
+    )
+    renderRoute('/dashboard/activity')
+
+    const [location, department] = await within(await screen.findByRole('list', { name: 'Activity' })).findAllByRole('listitem')
+    expect(location).toHaveTextContent('Elsa Halili added the location Main campus at Oxford Academy')
+    expect(within(location).getByRole('link', { name: 'Oxford Academy' })).toHaveAttribute('href', '/dashboard/clients/org-1')
+    expect(department).toHaveTextContent('Elsa Halili removed the department Sciences at Oxford Academy')
   })
 
   it('asks the API for one client or one action and offers to clear the filters', async () => {

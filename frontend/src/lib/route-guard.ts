@@ -3,7 +3,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import type { AuthUser } from '@shigjetademy/shared/auth'
 import { ME_QUERY_KEY } from '#/modules/auth/components/auth-context'
 import { readStoredTokens } from '#/modules/auth/utils/auth-storage'
-import { getHomePath, hasOrganization, isPlatformAdmin } from '#/modules/auth/utils/get-home-path'
+import { getHomePath, getManagedMembership, hasOrganization, isPlatformAdmin } from '#/modules/auth/utils/get-home-path'
 
 // Guards read the query cache, not React state, so a navigate right after login already sees the new session
 export const getSessionUser = (queryClient: QueryClient) =>
@@ -38,5 +38,13 @@ export function requireOrganization(queryClient: QueryClient) {
   const user = requireAuthenticated(queryClient)
   if (!hasOrganization(user) && !isPlatformAdmin(user)) {
     throw redirect({ to: '/onboarding' })
+  }
+}
+
+/** Pages for the people who run an organization, its owner and school admins; anyone else goes back to their dashboard */
+export function requireOrganizationManager(queryClient: QueryClient) {
+  const user = getSessionUser(queryClient)
+  if (!user || !getManagedMembership(user)) {
+    throw redirect({ to: '/dashboard' })
   }
 }

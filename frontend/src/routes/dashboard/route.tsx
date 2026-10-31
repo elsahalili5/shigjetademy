@@ -16,6 +16,14 @@ import { OrganizationSuspended } from '#/modules/organization/components/organiz
 const SIDEBAR_LINK_CLASS =
   'flex items-center gap-3 rounded-xl px-3.5 py-[10px] font-[550] text-on-navy-2 no-underline transition-colors duration-[180ms] ease-out hover:text-white aria-[current=page]:bg-navy-2 aria-[current=page]:text-white max-[860px]:flex-none max-[860px]:whitespace-nowrap [&_svg]:flex-none aria-[current=page]:[&_svg]:text-green'
 
+// School modules that are built have their own page instead of the "not built yet" one
+const BUILT_MODULE_PAGES = {
+  'organization-profile': '/dashboard/organization-profile',
+  locations: '/dashboard/locations',
+} as const
+
+const isBuiltModule = (slug: string): slug is keyof typeof BUILT_MODULE_PAGES => slug in BUILT_MODULE_PAGES
+
 const SIDEBAR_HEADING_CLASS = 'px-3.5 pb-2.5 font-data text-[0.807rem] tracking-[0.06em] text-on-navy-2 uppercase max-[860px]:hidden'
 
 export const Route = createFileRoute('/dashboard')({
@@ -177,11 +185,17 @@ function ModuleNavigation({ isAdmin }: ModuleNavigationProps) {
       <span className={SIDEBAR_HEADING_CLASS} aria-hidden="true">
         {isAdmin ? 'Platform' : 'Dashboard'}
       </span>
-      {modules.map((m) => (
-        <Link key={m.slug} to="/dashboard/$module" params={{ module: m.slug }} activeOptions={{ exact: true }} className={SIDEBAR_LINK_CLASS}>
-          <SidebarLinkContent icon={m.icon} label={m.name} />
-        </Link>
-      ))}
+      {modules.map((m) =>
+        isBuiltModule(m.slug) ? (
+          <Link key={m.slug} to={BUILT_MODULE_PAGES[m.slug]} className={SIDEBAR_LINK_CLASS}>
+            <SidebarLinkContent icon={m.icon} label={m.name} />
+          </Link>
+        ) : (
+          <Link key={m.slug} to="/dashboard/$module" params={{ module: m.slug }} activeOptions={{ exact: true }} className={SIDEBAR_LINK_CLASS}>
+            <SidebarLinkContent icon={m.icon} label={m.name} />
+          </Link>
+        ),
+      )}
     </>
   )
 }

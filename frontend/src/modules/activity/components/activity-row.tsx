@@ -1,5 +1,6 @@
+import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
-import { CirclePause, CirclePlay, KeyRound, Lock, UserMinus, UserPen } from 'lucide-react'
+import { Building2, CirclePause, CirclePlay, KeyRound, Lock, MapPin, MapPinOff, MapPinPen, Network, SquarePen, Trash2, UserMinus, UserPen } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ActivityAction, ActivityEntry, ActivityUser } from '@shigjetademy/shared/activity'
 import { formatDateTime } from '../utils/format'
@@ -11,6 +12,13 @@ const ACTION_ICONS = {
   ACCOUNT_LOCKED: Lock,
   MEMBER_UPDATED: UserPen,
   MEMBER_REMOVED: UserMinus,
+  ORGANIZATION_PROFILE_UPDATED: Building2,
+  LOCATION_CREATED: MapPin,
+  LOCATION_UPDATED: MapPinPen,
+  LOCATION_REMOVED: MapPinOff,
+  DEPARTMENT_CREATED: Network,
+  DEPARTMENT_UPDATED: SquarePen,
+  DEPARTMENT_REMOVED: Trash2,
 } as const satisfies Record<ActivityAction, LucideIcon>
 
 type FullNameParams = {
@@ -22,6 +30,8 @@ const fullName = ({ user, fallback }: FullNameParams) => (user ? `${user.first_n
 
 const DELETED_ACTOR = 'A deleted user'
 const DELETED_TARGET = 'a deleted user'
+// The service always stores the name for these actions; this only covers a null column
+const UNNAMED_SUBJECT = 'with no name'
 
 interface ActivityRowProps {
   entry: ActivityEntry
@@ -49,6 +59,8 @@ export function ActivityRow({ entry, shouldLinkOrganization }: ActivityRowProps)
 /** "Platform Admin suspended Oxford Academy" */
 function ActivitySentence({ entry, shouldLinkOrganization }: ActivityRowProps) {
   const organization = <OrganizationName organization={entry.organization} shouldLink={shouldLinkOrganization} />
+  // The platform admin reads every client's entries, so location and department sentences say which client; an owner's own feed doesn't
+  const subjectOrganization = shouldLinkOrganization ? organization : null
   switch (entry.action) {
     case 'ORGANIZATION_SUSPENDED':
       return (
@@ -78,11 +90,46 @@ function ActivitySentence({ entry, shouldLinkOrganization }: ActivityRowProps) {
           {fullName({ user: entry.actor, fallback: DELETED_ACTOR })} removed {fullName({ user: entry.target_user, fallback: DELETED_TARGET })} from {organization}
         </>
       )
+    case 'ORGANIZATION_PROFILE_UPDATED':
+      return (
+        <>
+          {fullName({ user: entry.actor, fallback: DELETED_ACTOR })} updated the profile of {organization}
+        </>
+      )
+    case 'LOCATION_CREATED':
+      return <SubjectSentence entry={entry} verb="added" noun="location" organization={subjectOrganization} />
+    case 'LOCATION_UPDATED':
+      return <SubjectSentence entry={entry} verb="changed" noun="location" organization={subjectOrganization} />
+    case 'LOCATION_REMOVED':
+      return <SubjectSentence entry={entry} verb="removed" noun="location" organization={subjectOrganization} />
+    case 'DEPARTMENT_CREATED':
+      return <SubjectSentence entry={entry} verb="added" noun="department" organization={subjectOrganization} />
+    case 'DEPARTMENT_UPDATED':
+      return <SubjectSentence entry={entry} verb="changed" noun="department" organization={subjectOrganization} />
+    case 'DEPARTMENT_REMOVED':
+      return <SubjectSentence entry={entry} verb="removed" noun="department" organization={subjectOrganization} />
     default: {
       const unknown: never = entry.action
       throw new Error(`Unknown activity action: ${String(unknown)}`)
     }
   }
+}
+
+interface SubjectSentenceProps {
+  entry: ActivityEntry
+  verb: 'added' | 'changed' | 'removed'
+  noun: 'location' | 'department'
+  organization: ReactNode
+}
+
+/** "Elsa Halili added the location Main campus", plus "at Oxford Academy" when the organization is given */
+function SubjectSentence({ entry, verb, noun, organization }: SubjectSentenceProps) {
+  return (
+    <>
+      {fullName({ user: entry.actor, fallback: DELETED_ACTOR })} {verb} the {noun} {entry.subject_name ?? UNNAMED_SUBJECT}
+      {organization ? <> at {organization}</> : null}
+    </>
+  )
 }
 
 interface OrganizationNameProps {

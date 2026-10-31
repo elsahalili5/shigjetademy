@@ -146,3 +146,31 @@ export type OrganizationOverview = {
   pending_invitations: OverviewInvitation[]
   activity: ActivityEntry[]
 }
+
+// ─── Organization profile ───
+
+/** Optional text a form sends as '' when left empty; the server stores empty as null */
+export const optionalText = (max: number) => z.string().trim().max(max, `Keep it under ${max} characters.`)
+
+/** What the owner can change on the organization profile; status and join date are not theirs to change, and addresses live on locations */
+export const updateOrganizationProfileSchema = createOrganizationSchema.extend({
+  email: z.union([z.literal(''), z.email('Enter an email address like hello@school.org.')]),
+  phone: optionalText(40),
+  website: z.union([z.literal(''), z.url({ protocol: /^https?$/, error: 'Enter a full web address, like https://school.org.' })]),
+})
+
+export type UpdateOrganizationProfileInput = z.infer<typeof updateOrganizationProfileSchema>
+
+export type OrganizationProfile = {
+  id: string
+  name: string
+  type: OrganizationTypeValue
+  country: string
+  currency: string
+  size: string | null
+  email: string | null
+  phone: string | null
+  website: string | null
+  status: OrganizationStatus
+  created_at: string
+}

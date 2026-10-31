@@ -161,6 +161,7 @@ describe('GET /api/activity', () => {
         actor: null,
         organization: null,
         target_user: { id: ownerId, first_name: 'Test', last_name: 'User', email: 'owner@oxford.test' },
+        subject_name: null,
       },
       expect.objectContaining({ action: 'PASSWORD_CHANGED', actor: expect.objectContaining({ first_name: 'Arta', last_name: 'Gashi' }) }),
       expect.objectContaining({

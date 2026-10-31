@@ -1,4 +1,18 @@
-export const ACTIVITY_ACTIONS = ['ORGANIZATION_SUSPENDED', 'ORGANIZATION_REACTIVATED', 'PASSWORD_CHANGED', 'ACCOUNT_LOCKED', 'MEMBER_UPDATED', 'MEMBER_REMOVED'] as const
+export const ACTIVITY_ACTIONS = [
+  'ORGANIZATION_SUSPENDED',
+  'ORGANIZATION_REACTIVATED',
+  'PASSWORD_CHANGED',
+  'ACCOUNT_LOCKED',
+  'MEMBER_UPDATED',
+  'MEMBER_REMOVED',
+  'ORGANIZATION_PROFILE_UPDATED',
+  'LOCATION_CREATED',
+  'LOCATION_UPDATED',
+  'LOCATION_REMOVED',
+  'DEPARTMENT_CREATED',
+  'DEPARTMENT_UPDATED',
+  'DEPARTMENT_REMOVED',
+] as const
 
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number]
 
@@ -21,4 +35,6 @@ export type ActivityEntry = {
   actor: ActivityUser | null
   organization: { id: string; name: string } | null
   target_user: ActivityUser | null
+  /** The location's or department's name for location and department entries */
+  subject_name: string | null
 }

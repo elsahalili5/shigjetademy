@@ -7,7 +7,8 @@
     ".": "./src/index.ts",
     "./organization": "./src/organization.ts",
     "./auth": "./src/auth.ts",
-    "./activity": "./src/activity.ts"
+    "./activity": "./src/activity.ts",
+    "./location": "./src/location.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

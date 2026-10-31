@@ -2,11 +2,20 @@ import type { Response } from 'express'
 import { sendError } from '@lib/httpError.ts'
 import type { AuthRequest, TypedRequest } from '@lib/types.ts'
 import { OrganizationService } from './organization.service.ts'
-import type { CreateOrganizationInput, MembershipParam, OrganizationIdParam, UpdateMemberInput, UpdateOrganizationStatusInput } from './organization.types.ts'
+import type {
+  CreateOrganizationInput,
+  MembershipParam,
+  OrganizationIdParam,
+  UpdateMemberInput,
+  UpdateOrganizationProfileInput,
+  UpdateOrganizationStatusInput,
+} from './organization.types.ts'
 
 type CreateOrganizationRequest = AuthRequest & { body: CreateOrganizationInput }
 
 type UpdateOrganizationStatusRequest = AuthRequest & TypedRequest<UpdateOrganizationStatusInput, OrganizationIdParam>
+
+type UpdateProfileRequest = AuthRequest & TypedRequest<UpdateOrganizationProfileInput, OrganizationIdParam>
 
 type UpdateMemberRequest = AuthRequest & TypedRequest<UpdateMemberInput, MembershipParam>
 
@@ -76,6 +85,28 @@ export const OrganizationController = {
       return res.status(200).json({ data: members })
     } catch (error) {
       return sendError({ res, error, fallback: 'Failed to fetch members' })
+    }
+  },
+
+  getProfile: async (req: TypedRequest<unknown, OrganizationIdParam>, res: Response) => {
+    try {
+      const profile = await OrganizationService.getProfile(req.params.organizationId)
+      return res.status(200).json({ data: profile })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to fetch the organization profile' })
+    }
+  },
+
+  updateProfile: async (req: UpdateProfileRequest, res: Response) => {
+    try {
+      const actorId = req.user?.id
+      if (!actorId) {
+        return res.status(401).json({ error: 'Unauthorized' })
+      }
+      const profile = await OrganizationService.updateProfile({ organizationId: req.params.organizationId, actorId, data: req.body })
+      return res.status(200).json({ data: profile })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to save the organization profile' })
     }
   },
 

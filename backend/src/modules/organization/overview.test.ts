@@ -96,6 +96,7 @@ describe('GET /api/organizations/:organizationId/overview', () => {
         actor: { id: ownerId, first_name: 'Test', last_name: 'User', email: 'owner@oxford.test' },
         organization: { id: organizationId, name: 'Oxford Academy' },
         target_user: { id: adminUserId, first_name: 'Test', last_name: 'User', email: 'admin1@oxford.test' },
+        subject_name: null,
       },
       expect.objectContaining({ action: 'MEMBER_UPDATED', created_at: '2026-10-01T09:00:00.000Z' }),
     ])

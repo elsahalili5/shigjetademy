@@ -25,7 +25,9 @@ import { Route as authLoginRouteImport } from './routes/(auth)/login'
 import { Route as authSignupRouteImport } from './routes/(auth)/signup'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as DashboardModuleRouteImport } from './routes/dashboard/$module'
+import { Route as DashboardLocationsRouteImport } from './routes/dashboard/locations'
 import { Route as DashboardMembersRouteImport } from './routes/dashboard/members'
+import { Route as DashboardOrganizationProfileRouteImport } from './routes/dashboard/organization-profile'
 import { Route as DashboardOverviewRouteImport } from './routes/dashboard/overview'
 import { Route as DashboardProfileRouteImport } from './routes/dashboard/profile'
 import { Route as appPlatformIndexRouteImport } from './routes/(app)/platform/index'
@@ -110,11 +112,22 @@ const DashboardModuleRoute = DashboardModuleRouteImport.update({
   path: '/$module',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
+const DashboardLocationsRoute = DashboardLocationsRouteImport.update({
+  id: '/locations',
+  path: '/locations',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
 const DashboardMembersRoute = DashboardMembersRouteImport.update({
   id: '/members',
   path: '/members',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
+const DashboardOrganizationProfileRoute =
+  DashboardOrganizationProfileRouteImport.update({
+    id: '/organization-profile',
+    path: '/organization-profile',
+    getParentRoute: () => DashboardRouteRoute,
+  } as any)
 const DashboardOverviewRoute = DashboardOverviewRouteImport.update({
   id: '/overview',
   path: '/overview',
@@ -155,7 +168,9 @@ export interface FileRoutesByFullPath {
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
   '/dashboard/$module': typeof DashboardModuleRoute
+  '/dashboard/locations': typeof DashboardLocationsRoute
   '/dashboard/members': typeof DashboardMembersRoute
+  '/dashboard/organization-profile': typeof DashboardOrganizationProfileRoute
   '/dashboard/overview': typeof DashboardOverviewRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/': typeof appIndexRoute
@@ -176,7 +191,9 @@ export interface FileRoutesByTo {
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
   '/dashboard/$module': typeof DashboardModuleRoute
+  '/dashboard/locations': typeof DashboardLocationsRoute
   '/dashboard/members': typeof DashboardMembersRoute
+  '/dashboard/organization-profile': typeof DashboardOrganizationProfileRoute
   '/dashboard/overview': typeof DashboardOverviewRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/': typeof appIndexRoute
@@ -201,7 +218,9 @@ export interface FileRoutesById {
   '/(auth)/login': typeof authLoginRoute
   '/(auth)/signup': typeof authSignupRoute
   '/dashboard/$module': typeof DashboardModuleRoute
+  '/dashboard/locations': typeof DashboardLocationsRoute
   '/dashboard/members': typeof DashboardMembersRoute
+  '/dashboard/organization-profile': typeof DashboardOrganizationProfileRoute
   '/dashboard/overview': typeof DashboardOverviewRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/(app)/': typeof appIndexRoute
@@ -225,7 +244,9 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/dashboard/$module'
+    | '/dashboard/locations'
     | '/dashboard/members'
+    | '/dashboard/organization-profile'
     | '/dashboard/overview'
     | '/dashboard/profile'
     | '/'
@@ -246,7 +267,9 @@ export interface FileRouteTypes {
     | '/login'
     | '/signup'
     | '/dashboard/$module'
+    | '/dashboard/locations'
     | '/dashboard/members'
+    | '/dashboard/organization-profile'
     | '/dashboard/overview'
     | '/dashboard/profile'
     | '/'
@@ -270,7 +293,9 @@ export interface FileRouteTypes {
     | '/(auth)/login'
     | '/(auth)/signup'
     | '/dashboard/$module'
+    | '/dashboard/locations'
     | '/dashboard/members'
+    | '/dashboard/organization-profile'
     | '/dashboard/overview'
     | '/dashboard/profile'
     | '/(app)/'
@@ -401,11 +426,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardModuleRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
+    '/dashboard/locations': {
+      id: '/dashboard/locations'
+      path: '/locations'
+      fullPath: '/dashboard/locations'
+      preLoaderRoute: typeof DashboardLocationsRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
     '/dashboard/members': {
       id: '/dashboard/members'
       path: '/members'
       fullPath: '/dashboard/members'
       preLoaderRoute: typeof DashboardMembersRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
+    '/dashboard/organization-profile': {
+      id: '/dashboard/organization-profile'
+      path: '/organization-profile'
+      fullPath: '/dashboard/organization-profile'
+      preLoaderRoute: typeof DashboardOrganizationProfileRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
     '/dashboard/overview': {
@@ -492,7 +531,9 @@ const authRouteRouteWithChildren = authRouteRoute._addFileChildren(
 
 interface DashboardRouteRouteChildren {
   DashboardModuleRoute: typeof DashboardModuleRoute
+  DashboardLocationsRoute: typeof DashboardLocationsRoute
   DashboardMembersRoute: typeof DashboardMembersRoute
+  DashboardOrganizationProfileRoute: typeof DashboardOrganizationProfileRoute
   DashboardOverviewRoute: typeof DashboardOverviewRoute
   DashboardProfileRoute: typeof DashboardProfileRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
@@ -501,7 +542,9 @@ interface DashboardRouteRouteChildren {
 
 const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardModuleRoute: DashboardModuleRoute,
+  DashboardLocationsRoute: DashboardLocationsRoute,
   DashboardMembersRoute: DashboardMembersRoute,
+  DashboardOrganizationProfileRoute: DashboardOrganizationProfileRoute,
   DashboardOverviewRoute: DashboardOverviewRoute,
   DashboardProfileRoute: DashboardProfileRoute,
   DashboardIndexRoute: DashboardIndexRoute,

@@ -3,7 +3,7 @@ import type { ActivityAction, MemberRole, OrganizationType } from '@generated/pr
 import { prisma } from '@lib/prisma.ts'
 import { HttpError } from '@lib/httpError.ts'
 import { ActivityService } from '@modules/activity/activity.service.ts'
-import type { CreateOrganizationInput, UpdateMemberInput, UpdateOrganizationStatusInput } from './organization.types.ts'
+import type { CreateOrganizationInput, UpdateMemberInput, UpdateOrganizationProfileInput, UpdateOrganizationStatusInput } from './organization.types.ts'
 
 // The form sends readable labels; the database stores enum values
 const ORGANIZATION_TYPE_VALUES = {
@@ -86,6 +86,26 @@ const refuseMemberChange = async ({ tx, organizationId, membershipId }: RefuseMe
     throw new HttpError(404, 'Member not found')
   }
   throw new HttpError(400, 'Only school admins can be changed here')
+}
+
+const profileSelect = {
+  id: true,
+  name: true,
+  type: true,
+  country: true,
+  currency: true,
+  size: true,
+  email: true,
+  phone: true,
+  website: true,
+  status: true,
+  created_at: true,
+} as const
+
+type UpdateProfileParams = {
+  organizationId: string
+  actorId: string
+  data: UpdateOrganizationProfileInput
 }
 
 type CreateOrganizationParams = {
@@ -242,6 +262,34 @@ export const OrganizationService = {
         throw new HttpError(409, 'The owner deactivated this organization')
       }
       return { id: organizationId, status: data.status }
+    }),
+
+  getProfile: async (organizationId: string) => {
+    const profile = await prisma.organization.findUnique({ where: { id: organizationId }, select: profileSelect })
+    if (!profile) {
+      throw new HttpError(404, 'Organization not found')
+    }
+    return profile
+  },
+
+  updateProfile: ({ organizationId, actorId, data }: UpdateProfileParams) =>
+    prisma.$transaction(async (tx) => {
+      const profile = await tx.organization.update({
+        where: { id: organizationId },
+        data: {
+          name: data.name,
+          type: ORGANIZATION_TYPE_VALUES[data.type],
+          country: data.country,
+          currency: data.currency,
+          size: data.size ?? null,
+          email: data.email || null,
+          phone: data.phone || null,
+          website: data.website || null,
+        },
+        select: profileSelect,
+      })
+      await tx.activityLog.create({ data: { actor_id: actorId, action: 'ORGANIZATION_PROFILE_UPDATED', organization_id: organizationId } })
+      return profile
     }),
 
   // The owner's Members page: active members, owner first, then by when they joined

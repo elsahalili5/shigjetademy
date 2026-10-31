@@ -11,6 +11,7 @@ const activityEntrySelect = {
   actor: { select: activityUserSelect },
   organization: { select: { id: true, name: true } },
   target_user: { select: activityUserSelect },
+  subject_name: true,
 } as const
 
 const newestFirst = [{ created_at: 'desc' }, { id: 'desc' }] as const satisfies Prisma.ActivityLogOrderByWithRelationInput[]

@@ -10,6 +10,7 @@ import {
   membershipParamSchema,
   organizationIdParamSchema,
   updateMemberSchema,
+  updateOrganizationProfileSchema,
   updateOrganizationStatusSchema,
 } from './organization.schema.ts'
 
@@ -45,6 +46,24 @@ router.get(
   validateRequestMiddleware(organizationIdParamSchema, 'params'),
   requireMembership(['OWNER']),
   OrganizationController.listMembers,
+)
+
+// School admins read the profile; only the owner changes it
+router.get(
+  '/:organizationId/profile',
+  authMiddleware,
+  validateRequestMiddleware(organizationIdParamSchema, 'params'),
+  requireMembership(['OWNER', 'ADMIN']),
+  OrganizationController.getProfile,
+)
+
+router.put(
+  '/:organizationId/profile',
+  authMiddleware,
+  validateRequestMiddleware(organizationIdParamSchema, 'params'),
+  requireMembership(['OWNER']),
+  validateRequestMiddleware(updateOrganizationProfileSchema),
+  OrganizationController.updateProfile,
 )
 
 router.get(

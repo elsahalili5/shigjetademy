@@ -81,6 +81,13 @@ enum ActivityAction {
   ACCOUNT_LOCKED
   MEMBER_UPDATED
   MEMBER_REMOVED
+  ORGANIZATION_PROFILE_UPDATED
+  LOCATION_CREATED
+  LOCATION_UPDATED
+  LOCATION_REMOVED
+  DEPARTMENT_CREATED
+  DEPARTMENT_UPDATED
+  DEPARTMENT_REMOVED
 }
 
 // ─────────────────────────────────────────
@@ -173,6 +180,9 @@ model Organization {
   country      String             @db.Char(2)
   currency     String             @db.Char(3)
   size         String?
+  email        String?
+  phone        String?
+  website      String?
   /// Shigjetademy's share of each student payment, in hundredths of a percent (300 = 3%)
   fee_rate_bps Int                @default(300)
   status       OrganizationStatus @default(ACTIVE)
@@ -183,6 +193,45 @@ model Organization {
   memberships  Membership[]
   invitations  Invitation[]
   activity     ActivityLog[]
+  locations    Location[]
+  departments  Department[]
+}
+
+/// A campus or branch. While an organization has any, exactly one is its main location (kept by the location service).
+model Location {
+  id              String       @id @default(uuid()) @db.Uuid
+  organization_id String       @db.Uuid
+  name            String
+  address         String?
+  city            String?
+  phone           String?
+  is_main         Boolean      @default(false)
+
+  created_at      DateTime     @default(now())
+  updated_at      DateTime     @updatedAt
+
+  organization    Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  departments     Department[]
+
+  @@index([organization_id])
+}
+
+/// Removing its location keeps the department, without a location
+model Department {
+  id              String       @id @default(uuid()) @db.Uuid
+  organization_id String       @db.Uuid
+  location_id     String?      @db.Uuid
+  name            String
+  description     String?
+
+  created_at      DateTime     @default(now())
+  updated_at      DateTime     @updatedAt
+
+  organization    Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  location        Location?    @relation(fields: [location_id], references: [id], onDelete: SetNull)
+
+  @@unique([organization_id, name])
+  @@index([location_id])
 }
 
 /// A user's place in one organization. One user can belong to many organizations, once each.
@@ -238,6 +287,8 @@ model ActivityLog {
   action          ActivityAction
   organization_id String?        @db.Uuid
   target_user_id  String?        @db.Uuid
+  /// The location's or department's name, so the entry still reads right after it is removed
+  subject_name    String?
   created_at      DateTime       @default(now())
 
   actor           User?          @relation("ActivityActor", fields: [actor_id], references: [id], onDelete: SetNull)
