@@ -1,6 +1,7 @@
 import { useId, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Plus, Search, Users } from 'lucide-react'
+import { toast } from 'react-hot-toast'
 import { getStudentName, STUDENT_STATUSES } from '@shigjetademy/shared/students'
 import type { Student, StudentStatus } from '@shigjetademy/shared/students'
 import { DashboardPageHeader } from '#/components/DashboardPageHeader'
@@ -9,14 +10,17 @@ import { NoticeBar } from '#/components/NoticeBar'
 import type { Notice } from '#/components/NoticeBar'
 import { showErrorToast } from '#/lib/error-toast'
 import { useSetStudentStatus } from '../hooks/use-set-student-status'
+import { useStudentInvitationAction } from '../hooks/use-student-invitation-action'
 import { useStudentSearch } from '../hooks/use-student-search'
 import { useStudents } from '../hooks/use-students'
 import type { LoadedStudents } from '../hooks/use-students'
 import { SkeletonRows } from './skeleton-rows'
 import { StudentActions } from './student-actions'
-import type { StudentStatusChange } from './student-actions'
+import type { StudentInvitationChange, StudentStatusChange } from './student-actions'
 import { StudentDialog } from './student-dialog'
 import type { StudentDialogMode } from './student-dialog'
+import { StudentInviteDialog } from './student-invite-dialog'
+import type { StudentInviteTarget } from './student-invite-dialog'
 import { StudentTable } from './student-table'
 
 const STATUS_TAB_LABELS = {
@@ -34,12 +38,15 @@ interface StudentsPageProps {
 /** The organization's student records: search, active and archived tabs, and adding, editing and archiving */
 export function StudentsPage({ organizationId, organizationName }: StudentsPageProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const inviteDialogRef = useRef<HTMLDialogElement>(null)
   const searchId = useId()
   const studentSearch = useStudentSearch()
   const [status, setStatus] = useState<StudentStatus>('ACTIVE')
   const students = useStudents({ organizationId, search: studentSearch.search, status })
   const setStudentStatus = useSetStudentStatus(organizationId)
+  const studentInvitation = useStudentInvitationAction(organizationId)
   const [dialogMode, setDialogMode] = useState<StudentDialogMode>({ kind: 'add', openCount: 0 })
+  const [inviteTarget, setInviteTarget] = useState<StudentInviteTarget | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
 
   const handleAdd = () => {
@@ -63,6 +70,26 @@ export function StudentsPage({ organizationId, organizationName }: StudentsPageP
       { studentId: student.id, status: nextStatus },
       {
         onSuccess: () => setNotice({ tone: 'success', text: nextStatus === 'ARCHIVED' ? `Archived ${name}.` : `Restored ${name}.` }),
+        onError: showErrorToast,
+      },
+    )
+  }
+
+  const handleInvite = (student: Student) => {
+    setInviteTarget((current) => ({ student, openCount: (current?.openCount ?? 0) + 1 }))
+    inviteDialogRef.current?.showModal()
+  }
+
+  const handleInvited = (invited: Student) => {
+    setNotice({ tone: 'success', text: `Sent an invitation to ${invited.invitation?.email ?? getStudentName(invited)}.` })
+  }
+
+  const handleChangeInvitation = ({ student, action }: StudentInvitationChange) => {
+    const email = student.invitation?.email ?? getStudentName(student)
+    studentInvitation.mutate(
+      { studentId: student.id, action },
+      {
+        onSuccess: () => toast.success(action === 'RESEND' ? `Sent a new link to ${email}. The old one no longer works.` : `Withdrew the invitation to ${email}.`),
         onError: showErrorToast,
       },
     )
@@ -126,11 +153,15 @@ export function StudentsPage({ organizationId, organizationName }: StudentsPageP
             onAdd={handleAdd}
             onEdit={handleEdit}
             onSetStatus={handleSetStatus}
+            isChangingInvitation={studentInvitation.isPending}
+            onInvite={handleInvite}
+            onChangeInvitation={handleChangeInvitation}
           />
         </section>
       </div>
 
       <StudentDialog dialogRef={dialogRef} organizationId={organizationId} mode={dialogMode} onSaved={handleSaved} />
+      <StudentInviteDialog dialogRef={inviteDialogRef} organizationId={organizationId} target={inviteTarget} onInvited={handleInvited} />
     </div>
   )
 }
@@ -147,16 +178,43 @@ interface StudentListProps {
   onAdd: () => void
   onEdit: (student: Student) => void
   onSetStatus: (change: StudentStatusChange) => void
+  isChangingInvitation: boolean
+  onInvite: (student: Student) => void
+  onChangeInvitation: (change: StudentInvitationChange) => void
 }
 
-function StudentList({ status, data, listStatus, hasSearch, hasNextPage, isLoadingMore, onRetry, onLoadMore, onAdd, onEdit, onSetStatus }: StudentListProps) {
+function StudentList({
+  status,
+  data,
+  listStatus,
+  hasSearch,
+  hasNextPage,
+  isLoadingMore,
+  onRetry,
+  onLoadMore,
+  onAdd,
+  onEdit,
+  onSetStatus,
+  isChangingInvitation,
+  onInvite,
+  onChangeInvitation,
+}: StudentListProps) {
   if (status === 'error') return <LoadError what="students" onRetry={onRetry} />
   if (!data) return <SkeletonRows />
   if (data.students.length === 0) return <EmptyStudents listStatus={listStatus} hasSearch={hasSearch} onAdd={onAdd} />
 
   return (
     <div className="grid justify-items-center gap-4 pb-4">
-      <StudentTable students={data.students} renderActions={(student) => <StudentActions student={student} onEdit={onEdit} onSetStatus={onSetStatus} />} />
+      <StudentTable students={data.students} renderActions={(student) => (
+            <StudentActions
+              student={student}
+              isChangingInvitation={isChangingInvitation}
+              onEdit={onEdit}
+              onSetStatus={onSetStatus}
+              onInvite={onInvite}
+              onChangeInvitation={onChangeInvitation}
+            />
+          )} />
       {hasNextPage ? (
         <button type="button" className="button button--ghost min-h-11 px-4 text-base" onClick={onLoadMore} disabled={isLoadingMore}>
           {isLoadingMore ? 'Loading…' : 'Load more'}

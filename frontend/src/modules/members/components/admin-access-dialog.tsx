@@ -4,11 +4,14 @@ import { Controller } from 'react-hook-form'
 import { X } from 'lucide-react'
 import { PERMISSIONS } from '@shigjetademy/shared/auth'
 import type { Permission } from '@shigjetademy/shared/auth'
+import { INVITATION_VALID_DAYS } from '@shigjetademy/shared/invitations'
+import type { SentInvitation } from '@shigjetademy/shared/invitations'
 import type { InviteMemberInput, OrganizationMember, UpdateMemberInput } from '@shigjetademy/shared/organization'
 import { FormAlert } from '#/components/FormAlert'
 import { getErrorMessage, getFieldError } from '#/lib/error-message'
 import { AuthField } from '#/modules/auth/components/auth-field'
 import { useAdminAccessForm } from '../hooks/use-admin-access-form'
+import { useInviteAdmin } from '../hooks/use-invite-admin'
 import { useInviteAdminForm } from '../hooks/use-invite-admin-form'
 import { useUpdateMember } from '../hooks/use-update-member'
 import { PermissionPicker } from './permission-picker'
@@ -21,16 +24,16 @@ interface AdminAccessDialogProps {
   /** Changes on every open, so the form remounts from the mode's values and a cancelled edit is gone */
   formKey: number
   organizationId: string
-  onInvite: (input: InviteMemberInput) => void
+  onInvited: (invitation: SentInvitation) => void
   onSaved: (member: OrganizationMember) => void
 }
 
 /** Invite a School Admin, or edit an existing one's access; opened with dialogRef.current.showModal() */
-export function AdminAccessDialog({ dialogRef, mode, formKey, organizationId, onInvite, onSaved }: AdminAccessDialogProps) {
+export function AdminAccessDialog({ dialogRef, mode, formKey, organizationId, onInvited, onSaved }: AdminAccessDialogProps) {
   const handleClose = () => dialogRef.current?.close()
 
-  const handleInvite = (input: InviteMemberInput) => {
-    onInvite(input)
+  const handleInvited = (invitation: SentInvitation) => {
+    onInvited(invitation)
     handleClose()
   }
 
@@ -50,7 +53,7 @@ export function AdminAccessDialog({ dialogRef, mode, formKey, organizationId, on
           key={formKey}
           mode={mode}
           organizationId={organizationId}
-          onInvite={handleInvite}
+          onInvited={handleInvited}
           onSaved={handleSaved}
           onCancel={handleClose}
         />
@@ -62,20 +65,20 @@ export function AdminAccessDialog({ dialogRef, mode, formKey, organizationId, on
 interface AdminAccessDialogBodyProps {
   mode: AdminAccessDialogMode
   organizationId: string
-  onInvite: (input: InviteMemberInput) => void
+  onInvited: (invitation: SentInvitation) => void
   onSaved: (member: OrganizationMember) => void
   onCancel: () => void
 }
 
-function AdminAccessDialogBody({ mode, organizationId, onInvite, onSaved, onCancel }: AdminAccessDialogBodyProps) {
+function AdminAccessDialogBody({ mode, organizationId, onInvited, onSaved, onCancel }: AdminAccessDialogBodyProps) {
   switch (mode.kind) {
     case 'invite':
       return (
         <>
           <DialogHeader title="Invite a school admin" onClose={onCancel}>
-            Sending invitations isn’t connected yet, so nothing is sent from here. You can check the details now.
+            They get an email with a link that works for {INVITATION_VALID_DAYS} days, and join with exactly the access you choose here.
           </DialogHeader>
-          <InviteAdminForm onInvite={onInvite} onCancel={onCancel} />
+          <InviteAdminForm organizationId={organizationId} onInvited={onInvited} onCancel={onCancel} />
         </>
       )
     case 'edit':
@@ -117,16 +120,24 @@ function DialogHeader({ title, onClose, children }: DialogHeaderProps) {
 }
 
 interface InviteAdminFormProps {
-  onInvite: (input: InviteMemberInput) => void
+  organizationId: string
+  onInvited: (invitation: SentInvitation) => void
   onCancel: () => void
 }
 
-function InviteAdminForm({ onInvite, onCancel }: InviteAdminFormProps) {
+// The dialog stays open until the invitation is sent; a refusal shows here and keeps the owner's choices
+function InviteAdminForm({ organizationId, onInvited, onCancel }: InviteAdminFormProps) {
   const inviteForm = useInviteAdminForm()
+  const inviteAdmin = useInviteAdmin(organizationId)
   const emailId = useId()
   const { errors } = inviteForm.formState
+  const fieldError = (fieldName: keyof InviteMemberInput) => getFieldError<InviteMemberInput>({ fieldName, formErrors: errors, backendError: inviteAdmin.error })
+  // A field error from the server already shows under its field
+  const hasFormError = inviteAdmin.isError && !fieldError('email') && !fieldError('permissions')
 
-  const handleSubmit = inviteForm.handleSubmit(onInvite)
+  const handleSubmit = inviteForm.handleSubmit((input: InviteMemberInput) => {
+    inviteAdmin.mutate(input, { onSuccess: onInvited })
+  })
 
   return (
     <form className="flex min-h-0 flex-col" noValidate onSubmit={handleSubmit}>
@@ -138,16 +149,23 @@ function InviteAdminForm({ onInvite, onCancel }: InviteAdminFormProps) {
           autoComplete="off"
           inputMode="email"
           placeholder="admin@school.org"
-          error={errors.email?.message}
+          disabled={inviteAdmin.isPending}
+          error={fieldError('email')}
           {...inviteForm.register('email')}
         />
         <Controller
           control={inviteForm.control}
           name="permissions"
-          render={({ field }) => <PermissionPicker value={field.value} onChange={field.onChange} error={errors.permissions?.message} />}
+          render={({ field }) => <PermissionPicker value={field.value} onChange={field.onChange} error={fieldError('permissions')} />}
         />
+        {hasFormError ? <FormAlert>{getErrorMessage(inviteAdmin.error)}</FormAlert> : null}
       </div>
-      <DialogFooter permissions={inviteForm.watch('permissions')} submitLabel="Check details" onCancel={onCancel} />
+      <DialogFooter
+        permissions={inviteForm.watch('permissions')}
+        submitLabel={inviteAdmin.isPending ? 'Sending…' : 'Send invitation'}
+        isPending={inviteAdmin.isPending}
+        onCancel={onCancel}
+      />
     </form>
   )
 }

@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { delay, http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
-import type { OrganizationMember } from '@shigjetademy/shared/organization'
+import type { OrganizationInvitation, OrganizationMember } from '@shigjetademy/shared/organization'
 import { buildUser, OWNER_MEMBERSHIPS, signInAs } from '#/test/fixtures'
 import { renderRoute } from '#/test/render-route'
 import { server } from '#/test/server'
@@ -26,6 +26,15 @@ const ADMIN: OrganizationMember = {
   role: 'ADMIN',
   permissions: ['MANAGE_STUDENTS', 'VIEW_REPORTS'],
   joined_at: '2026-10-31T09:00:00.000Z',
+}
+
+const PENDING: OrganizationInvitation = {
+  id: 'invitation-1',
+  email: 'new@oxford.com',
+  role: 'ADMIN',
+  permissions: ['MANAGE_STUDENTS'],
+  created_at: '2026-10-31T09:00:00.000Z',
+  expires_at: '2026-11-07T09:00:00.000Z',
 }
 
 // The dialog stays in the page while closed, so it is found even when hidden
@@ -158,17 +167,67 @@ describe('MembersPage', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Remove' })).toBeDisabled())
   })
 
-  it('says sending invitations is not connected yet', async () => {
+  it('sends a real invitation with the permissions chosen and lists it as pending', async () => {
     signInAsOwnerWithMembers()
+    let sent: unknown
+    server.use(
+      http.post('*/api/organizations/org-1/invitations', async ({ request }) => {
+        sent = await request.json()
+        return HttpResponse.json({ data: PENDING }, { status: 201 })
+      }),
+    )
     const { user } = renderRoute('/dashboard/members')
 
     await user.click(await screen.findByRole('button', { name: 'Invite admin' }))
-    expect(within(editDialog()).getByText('Sending invitations isn’t connected yet', { exact: false })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Send/ })).not.toBeInTheDocument()
+    expect(within(editDialog()).queryByText(/isn’t connected/)).not.toBeInTheDocument()
     await user.type(screen.getByLabelText('Email'), 'new@oxford.com')
-    await user.click(screen.getByRole('button', { name: 'Check details' }))
+    await user.click(screen.getByRole('checkbox', { name: /Operational reports/ }))
+    await user.click(screen.getByRole('button', { name: 'Send invitation' }))
 
-    expect(screen.getByRole('status')).toHaveTextContent('nothing was sent to new@oxford.com')
+    expect(await screen.findByRole('status')).toHaveTextContent('Sent an invitation to new@oxford.com.')
+    expect(sent).toEqual({ email: 'new@oxford.com', permissions: expect.not.arrayContaining(['VIEW_REPORTS']) })
+    const pending = screen.getByRole('region', { name: 'Pending invitations' })
+    expect(await within(pending).findByText('new@oxford.com')).toBeInTheDocument()
+  })
+
+  it('shows the server’s refusal under the email and keeps the dialog open', async () => {
+    signInAsOwnerWithMembers()
+    server.use(
+      http.post('*/api/organizations/org-1/invitations', () =>
+        HttpResponse.json({ error: 'Taken', details: { formErrors: [], fieldErrors: { email: ['This person is already a member of your organization.'] } } }, { status: 409 }),
+      ),
+    )
+    const { user } = renderRoute('/dashboard/members')
+
+    await user.click(await screen.findByRole('button', { name: 'Invite admin' }))
+    await user.type(screen.getByLabelText('Email'), 'admin1@oxford.com')
+    await user.click(screen.getByRole('button', { name: 'Send invitation' }))
+
+    expect(await within(editDialog()).findByText('This person is already a member of your organization.')).toBeInTheDocument()
+    expect(editDialog()).toHaveAttribute('open')
+  })
+
+  it('resends, copies a fresh link for, and revokes a pending invitation', async () => {
+    signInAsOwnerWithMembers()
+    server.use(
+      http.get('*/api/organizations/org-1/invitations', () => HttpResponse.json({ data: [PENDING] })),
+      http.post('*/api/organizations/org-1/invitations/invitation-1/resend', () => HttpResponse.json({ data: PENDING })),
+      http.post('*/api/organizations/org-1/invitations/invitation-1/link', () => HttpResponse.json({ data: { ...PENDING, link: 'http://localhost:5173/invite/fresh' } })),
+      http.delete('*/api/organizations/org-1/invitations/invitation-1', () => new HttpResponse(null, { status: 204 })),
+    )
+    const { user } = renderRoute('/dashboard/members')
+    const pending = await screen.findByRole('region', { name: 'Pending invitations' })
+
+    await user.click(await within(pending).findByRole('button', { name: 'Resend invitation to new@oxford.com' }))
+    expect(await screen.findByText('Sent a new link to new@oxford.com. The old one no longer works.')).toBeInTheDocument()
+
+    await user.click(within(pending).getByRole('button', { name: 'Copy a new link for new@oxford.com' }))
+    expect(await screen.findByText('Copied a new link. It was emailed too, and older links no longer work.')).toBeInTheDocument()
+    expect(await navigator.clipboard.readText()).toBe('http://localhost:5173/invite/fresh')
+
+    await user.click(within(pending).getByRole('button', { name: 'Revoke invitation to new@oxford.com' }))
+    await user.click(within(screen.getByRole('group', { name: 'Revoke invitation to new@oxford.com' })).getByRole('button', { name: 'Revoke' }))
+    expect(await within(pending).findByText('No open invitations.')).toBeInTheDocument()
   })
 
   it('keeps non-owners out', async () => {

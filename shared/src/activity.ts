@@ -29,6 +29,10 @@ export const ACTIVITY_ACTIONS = [
   'STUDENT_UPDATED',
   'STUDENT_ARCHIVED',
   'STUDENT_RESTORED',
+  'INVITATION_SENT',
+  'INVITATION_RESENT',
+  'INVITATION_REVOKED',
+  'INVITATION_ACCEPTED',
 ] as const
 
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number]
@@ -52,6 +56,6 @@ export type ActivityEntry = {
   actor: ActivityUser | null
   organization: { id: string; name: string } | null
   target_user: ActivityUser | null
-  /** The location's, department's, academic period's or student's name for those entries */
+  /** The location's, department's, academic period's or student's name, or the invited email, for those entries */
   subject_name: string | null
 }

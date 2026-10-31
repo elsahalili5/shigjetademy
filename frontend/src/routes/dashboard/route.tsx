@@ -1,4 +1,4 @@
-import { LogOut } from 'lucide-react'
+import { LogOut, School } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { OrganizationStatus } from '@shigjetademy/shared/organization'
 import { Link, Outlet, createFileRoute, useMatchRoute, useNavigate } from '@tanstack/react-router'
@@ -11,7 +11,8 @@ import type { OwnerNavItem } from '#/lib/owner-navigation'
 import { requireOrganization } from '#/lib/route-guard'
 import { useActiveMembership } from '#/modules/auth/hooks/use-active-membership'
 import { useAuth } from '#/modules/auth/hooks/use-auth'
-import { isOrganizationOwner, isPlatformAdmin } from '#/modules/auth/utils/session-user'
+import { isOrganizationOwner, isOrganizationStudent, isPlatformAdmin } from '#/modules/auth/utils/session-user'
+import type { SessionMembership } from '#/modules/auth/utils/session-user'
 import { ROLE_LABELS } from '#/modules/auth/utils/role-labels'
 import { OrganizationSuspended } from '#/modules/organization/components/organization-suspended'
 import { OrganizationDeactivated } from '#/modules/organization-settings/components/organization-deactivated'
@@ -88,7 +89,7 @@ function DashboardLayout() {
             className="-mx-1 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-1 [scrollbar-width:none] max-[860px]:flex-row max-[860px]:gap-1.5 max-[860px]:overflow-x-auto [&::-webkit-scrollbar]:hidden"
             aria-label="Modules"
           >
-            {isOwner ? <OwnerNavigation /> : <ModuleNavigation isAdmin={isAdmin} shouldShowStudents={isStudentsManager(membership)} />}
+            <SidebarNavigation membership={membership} isAdmin={isAdmin} />
           </nav>
 
           <div className="flex items-center gap-2 border-t border-white/10 px-1 pt-4 max-[860px]:hidden">
@@ -150,6 +151,32 @@ function DashboardPanel({ organizationStatus, organizationName, isOwner }: Dashb
       throw new Error(`Unknown organization status: ${String(unknown)}`)
     }
   }
+}
+
+interface SidebarNavigationProps {
+  membership: SessionMembership | undefined
+  isAdmin: boolean
+}
+
+/** The owner's areas, a student's My school, or the module list for everyone else */
+function SidebarNavigation({ membership, isAdmin }: SidebarNavigationProps) {
+  if (isOrganizationOwner(membership)) return <OwnerNavigation />
+  if (isOrganizationStudent(membership)) return <StudentNavigation />
+  return <ModuleNavigation isAdmin={isAdmin} shouldShowStudents={isStudentsManager(membership)} />
+}
+
+/** Students only have My school for now; their profile is at the bottom of the sidebar like everyone's */
+function StudentNavigation() {
+  return (
+    <>
+      <span className={SIDEBAR_HEADING_CLASS} aria-hidden="true">
+        Dashboard
+      </span>
+      <Link to="/dashboard/my-school" className={SIDEBAR_LINK_CLASS}>
+        <SidebarLinkContent icon={School} label="My school" />
+      </Link>
+    </>
+  )
 }
 
 /** The owner's sidebar, grouped by area */

@@ -1,8 +1,10 @@
 import { useRef, useState } from 'react'
-import { Mail, Pencil, UserMinus, UserPlus, Users } from 'lucide-react'
+import { Copy, Mail, MailX, Pencil, Send, UserMinus, UserPlus, Users } from 'lucide-react'
+import { toast } from 'react-hot-toast'
 import { PERMISSIONS } from '@shigjetademy/shared/auth'
 import type { Permission } from '@shigjetademy/shared/auth'
-import type { InviteMemberInput, OrganizationInvitation, OrganizationMember } from '@shigjetademy/shared/organization'
+import type { SentInvitation } from '@shigjetademy/shared/invitations'
+import type { OrganizationInvitation, OrganizationMember } from '@shigjetademy/shared/organization'
 import { DashboardPageHeader } from '#/components/DashboardPageHeader'
 import { LoadError } from '#/components/LoadError'
 import { NoticeBar } from '#/components/NoticeBar'
@@ -12,6 +14,7 @@ import { fullName } from '#/lib/full-name'
 import { initials } from '#/lib/initials'
 import { useFormatDate } from '#/lib/use-format-date'
 import { ROLE_LABELS } from '#/modules/auth/utils/role-labels'
+import { useAdminInvitationAction } from '../hooks/use-admin-invitation-action'
 import { useOrganizationMembers } from '../hooks/use-organization-members'
 import { usePendingInvitations } from '../hooks/use-pending-invitations'
 import { useRemoveMember } from '../hooks/use-remove-member'
@@ -27,12 +30,13 @@ interface MembersPageProps {
   organizationName: string
 }
 
-/** The owner's Members page: who has access to the organization, open invitations, and inviting School Admins. */
+/** The owner's Members page: who has access to the organization, open invitations with resend, copy link and revoke, and inviting School Admins. */
 export function MembersPage({ organizationId, organizationName }: MembersPageProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const members = useOrganizationMembers(organizationId)
   const invitations = usePendingInvitations(organizationId)
   const removeMember = useRemoveMember(organizationId)
+  const invitationAction = useAdminInvitationAction(organizationId)
   const [dialogMode, setDialogMode] = useState<AdminAccessDialogMode>({ kind: 'invite' })
   const [dialogFormKey, setDialogFormKey] = useState(0)
   const [notice, setNotice] = useState<Notice | null>(null)
@@ -47,9 +51,42 @@ export function MembersPage({ organizationId, organizationName }: MembersPagePro
 
   const handleOpenEdit = (member: OrganizationMember) => handleOpenDialog({ kind: 'edit', member })
 
-  // Sending invitations comes with the email step; until then the dialog says so instead of pretending
-  const handleInvite = ({ email }: InviteMemberInput) => {
-    setNotice({ tone: 'info', text: `Sending invitations isn’t connected yet, so nothing was sent to ${email}.` })
+  const handleInvited = (invitation: SentInvitation) => {
+    setNotice({ tone: 'success', text: `Sent an invitation to ${invitation.email}.` })
+  }
+
+  const handleResend = (invitation: OrganizationInvitation) => {
+    invitationAction.mutate(
+      { invitationId: invitation.id, action: 'RESEND' },
+      { onSuccess: () => toast.success(`Sent a new link to ${invitation.email}. The old one no longer works.`), onError: showErrorToast },
+    )
+  }
+
+  // The server keeps only a hash of each link, so copying asks for a new one (emailed too) and copies that
+  const handleCopyLink = (invitation: OrganizationInvitation) => {
+    invitationAction.mutate(
+      { invitationId: invitation.id, action: 'COPY_LINK' },
+      {
+        onSuccess: async (outcome) => {
+          if (outcome.action !== 'COPY_LINK') return
+          try {
+            await navigator.clipboard.writeText(outcome.invitation.link)
+            toast.success('Copied a new link. It was emailed too, and older links no longer work.')
+          } catch {
+            // Some browsers refuse clipboard writes after a request; the link still reaches the owner
+            toast(`Copy this new link: ${outcome.invitation.link}`, { duration: Infinity })
+          }
+        },
+        onError: showErrorToast,
+      },
+    )
+  }
+
+  const handleRevoke = (invitation: OrganizationInvitation) => {
+    invitationAction.mutate(
+      { invitationId: invitation.id, action: 'REVOKE' },
+      { onSuccess: () => toast.success(`Withdrew the invitation to ${invitation.email}.`), onError: showErrorToast },
+    )
   }
 
   const handleSaved = (saved: OrganizationMember) => {
@@ -89,7 +126,14 @@ export function MembersPage({ organizationId, organizationName }: MembersPagePro
             </h2>
             <span className="tabular text-[0.93rem] text-ink-3">{pendingCount}</span>
           </div>
-          <InvitationList query={invitations} onInvite={handleOpenInvite} />
+          <InvitationList
+            query={invitations}
+            isChanging={invitationAction.isPending}
+            onInvite={handleOpenInvite}
+            onResend={handleResend}
+            onCopyLink={handleCopyLink}
+            onRevoke={handleRevoke}
+          />
         </section>
 
         <section className="rounded-card border border-rule" aria-labelledby="members-title">
@@ -108,7 +152,7 @@ export function MembersPage({ organizationId, organizationName }: MembersPagePro
         mode={dialogMode}
         formKey={dialogFormKey}
         organizationId={organizationId}
-        onInvite={handleInvite}
+        onInvited={handleInvited}
         onSaved={handleSaved}
       />
     </div>
@@ -155,14 +199,19 @@ function PermissionSummary({ permissions }: PermissionSummaryProps) {
   )
 }
 
-interface InvitationListProps {
+type InvitationHandlers = {
+  isChanging: boolean
+  onResend: (invitation: OrganizationInvitation) => void
+  onCopyLink: (invitation: OrganizationInvitation) => void
+  onRevoke: (invitation: OrganizationInvitation) => void
+}
+
+interface InvitationListProps extends InvitationHandlers {
   query: ListQuery<OrganizationInvitation>
   onInvite: () => void
 }
 
-function InvitationList({ query, onInvite }: InvitationListProps) {
-  const formatDate = useFormatDate()
-
+function InvitationList({ query, onInvite, ...handlers }: InvitationListProps) {
   if (query.status === 'pending') return <SkeletonRows />
   if (query.status === 'error') return <LoadError what="invitations" onRetry={() => void query.refetch()} />
 
@@ -182,20 +231,56 @@ function InvitationList({ query, onInvite }: InvitationListProps) {
   return (
     <ul>
       {invitations.map((invitation) => (
-        <li key={invitation.id} className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-rule px-5 py-4 last:border-b-0">
-          <span className="grid size-10 flex-none place-items-center rounded-full bg-kraft-wash text-kraft-ink" aria-hidden="true">
-            <Mail size={18} strokeWidth={1.8} />
-          </span>
-          <span className="grid min-w-[220px] flex-1 gap-0.5 leading-tight">
-            <span className="font-semibold">{invitation.email}</span>
-            <span className="text-[0.88rem] text-ink-3">
-              {ROLE_LABELS[invitation.role]} · sent {formatDate(invitation.created_at)} · expires {formatDate(invitation.expires_at)}
-            </span>
-            <PermissionSummary permissions={invitation.permissions} />
-          </span>
-        </li>
+        <InvitationRow key={invitation.id} invitation={invitation} {...handlers} />
       ))}
     </ul>
+  )
+}
+
+interface InvitationRowProps extends InvitationHandlers {
+  invitation: OrganizationInvitation
+}
+
+/** One pending invitation with resend, copy link and revoke; revoking asks once */
+function InvitationRow({ invitation, isChanging, onResend, onCopyLink, onRevoke }: InvitationRowProps) {
+  const formatDate = useFormatDate()
+  const [isConfirmingRevoke, setIsConfirmingRevoke] = useState(false)
+
+  const handleConfirmRevoke = () => {
+    setIsConfirmingRevoke(false)
+    onRevoke(invitation)
+  }
+
+  return (
+    <li className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-rule px-5 py-4 last:border-b-0">
+      <span className="grid size-10 flex-none place-items-center rounded-full bg-kraft-wash text-kraft-ink" aria-hidden="true">
+        <Mail size={18} strokeWidth={1.8} />
+      </span>
+      <span className="grid min-w-[220px] flex-1 gap-0.5 leading-tight">
+        <span className="font-semibold">{invitation.email}</span>
+        <span className="text-[0.88rem] text-ink-3">
+          {ROLE_LABELS[invitation.role]} · sent {formatDate(invitation.created_at)} · expires {formatDate(invitation.expires_at)}
+        </span>
+        <PermissionSummary permissions={invitation.permissions} />
+      </span>
+      {isConfirmingRevoke ? (
+        <span className="flex items-center gap-2" role="group" aria-label={`Revoke invitation to ${invitation.email}`}>
+          <span className="text-[0.93rem] text-ink-2">The link stops working.</span>
+          <button type="button" className="button min-h-9 bg-coral-deep px-3.5 text-[0.95rem] text-white" onClick={handleConfirmRevoke} disabled={isChanging}>
+            Revoke
+          </button>
+          <button type="button" className="button button--ghost min-h-9 px-3.5 text-[0.95rem]" onClick={() => setIsConfirmingRevoke(false)}>
+            Keep
+          </button>
+        </span>
+      ) : (
+        <span className="flex flex-wrap items-center gap-1.5">
+          <RowAction icon={Send} label="Resend" ariaLabel={`Resend invitation to ${invitation.email}`} isDisabled={isChanging} onClick={() => onResend(invitation)} />
+          <RowAction icon={Copy} label="Copy link" ariaLabel={`Copy a new link for ${invitation.email}`} isDisabled={isChanging} onClick={() => onCopyLink(invitation)} />
+          <RowAction icon={MailX} label="Revoke" ariaLabel={`Revoke invitation to ${invitation.email}`} tone="danger" onClick={() => setIsConfirmingRevoke(true)} />
+        </span>
+      )}
+    </li>
   )
 }
 
@@ -280,14 +365,19 @@ function MemberActions({ member, isRemoving, onEdit, onRemove }: MemberRowProps)
 interface RowActionProps {
   icon: typeof Mail
   label: string
+  /** A fuller name for screen readers when the visible label alone is ambiguous in a list */
+  ariaLabel?: string
+  isDisabled?: boolean
   onClick: () => void
   tone?: 'default' | 'danger'
 }
 
-function RowAction({ icon: Icon, label, onClick, tone = 'default' }: RowActionProps) {
+function RowAction({ icon: Icon, label, ariaLabel, isDisabled = false, onClick, tone = 'default' }: RowActionProps) {
   return (
     <button
       type="button"
+      aria-label={ariaLabel}
+      disabled={isDisabled}
       onClick={onClick}
       className={`inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-[0.93rem] font-semibold transition-colors duration-150 ${
         tone === 'danger' ? 'text-coral-deep hover:bg-coral-wash' : 'text-ink-2 hover:bg-mist hover:text-ink'

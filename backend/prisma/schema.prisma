@@ -106,6 +106,10 @@ enum ActivityAction {
   STUDENT_UPDATED
   STUDENT_ARCHIVED
   STUDENT_RESTORED
+  INVITATION_SENT
+  INVITATION_RESENT
+  INVITATION_REVOKED
+  INVITATION_ACCEPTED
 }
 
 enum StudentStatus {
@@ -366,6 +370,7 @@ model Student {
 
   organization    Organization  @relation(fields: [organization_id], references: [id], onDelete: Cascade)
   user            User?         @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  invitations     Invitation[]
 
   @@unique([organization_id, student_number])
   @@unique([organization_id, user_id])
@@ -392,12 +397,16 @@ model Membership {
   @@index([organization_id, role])
 }
 
+/// An invitation to join an organization by email. The link's token is stored only as its sha256 hash.
+/// At most one PENDING invitation per (organization, email) and per student, kept by the invitation service.
 model Invitation {
   id              String           @id @default(uuid()) @db.Uuid
   organization_id String           @db.Uuid
   email           String
   role            MemberRole
   permissions     Permission[]
+  /// Set for a student invitation: accepting links the login to this existing record
+  student_id      String?          @db.Uuid
   token_hash      String           @unique
   status          InvitationStatus @default(PENDING)
   expires_at      DateTime
@@ -409,9 +418,12 @@ model Invitation {
 
   organization    Organization     @relation(fields: [organization_id], references: [id], onDelete: Cascade)
   invited_by      User             @relation("InvitedBy", fields: [invited_by_id], references: [id])
+  /// Cascade: an invitation for a deleted record could never be accepted correctly
+  student         Student?         @relation(fields: [student_id], references: [id], onDelete: Cascade)
 
   @@index([organization_id, status])
   @@index([email])
+  @@index([student_id])
 }
 
 // ─────────────────────────────────────────
@@ -426,7 +438,7 @@ model ActivityLog {
   action          ActivityAction
   organization_id String?        @db.Uuid
   target_user_id  String?        @db.Uuid
-  /// The location's, department's, academic period's or student's name, so the entry still reads right after it is removed
+  /// The location's, department's, academic period's or student's name, or the invited email, so the entry still reads right after it is removed
   subject_name    String?
   created_at      DateTime       @default(now())
 

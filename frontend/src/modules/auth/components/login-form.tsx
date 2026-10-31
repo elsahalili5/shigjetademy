@@ -9,7 +9,12 @@ import { getHomePath } from '../utils/session-user'
 import { AuthField } from './auth-field'
 import { SubmitButton } from './auth-form-parts'
 
-export function LoginForm() {
+interface LoginFormProps {
+  /** Set when the user came from an invite link, which they return to after logging in */
+  inviteToken?: string
+}
+
+export function LoginForm({ inviteToken }: LoginFormProps) {
   const loginForm = useLoginForm()
   const login = useLogin()
   const navigate = useNavigate()
@@ -17,7 +22,9 @@ export function LoginForm() {
   const { errors } = loginForm.formState
 
   const handleSubmit = loginForm.handleSubmit((input: LoginUserInput) => {
-    login.mutate(input, { onSuccess: (session) => void navigate({ to: getHomePath(session.user) }) })
+    login.mutate(input, {
+      onSuccess: (session) => void (inviteToken ? navigate({ to: '/invite/$token', params: { token: inviteToken } }) : navigate({ to: getHomePath(session.user) })),
+    })
   })
 
   // A server error belongs to the values that were sent; editing them clears it

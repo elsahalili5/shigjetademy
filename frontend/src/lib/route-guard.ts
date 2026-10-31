@@ -4,7 +4,7 @@ import type { AuthUser } from '@shigjetademy/shared/auth'
 import { ME_QUERY_KEY } from '#/modules/auth/hooks/use-me-query'
 import { readActiveOrganizationId } from '#/modules/auth/utils/active-organization-storage'
 import { readStoredTokens } from '#/modules/auth/utils/auth-storage'
-import { getActiveMembership, getHomePath, hasOrganization, isOrganizationManager, isOrganizationOwner, isPlatformAdmin } from '#/modules/auth/utils/session-user'
+import { getActiveMembership, getHomePath, hasOrganization, isOrganizationManager, isOrganizationOwner, isOrganizationStudent, isPlatformAdmin } from '#/modules/auth/utils/session-user'
 
 // Guards read the query cache, not React state, so a navigate right after login already sees the new session
 export const getSessionUser = (queryClient: QueryClient) =>
@@ -59,5 +59,19 @@ export function requireOrganizationManager(queryClient: QueryClient) {
 export function requireOrganizationOwner(queryClient: QueryClient) {
   if (!isOrganizationOwner(getSessionMembership(queryClient))) {
     throw redirect({ to: '/dashboard' })
+  }
+}
+
+/** My school is for the active organization's students; anyone else goes back to their dashboard */
+export function requireOrganizationStudent(queryClient: QueryClient) {
+  if (!isOrganizationStudent(getSessionMembership(queryClient))) {
+    throw redirect({ to: '/dashboard' })
+  }
+}
+
+/** The school module pages, which students can't use; a student goes to My school instead */
+export function refuseOrganizationStudent(queryClient: QueryClient) {
+  if (isOrganizationStudent(getSessionMembership(queryClient))) {
+    throw redirect({ to: '/dashboard/my-school' })
   }
 }

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Archive, ArchiveRestore, Building2, CalendarCog, CalendarPlus, CalendarRange, CalendarX, CirclePause, CirclePlay, Crown, KeyRound, Lock, MapPin, MapPinOff, MapPinPen, Network, Power, PowerOff, Settings, SquarePen, Trash2, TreePalm, UserMinus, UserPen, UserPlus } from 'lucide-react'
+import { Archive, ArchiveRestore, Building2, CalendarCog, CalendarPlus, CalendarRange, CalendarX, CirclePause, CirclePlay, Crown, KeyRound, Lock, Mail, MailCheck, MailX, MapPin, MapPinOff, MapPinPen, Network, Power, PowerOff, Send, Settings, SquarePen, Trash2, TreePalm, UserMinus, UserPen, UserPlus } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ActivityAction, ActivityEntry, ActivityUser } from '@shigjetademy/shared/activity'
 import { useFormatDateTime } from '#/lib/use-format-date'
@@ -36,6 +36,10 @@ const ACTION_ICONS = {
   STUDENT_UPDATED: UserPen,
   STUDENT_ARCHIVED: Archive,
   STUDENT_RESTORED: ArchiveRestore,
+  INVITATION_SENT: Mail,
+  INVITATION_RESENT: Send,
+  INVITATION_REVOKED: MailX,
+  INVITATION_ACCEPTED: MailCheck,
 } as const satisfies Record<ActivityAction, LucideIcon>
 
 type FullNameParams = {
@@ -49,6 +53,7 @@ const DELETED_ACTOR = 'A deleted user'
 const DELETED_TARGET = 'a deleted user'
 // The service always stores the name for these actions; this only covers a null column
 const UNNAMED_SUBJECT = 'with no name'
+const UNNAMED_EMAIL = 'someone'
 
 interface ActivityRowProps {
   entry: ActivityEntry
@@ -176,6 +181,33 @@ function ActivitySentence({ entry, shouldLinkOrganization }: ActivityRowProps) {
       return <SubjectSentence entry={entry} verb="archived" noun="student" organization={subjectOrganization} />
     case 'STUDENT_RESTORED':
       return <SubjectSentence entry={entry} verb="restored" noun="student" organization={subjectOrganization} />
+    case 'INVITATION_SENT':
+      return (
+        <>
+          {fullName({ user: entry.actor, fallback: DELETED_ACTOR })} invited {entry.subject_name ?? UNNAMED_EMAIL}
+          {subjectOrganization ? <> to {subjectOrganization}</> : null}
+        </>
+      )
+    case 'INVITATION_RESENT':
+      return (
+        <>
+          {fullName({ user: entry.actor, fallback: DELETED_ACTOR })} resent the invitation to {entry.subject_name ?? UNNAMED_EMAIL}
+          {subjectOrganization ? <> at {subjectOrganization}</> : null}
+        </>
+      )
+    case 'INVITATION_REVOKED':
+      return (
+        <>
+          {fullName({ user: entry.actor, fallback: DELETED_ACTOR })} withdrew the invitation to {entry.subject_name ?? UNNAMED_EMAIL}
+          {subjectOrganization ? <> at {subjectOrganization}</> : null}
+        </>
+      )
+    case 'INVITATION_ACCEPTED':
+      return (
+        <>
+          {fullName({ user: entry.actor, fallback: DELETED_ACTOR })} accepted the invitation and joined {organization}
+        </>
+      )
     default: {
       const unknown: never = entry.action
       throw new Error(`Unknown activity action: ${String(unknown)}`)

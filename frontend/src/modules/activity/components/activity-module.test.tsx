@@ -169,6 +169,31 @@ describe('ActivityModule', () => {
     sentences.forEach((sentence, index) => expect(rows[index]).toHaveTextContent(sentence))
   })
 
+  it('shows invitations as sentences with the invited email', async () => {
+    signInAs(buildUser({ user_roles: PLATFORM_ADMIN_ROLES }))
+    const oxford = { id: 'org-1', name: 'Oxford Academy' }
+    const actions: ActivityAction[] = ['INVITATION_SENT', 'INVITATION_RESENT', 'INVITATION_REVOKED', 'INVITATION_ACCEPTED']
+    server.use(
+      http.get('*/api/organizations', () => HttpResponse.json({ data: CLIENTS })),
+      http.get('*/api/activity', () =>
+        HttpResponse.json({
+          data: actions.map((action) => ({ id: action, action, created_at: '2026-10-04T09:00:00.000Z', actor: ELSA, organization: oxford, target_user: null, subject_name: 'arta@student.test' })),
+        }),
+      ),
+    )
+    renderRoute('/dashboard/activity')
+
+    const rows = await within(await screen.findByRole('list', { name: 'Activity' })).findAllByRole('listitem')
+    const sentences = [
+      'Elsa Halili invited arta@student.test to Oxford Academy',
+      'Elsa Halili resent the invitation to arta@student.test at Oxford Academy',
+      'Elsa Halili withdrew the invitation to arta@student.test at Oxford Academy',
+      'Elsa Halili accepted the invitation and joined Oxford Academy',
+    ]
+    expect(rows).toHaveLength(sentences.length)
+    sentences.forEach((sentence, index) => expect(rows[index]).toHaveTextContent(sentence))
+  })
+
   it('asks the API for one client or one action and offers to clear the filters', async () => {
     signInAs(buildUser({ user_roles: PLATFORM_ADMIN_ROLES }))
     const requests: URLSearchParams[] = []

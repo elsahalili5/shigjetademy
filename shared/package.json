@@ -12,6 +12,7 @@
     "./academic-periods": "./src/academic-periods.ts",
     "./organization-settings": "./src/organization-settings.ts",
     "./students": "./src/students.ts",
+    "./invitations": "./src/invitations.ts",
     "./calendar-day": "./src/calendar-day.ts"
   },
   "scripts": {
