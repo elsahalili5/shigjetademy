@@ -1,5 +1,5 @@
 import { screen, within } from '@testing-library/react'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createStudentSchema, updateStudentSchema } from '@shigjetademy/shared/students'
 import type { Student, StudentPage, StudentStatus } from '@shigjetademy/shared/students'
@@ -17,6 +17,8 @@ const ARTA: Student = {
   status: 'ACTIVE',
   notes: null,
   created_at: '2026-10-01T09:00:00.000Z',
+  login_status: 'NONE',
+  invitation: null,
 }
 
 const BESA: Student = { ...ARTA, id: '9b1c2f43-0d1e-4c55-9a3e-6b1f0c2a1a02', first_name: 'Besa', last_name: 'Berisha', date_of_birth: null, student_number: 'STU-0002' }
@@ -299,6 +301,103 @@ describe('StudentsPage: add, edit, archive', () => {
     await user.click(within(screen.getByRole('group', { name: 'Archive Arta Gashi' })).getByRole('button', { name: 'Archive' }))
 
     expect(await screen.findByText('This student is already archived.')).toBeInTheDocument()
+  })
+})
+
+describe('StudentsPage: logins', () => {
+  const INVITED_BESA: Student = { ...BESA, login_status: 'INVITED', invitation: { email: 'besa@student.test', expires_at: '2026-11-07T10:00:00.000Z' } }
+  const LINKED_DRITA: Student = { ...ARTA, id: '9b1c2f43-0d1e-4c55-9a3e-6b1f0c2a1a03', first_name: 'Drita', student_number: 'STU-0003', login_status: 'LINKED' }
+
+  it('shows whether each student has no login, is invited until a date, or has a login', async () => {
+    signInAsOwner({ active: [ARTA, INVITED_BESA, LINKED_DRITA] })
+    renderRoute('/dashboard/students')
+
+    const [arta, besa, drita] = await rowsOf()
+    expect(arta).toHaveTextContent('No login')
+    expect(besa).toHaveTextContent('Invited')
+    expect(besa).toHaveTextContent('besa@student.test')
+    expect(besa).toHaveTextContent('until 7 Nov 2026')
+    expect(drita).toHaveTextContent('Has login')
+    expect(within(drita).queryByRole('button', { name: /Invite|Resend|Revoke/ })).not.toBeInTheDocument()
+  })
+
+  it('invites a student to log in by email and shows her as invited', async () => {
+    signInAsOwner()
+    let sent: unknown
+    server.use(
+      http.post(`${STUDENTS_PATH}/${ARTA.id}/invitation`, async ({ request }) => {
+        sent = await request.json()
+        // The answered row updates the list; the list itself isn't fetched again
+        return HttpResponse.json({ data: { ...ARTA, login_status: 'INVITED', invitation: { email: 'arta@student.test', expires_at: '2026-11-07T10:00:00.000Z' } } }, { status: 201 })
+      }),
+    )
+    const { user } = renderRoute('/dashboard/students')
+
+    await user.click(await screen.findByRole('button', { name: 'Invite Arta Gashi to log in' }))
+    const dialog = screen.getByRole('dialog', { name: 'Invite Arta Gashi to log in' })
+    await user.type(within(dialog).getByLabelText('Email'), 'arta@student.test')
+    await user.click(within(dialog).getByRole('button', { name: 'Send invitation' }))
+
+    expect(await screen.findByText('Sent an invitation to arta@student.test.')).toBeInTheDocument()
+    expect(sent).toEqual({ email: 'arta@student.test' })
+    const [arta] = await rowsOf()
+    await vi.waitFor(() => expect(arta).toHaveTextContent('Invited'))
+  })
+
+  it('checks the email and shows the server’s field error under it', async () => {
+    signInAsOwner()
+    server.use(
+      http.post(`${STUDENTS_PATH}/${ARTA.id}/invitation`, () =>
+        HttpResponse.json({ error: 'Taken', details: { formErrors: [], fieldErrors: { email: ['There’s already a pending invitation for this email.'] } } }, { status: 409 }),
+      ),
+    )
+    const { user } = renderRoute('/dashboard/students')
+
+    await user.click(await screen.findByRole('button', { name: 'Invite Arta Gashi to log in' }))
+    const dialog = screen.getByRole('dialog', { name: 'Invite Arta Gashi to log in' })
+    await user.click(within(dialog).getByRole('button', { name: 'Send invitation' }))
+    expect(await within(dialog).findByText('Enter an email address like name@school.org.')).toBeInTheDocument()
+
+    await user.type(within(dialog).getByLabelText('Email'), 'arta@student.test')
+    await user.click(within(dialog).getByRole('button', { name: 'Send invitation' }))
+    expect(await within(dialog).findByText('There’s already a pending invitation for this email.')).toBeInTheDocument()
+  })
+
+  it('resends a pending invitation', async () => {
+    signInAsOwner({ active: [INVITED_BESA] })
+    const resent: string[] = []
+    server.use(
+      http.post(`${STUDENTS_PATH}/${BESA.id}/invitation/resend`, async () => {
+        resent.push(BESA.id)
+        await delay(50)
+        return HttpResponse.json({ data: { ...INVITED_BESA, invitation: { email: 'besa@student.test', expires_at: '2026-11-08T10:00:00.000Z' } } })
+      }),
+    )
+    const { user } = renderRoute('/dashboard/students')
+
+    await user.click(await screen.findByRole('button', { name: 'Resend invitation to Besa Berisha' }))
+    expect(screen.getByRole('button', { name: 'Resend invitation to Besa Berisha' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Revoke invitation to Besa Berisha' })).toBeDisabled()
+
+    expect(await screen.findByText('Sent a new link to besa@student.test. The old one no longer works.')).toBeInTheDocument()
+    expect(resent).toEqual([BESA.id])
+    const [besa] = await rowsOf()
+    await vi.waitFor(() => expect(besa).toHaveTextContent('until 8 Nov 2026'))
+  })
+
+  it('revokes a pending invitation after one confirmation', async () => {
+    signInAsOwner({ active: [INVITED_BESA] })
+    server.use(
+      http.delete(`${STUDENTS_PATH}/${BESA.id}/invitation`, () => HttpResponse.json({ data: BESA })),
+    )
+    const { user } = renderRoute('/dashboard/students')
+
+    await user.click(await screen.findByRole('button', { name: 'Revoke invitation to Besa Berisha' }))
+    await user.click(within(screen.getByRole('group', { name: 'Revoke invitation to Besa Berisha' })).getByRole('button', { name: 'Revoke' }))
+
+    expect(await screen.findByText('Withdrew the invitation to besa@student.test.')).toBeInTheDocument()
+    const [besa] = await rowsOf()
+    await vi.waitFor(() => expect(besa).toHaveTextContent('No login'))
   })
 })
 

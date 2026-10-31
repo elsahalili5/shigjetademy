@@ -28,3 +28,6 @@ export const isOrganizationOwner = (membership: SessionMembership | undefined) =
 
 /** The owner and school admins run the organization; everyone else only uses it */
 export const isOrganizationManager = (membership: SessionMembership | undefined) => isOrganizationOwner(membership) || membership?.role === 'ADMIN'
+
+/** Students only have My school; staff and owner pages aren't theirs */
+export const isOrganizationStudent = (membership: SessionMembership | undefined) => membership?.role === 'STUDENT'

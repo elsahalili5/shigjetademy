@@ -1,5 +1,5 @@
 // The student forms and the endpoints that store student records share these schemas.
-// A student is a record the school keeps, not an account: no email, and no login until one is linked later.
+// A student is a record the school keeps, not an account: no email of its own, and no login until an invitation links one.
 import { z } from 'zod'
 import { nameSchema } from './auth.ts'
 import { todayDay } from './calendar-day.ts'
@@ -62,6 +62,9 @@ export const listStudentsQuerySchema = z.object({
 
 export type ListStudentsQuery = z.infer<typeof listStudentsQuerySchema>
 
+/** Whether a login is linked to the record: none, invited by email and waiting, or linked */
+export type StudentLoginStatus = 'NONE' | 'INVITED' | 'LINKED'
+
 export type Student = {
   id: string
   first_name: string
@@ -73,6 +76,9 @@ export type Student = {
   status: StudentStatus
   notes: string | null
   created_at: string
+  login_status: StudentLoginStatus
+  /** The pending invitation while login_status is INVITED, else null */
+  invitation: { email: string; expires_at: string } | null
 }
 
 /** "Arta Gashi" */
@@ -83,4 +89,21 @@ export type StudentPage = {
   students: Student[]
   total: number
   counts: Record<StudentStatus, number>
+}
+
+/** A school year or term on the student's My school page; days are 'YYYY-MM-DD' */
+export type MySchoolPeriod = {
+  name: string
+  start_date: string
+  end_date: string
+}
+
+/** What a student sees of their organization: their own record only, and the current school year and term */
+export type MySchool = {
+  organization: { id: string; name: string }
+  /** Null while no record is linked to their login */
+  student: { first_name: string; last_name: string; student_number: string } | null
+  academic_year: MySchoolPeriod | null
+  /** The term today falls in; null between terms */
+  term: MySchoolPeriod | null
 }

@@ -4,6 +4,7 @@ import { getStudentName } from '@shigjetademy/shared/students'
 import type { Student } from '@shigjetademy/shared/students'
 import { useFormatDay } from '#/lib/use-format-date'
 import { getAge } from '../utils/age'
+import { StudentLoginStatus } from './student-login-status'
 import type { Age } from '../utils/age'
 
 const AGE_FORMATTERS = {
@@ -48,6 +49,9 @@ export function StudentTable({ students, renderActions }: StudentTableProps) {
               Enrolled on
             </th>
             <th scope="col" className={HEADER_CELL_CLASS}>
+              Login
+            </th>
+            <th scope="col" className={HEADER_CELL_CLASS}>
               <span className="sr-only">Actions</span>
             </th>
           </tr>
@@ -64,6 +68,9 @@ export function StudentTable({ students, renderActions }: StudentTableProps) {
               <td className={`${CELL_CLASS} tabular ${WIDE_ONLY_CLASS}`}>{student.student_number}</td>
               <td className={`${CELL_CLASS} ${WIDE_ONLY_CLASS}`}>{student.date_of_birth ? formatAge(student.date_of_birth) : <span className="text-ink-3">Not recorded</span>}</td>
               <td className={`${CELL_CLASS} tabular ${WIDE_ONLY_CLASS}`}>{formatDay(student.enrolled_on)}</td>
+              <td className={CELL_CLASS}>
+                <StudentLoginStatus student={student} />
+              </td>
               <td className={`${CELL_CLASS} text-right`}>{renderActions(student)}</td>
             </tr>
           ))}

@@ -5,7 +5,7 @@ import { HttpError } from '@lib/httpError.ts'
 import { lockOrganization } from '@lib/organization-lock.ts'
 import type { OrganizationScope } from '@lib/organization-lock.ts'
 import { prisma } from '@lib/prisma.ts'
-import type { CreateStudentInput, ListStudentsQuery, StudentStatus, UpdateStudentInput } from './students.types.ts'
+import type { CreateStudentInput, ListStudentsQuery, StudentLoginStatus, StudentStatus, UpdateStudentInput } from './students.types.ts'
 
 const studentSelect = {
   id: true,
@@ -17,15 +17,25 @@ const studentSelect = {
   status: true,
   notes: true,
   created_at: true,
-} as const
+  // Read only to derive login_status; the user id itself never leaves the server
+  user_id: true,
+  invitations: { where: { status: 'PENDING' }, select: { email: true, expires_at: true }, orderBy: { created_at: 'desc' }, take: 1 },
+} as const satisfies Prisma.StudentSelect
 
 type StoredStudent = Prisma.StudentGetPayload<{ select: typeof studentSelect }>
 
-const toStudentJson = ({ date_of_birth, enrolled_on, ...student }: StoredStudent) => ({
-  ...student,
-  date_of_birth: date_of_birth ? toDay(date_of_birth) : null,
-  enrolled_on: toDay(enrolled_on),
-})
+const toStudentJson = ({ date_of_birth, enrolled_on, user_id, invitations, ...student }: StoredStudent) => {
+  // A pending invitation past its expiry no longer counts
+  const invitation = invitations.find((item) => item.expires_at > new Date()) ?? null
+  const loginStatus: StudentLoginStatus = user_id ? 'LINKED' : invitation ? 'INVITED' : 'NONE'
+  return {
+    ...student,
+    date_of_birth: date_of_birth ? toDay(date_of_birth) : null,
+    enrolled_on: toDay(enrolled_on),
+    login_status: loginStatus,
+    invitation: loginStatus === 'INVITED' ? invitation : null,
+  }
+}
 
 const byName = [{ last_name: 'asc' }, { first_name: 'asc' }, { id: 'asc' }] as const satisfies Prisma.StudentOrderByWithRelationInput[]
 
@@ -128,6 +138,18 @@ type SetStudentStatusParams = StudentChangeParams & {
   status: StudentStatus
 }
 
+type RevokePendingInvitationParams = FindStudentParams & {
+  actorId: string
+}
+
+/** An archived student can't be invited, so archiving withdraws their open login invitation */
+const revokePendingInvitation = async ({ tx, organizationId, studentId, actorId }: RevokePendingInvitationParams) => {
+  const pending = await tx.invitation.findFirst({ where: { organization_id: organizationId, student_id: studentId, status: 'PENDING' }, select: { id: true, email: true } })
+  if (!pending) return
+  await tx.invitation.update({ where: { id: pending.id }, data: { status: 'REVOKED', revoked_at: new Date() } })
+  await tx.activityLog.create({ data: { actor_id: actorId, action: 'INVITATION_REVOKED', organization_id: organizationId, subject_name: pending.email } })
+}
+
 const STATUS_CHANGE = {
   ARCHIVED: { action: 'STUDENT_ARCHIVED', alreadyMessage: 'This student is already archived.' },
   ACTIVE: { action: 'STUDENT_RESTORED', alreadyMessage: 'This student is already active.' },
@@ -187,6 +209,9 @@ export const StudentService = {
         throw new HttpError(409, change.alreadyMessage)
       }
       await tx.activityLog.create({ data: { actor_id: actorId, action: change.action, organization_id: organizationId, subject_name: getStudentName(student) } })
-      return toStudentJson(student)
+      if (status === 'ARCHIVED') {
+        await revokePendingInvitation({ tx, organizationId, studentId, actorId })
+      }
+      return toStudentJson(await findStudent({ tx, organizationId, studentId }))
     }),
 }

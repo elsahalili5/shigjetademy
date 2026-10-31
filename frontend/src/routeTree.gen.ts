@@ -28,11 +28,13 @@ import { Route as DashboardModuleRouteImport } from './routes/dashboard/$module'
 import { Route as DashboardAcademicPeriodsRouteImport } from './routes/dashboard/academic-periods'
 import { Route as DashboardLocationsRouteImport } from './routes/dashboard/locations'
 import { Route as DashboardMembersRouteImport } from './routes/dashboard/members'
+import { Route as DashboardMySchoolRouteImport } from './routes/dashboard/my-school'
 import { Route as DashboardOrganizationProfileRouteImport } from './routes/dashboard/organization-profile'
 import { Route as DashboardOrganizationSettingsRouteImport } from './routes/dashboard/organization-settings'
 import { Route as DashboardOverviewRouteImport } from './routes/dashboard/overview'
 import { Route as DashboardProfileRouteImport } from './routes/dashboard/profile'
 import { Route as DashboardStudentsRouteImport } from './routes/dashboard/students'
+import { Route as InviteTokenRouteImport } from './routes/invite/$token'
 import { Route as OrganizationsNewRouteImport } from './routes/organizations/new'
 import { Route as appPlatformIndexRouteImport } from './routes/(app)/platform/index'
 import { Route as appPlatformSlugRouteImport } from './routes/(app)/platform/$slug'
@@ -132,6 +134,11 @@ const DashboardMembersRoute = DashboardMembersRouteImport.update({
   path: '/members',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
+const DashboardMySchoolRoute = DashboardMySchoolRouteImport.update({
+  id: '/my-school',
+  path: '/my-school',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
 const DashboardOrganizationProfileRoute =
   DashboardOrganizationProfileRouteImport.update({
     id: '/organization-profile',
@@ -158,6 +165,11 @@ const DashboardStudentsRoute = DashboardStudentsRouteImport.update({
   id: '/students',
   path: '/students',
   getParentRoute: () => DashboardRouteRoute,
+} as any)
+const InviteTokenRoute = InviteTokenRouteImport.update({
+  id: '/invite/$token',
+  path: '/invite/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const OrganizationsNewRoute = OrganizationsNewRouteImport.update({
   id: '/organizations/new',
@@ -197,11 +209,13 @@ export interface FileRoutesByFullPath {
   '/dashboard/academic-periods': typeof DashboardAcademicPeriodsRoute
   '/dashboard/locations': typeof DashboardLocationsRoute
   '/dashboard/members': typeof DashboardMembersRoute
+  '/dashboard/my-school': typeof DashboardMySchoolRoute
   '/dashboard/organization-profile': typeof DashboardOrganizationProfileRoute
   '/dashboard/organization-settings': typeof DashboardOrganizationSettingsRoute
   '/dashboard/overview': typeof DashboardOverviewRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/students': typeof DashboardStudentsRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/organizations/new': typeof OrganizationsNewRoute
   '/': typeof appIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
@@ -224,11 +238,13 @@ export interface FileRoutesByTo {
   '/dashboard/academic-periods': typeof DashboardAcademicPeriodsRoute
   '/dashboard/locations': typeof DashboardLocationsRoute
   '/dashboard/members': typeof DashboardMembersRoute
+  '/dashboard/my-school': typeof DashboardMySchoolRoute
   '/dashboard/organization-profile': typeof DashboardOrganizationProfileRoute
   '/dashboard/organization-settings': typeof DashboardOrganizationSettingsRoute
   '/dashboard/overview': typeof DashboardOverviewRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/students': typeof DashboardStudentsRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/organizations/new': typeof OrganizationsNewRoute
   '/': typeof appIndexRoute
   '/dashboard': typeof DashboardIndexRoute
@@ -255,11 +271,13 @@ export interface FileRoutesById {
   '/dashboard/academic-periods': typeof DashboardAcademicPeriodsRoute
   '/dashboard/locations': typeof DashboardLocationsRoute
   '/dashboard/members': typeof DashboardMembersRoute
+  '/dashboard/my-school': typeof DashboardMySchoolRoute
   '/dashboard/organization-profile': typeof DashboardOrganizationProfileRoute
   '/dashboard/organization-settings': typeof DashboardOrganizationSettingsRoute
   '/dashboard/overview': typeof DashboardOverviewRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/students': typeof DashboardStudentsRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/organizations/new': typeof OrganizationsNewRoute
   '/(app)/': typeof appIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
@@ -285,11 +303,13 @@ export interface FileRouteTypes {
     | '/dashboard/academic-periods'
     | '/dashboard/locations'
     | '/dashboard/members'
+    | '/dashboard/my-school'
     | '/dashboard/organization-profile'
     | '/dashboard/organization-settings'
     | '/dashboard/overview'
     | '/dashboard/profile'
     | '/dashboard/students'
+    | '/invite/$token'
     | '/organizations/new'
     | '/'
     | '/dashboard/'
@@ -312,11 +332,13 @@ export interface FileRouteTypes {
     | '/dashboard/academic-periods'
     | '/dashboard/locations'
     | '/dashboard/members'
+    | '/dashboard/my-school'
     | '/dashboard/organization-profile'
     | '/dashboard/organization-settings'
     | '/dashboard/overview'
     | '/dashboard/profile'
     | '/dashboard/students'
+    | '/invite/$token'
     | '/organizations/new'
     | '/'
     | '/dashboard'
@@ -342,11 +364,13 @@ export interface FileRouteTypes {
     | '/dashboard/academic-periods'
     | '/dashboard/locations'
     | '/dashboard/members'
+    | '/dashboard/my-school'
     | '/dashboard/organization-profile'
     | '/dashboard/organization-settings'
     | '/dashboard/overview'
     | '/dashboard/profile'
     | '/dashboard/students'
+    | '/invite/$token'
     | '/organizations/new'
     | '/(app)/'
     | '/dashboard/'
@@ -360,6 +384,7 @@ export interface RootRouteChildren {
   authRouteRoute: typeof authRouteRouteWithChildren
   DashboardRouteRoute: typeof DashboardRouteRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
+  InviteTokenRoute: typeof InviteTokenRoute
   OrganizationsNewRoute: typeof OrganizationsNewRoute
 }
 
@@ -498,6 +523,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardMembersRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
+    '/dashboard/my-school': {
+      id: '/dashboard/my-school'
+      path: '/my-school'
+      fullPath: '/dashboard/my-school'
+      preLoaderRoute: typeof DashboardMySchoolRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
     '/dashboard/organization-profile': {
       id: '/dashboard/organization-profile'
       path: '/organization-profile'
@@ -532,6 +564,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/students'
       preLoaderRoute: typeof DashboardStudentsRouteImport
       parentRoute: typeof DashboardRouteRoute
+    }
+    '/invite/$token': {
+      id: '/invite/$token'
+      path: '/invite/$token'
+      fullPath: '/invite/$token'
+      preLoaderRoute: typeof InviteTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/organizations/new': {
       id: '/organizations/new'
@@ -613,6 +652,7 @@ interface DashboardRouteRouteChildren {
   DashboardAcademicPeriodsRoute: typeof DashboardAcademicPeriodsRoute
   DashboardLocationsRoute: typeof DashboardLocationsRoute
   DashboardMembersRoute: typeof DashboardMembersRoute
+  DashboardMySchoolRoute: typeof DashboardMySchoolRoute
   DashboardOrganizationProfileRoute: typeof DashboardOrganizationProfileRoute
   DashboardOrganizationSettingsRoute: typeof DashboardOrganizationSettingsRoute
   DashboardOverviewRoute: typeof DashboardOverviewRoute
@@ -627,6 +667,7 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardAcademicPeriodsRoute: DashboardAcademicPeriodsRoute,
   DashboardLocationsRoute: DashboardLocationsRoute,
   DashboardMembersRoute: DashboardMembersRoute,
+  DashboardMySchoolRoute: DashboardMySchoolRoute,
   DashboardOrganizationProfileRoute: DashboardOrganizationProfileRoute,
   DashboardOrganizationSettingsRoute: DashboardOrganizationSettingsRoute,
   DashboardOverviewRoute: DashboardOverviewRoute,
@@ -645,6 +686,7 @@ const rootRouteChildren: RootRouteChildren = {
   authRouteRoute: authRouteRouteWithChildren,
   DashboardRouteRoute: DashboardRouteRouteWithChildren,
   OnboardingRoute: OnboardingRoute,
+  InviteTokenRoute: InviteTokenRoute,
   OrganizationsNewRoute: OrganizationsNewRoute,
 }
 export const routeTree = rootRouteImport

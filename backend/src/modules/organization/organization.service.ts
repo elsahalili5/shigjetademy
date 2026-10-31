@@ -323,7 +323,8 @@ export const OrganizationService = {
 
   listPendingInvitations: (organizationId: string) =>
     prisma.invitation.findMany({
-      where: { organization_id: organizationId, status: 'PENDING', expires_at: { gt: new Date() } },
+      // Student invitations live on the Students page
+      where: { organization_id: organizationId, status: 'PENDING', expires_at: { gt: new Date() }, student_id: null },
       orderBy: { created_at: 'desc' },
       select: { id: true, email: true, role: true, permissions: true, created_at: true, expires_at: true },
     }),
