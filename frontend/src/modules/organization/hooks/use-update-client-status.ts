@@ -1,4 +1,3 @@
-import { showErrorToast } from '#/lib/error-toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { ClientOrganization, ClientOrganizationDetail } from '@shigjetademy/shared/organization'
 import { organizationApi } from '../api/organization-api'
@@ -10,7 +9,6 @@ export function useUpdateClientStatus() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: organizationApi.updateStatus,
-    onError: (error) => showErrorToast(error),
     onSuccess: ({ id, status }) => {
       queryClient.setQueryData<ClientOrganizationDetail>(clientQueryKey(id), (client) => (client ? { ...client, status } : client))
       queryClient.setQueryData<ClientOrganization[]>(CLIENTS_QUERY_KEY, (clients) =>

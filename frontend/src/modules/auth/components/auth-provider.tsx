@@ -1,26 +1,14 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import type { AuthUser, LoginUserResponse, RoleType } from '@shigjetademy/shared/auth'
-import { AuthContext, ME_QUERY_KEY } from './auth-context'
+import { useQueryClient } from '@tanstack/react-query'
+import type { LoginUserResponse } from '@shigjetademy/shared/auth'
+import { AuthContext } from './auth-context'
 import type { AuthContextValue } from './auth-context'
-import { isApiError } from '#/api/client'
 import { authApi } from '../api/auth-api'
+import { ME_QUERY_KEY, useMeQuery } from '../hooks/use-me-query'
 import { clearStoredTokens, readStoredTokens, storeTokens } from '../utils/auth-storage'
 import { LoadingUser } from './loading-user'
-
-// A rejected token means the stored session is over; anything else (offline, 500) is a real error
-const fetchCurrentUser = async (): Promise<AuthUser | null> => {
-  try {
-    return await authApi.me()
-  } catch (error) {
-    if (isApiError(error) && (error.response?.status === 401 || error.response?.status === 403)) {
-      clearStoredTokens()
-      return null
-    }
-    throw error
-  }
-}
+import { LoadUserError } from './load-user-error'
 
 interface AuthProviderProps {
   children: ReactNode
@@ -29,13 +17,7 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const queryClient = useQueryClient()
   const [hasStoredTokens, setHasStoredTokens] = useState(() => readStoredTokens() !== null)
-  const meQuery = useQuery({
-    queryKey: ME_QUERY_KEY,
-    queryFn: fetchCurrentUser,
-    enabled: hasStoredTokens,
-    retry: false,
-    staleTime: Infinity,
-  })
+  const meQuery = useMeQuery(hasStoredTokens)
 
   const setSession = (session: LoginUserResponse) => {
     storeTokens(session)
@@ -56,15 +38,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
+  const handleRetry = () => {
+    void meQuery.refetch()
+  }
+
   if (hasStoredTokens && meQuery.isPending) {
     return <LoadingUser />
   }
 
+  if (hasStoredTokens && meQuery.isError) {
+    return <LoadUserError onRetry={handleRetry} />
+  }
+
   const user = hasStoredTokens ? (meQuery.data ?? null) : null
-  const hasRole = (role: RoleType) => user?.user_roles.some((userRole) => userRole.role.name === role) ?? false
-  const value: AuthContextValue = user
-    ? { status: 'authenticated', user, setSession, logout, hasRole }
-    : { status: 'anonymous', user: null, setSession, logout, hasRole }
+  const value: AuthContextValue = user ? { status: 'authenticated', user, setSession, logout } : { status: 'anonymous', user: null, setSession, logout }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

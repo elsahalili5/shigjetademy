@@ -1,4 +1,4 @@
-import { getManagedMembership } from '../utils/get-home-path'
+import { getManagedMembership } from '../utils/session-user'
 import { useAuth } from './use-auth'
 
 /** The organization the signed-in user helps run, and whether they own it; undefined when they run none */

@@ -5,7 +5,7 @@ import { FormAlert } from '#/components/FormAlert'
 import { getErrorMessage, getFieldError } from '#/lib/error-message'
 import { useLogin } from '../hooks/use-login'
 import { useLoginForm } from '../hooks/use-login-form'
-import { getHomePath } from '../utils/get-home-path'
+import { getHomePath } from '../utils/session-user'
 import { AuthField } from './auth-field'
 import { SubmitButton } from './auth-form-parts'
 
@@ -20,12 +20,17 @@ export function LoginForm() {
     login.mutate(input, { onSuccess: (session) => void navigate({ to: getHomePath(session.user) }) })
   })
 
+  // A server error belongs to the values that were sent; editing them clears it
+  const handleEdit = () => {
+    if (login.isError) login.reset()
+  }
+
   return (
     <>
       <h1>Welcome back</h1>
       <p className="mt-2.5 text-ink-2">Log in to run your term in Shigjetademy.</p>
 
-      <form className="mt-8 grid gap-4" noValidate onSubmit={handleSubmit}>
+      <form className="mt-8 grid gap-4" noValidate onSubmit={handleSubmit} onChange={handleEdit}>
         <AuthField
           id={ids.email}
           label="Email"

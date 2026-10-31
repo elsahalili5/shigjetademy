@@ -17,6 +17,19 @@ describe('LoginForm', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Invalid email or password')
   })
 
+  it('clears the server’s message once the user edits the form again', async () => {
+    server.use(http.post('*/api/auth/login', () => HttpResponse.json({ error: 'Invalid email or password' }, { status: 401 })))
+    const { user } = renderRoute('/login')
+
+    await user.type(await screen.findByLabelText('Email'), 'elsa@school.test')
+    await user.type(screen.getByLabelText('Password'), 'wrong-password')
+    await user.click(screen.getByRole('button', { name: 'Log in' }))
+    await screen.findByRole('alert')
+    await user.type(screen.getByLabelText('Password'), '1')
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it('takes an owner to their Overview after logging in', async () => {
     const owner = buildUser({ memberships: OWNER_MEMBERSHIPS })
     server.use(

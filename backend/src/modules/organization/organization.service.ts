@@ -59,15 +59,9 @@ const memberSelect = {
   permissions: true,
   created_at: true,
   user: { select: { id: true, first_name: true, last_name: true, email: true } },
-} as const
+} satisfies Prisma.MembershipSelect
 
-type MemberRecord = {
-  id: string
-  role: MemberRole
-  permissions: UpdateMemberInput['permissions']
-  created_at: Date
-  user: { id: string; first_name: string; last_name: string; email: string }
-}
+type MemberRecord = Prisma.MembershipGetPayload<{ select: typeof memberSelect }>
 
 const toMember = ({ id, role, permissions, created_at, user }: MemberRecord) => ({ ...user, membership_id: id, role, permissions, joined_at: created_at })
 
@@ -342,7 +336,6 @@ export const OrganizationService = {
         return refuseMemberChange({ tx, organizationId, membershipId })
       }
       const membership = await tx.membership.findUniqueOrThrow({ where: { id: membershipId }, select: { user_id: true } })
-      await tx.user.update({ where: { id: membership.user_id }, data: { first_name: data.first_name, last_name: data.last_name } })
       await tx.activityLog.create({ data: { actor_id: actorId, action: 'MEMBER_UPDATED', organization_id: organizationId, target_user_id: membership.user_id } })
       return toMember(await tx.membership.findUniqueOrThrow({ where: { id: membershipId }, select: memberSelect }))
     }),

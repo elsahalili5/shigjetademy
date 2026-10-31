@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { AuthUser } from '@shigjetademy/shared/auth'
 import type { OrganizationProfile } from '@shigjetademy/shared/organization'
-import { ME_QUERY_KEY } from '#/modules/auth/components/auth-context'
+import { ME_QUERY_KEY } from '#/modules/auth/hooks/use-me-query'
 import { organizationApi } from '../api/organization-api'
 import { organizationProfileQueryKey } from './use-organization-profile'
 

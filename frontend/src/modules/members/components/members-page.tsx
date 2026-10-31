@@ -2,25 +2,24 @@ import { useRef, useState } from 'react'
 import { Mail, Pencil, UserMinus, UserPlus, Users } from 'lucide-react'
 import { PERMISSIONS } from '@shigjetademy/shared/auth'
 import type { Permission } from '@shigjetademy/shared/auth'
-import type { OrganizationInvitation, OrganizationMember } from '@shigjetademy/shared/organization'
+import type { InviteMemberInput, OrganizationInvitation, OrganizationMember } from '@shigjetademy/shared/organization'
+import { DashboardPageHeader } from '#/components/DashboardPageHeader'
 import { LoadError } from '#/components/LoadError'
 import { NoticeBar } from '#/components/NoticeBar'
 import type { Notice } from '#/components/NoticeBar'
+import { showErrorToast } from '#/lib/error-toast'
+import { formatDate } from '#/lib/format'
 import { initials } from '#/lib/initials'
 import { ROLE_LABELS } from '#/modules/auth/utils/role-labels'
 import { useOrganizationMembers } from '../hooks/use-organization-members'
 import { usePendingInvitations } from '../hooks/use-pending-invitations'
 import { useRemoveMember } from '../hooks/use-remove-member'
-import { useUpdateMember } from '../hooks/use-update-member'
 import { PERMISSION_LABELS } from '../utils/permission-labels'
 import { AdminAccessDialog } from './admin-access-dialog'
-import type { AdminAccessDialogMode, AdminAccessInput } from './admin-access-dialog'
+import type { AdminAccessDialogMode } from './admin-access-dialog'
 
 const SHOWN_PERMISSIONS = 3
 const SKELETON_ROWS = 2
-
-const dateFormat = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
-const formatDate = (iso: string) => dateFormat.format(new Date(iso))
 
 const fullName = (member: OrganizationMember) => `${member.first_name} ${member.last_name}`
 
@@ -34,44 +33,34 @@ export function MembersPage({ organizationId, organizationName }: MembersPagePro
   const dialogRef = useRef<HTMLDialogElement>(null)
   const members = useOrganizationMembers(organizationId)
   const invitations = usePendingInvitations(organizationId)
-  const updateMember = useUpdateMember(organizationId)
   const removeMember = useRemoveMember(organizationId)
   const [dialogMode, setDialogMode] = useState<AdminAccessDialogMode>({ kind: 'invite' })
+  const [dialogFormKey, setDialogFormKey] = useState(0)
   const [notice, setNotice] = useState<Notice | null>(null)
 
-  const handleOpenInvite = () => {
-    setDialogMode({ kind: 'invite' })
+  const handleOpenDialog = (mode: AdminAccessDialogMode) => {
+    setDialogMode(mode)
+    setDialogFormKey((key) => key + 1)
     dialogRef.current?.showModal()
   }
 
-  const handleOpenEdit = (member: OrganizationMember) => {
-    setDialogMode({
-      kind: 'edit',
-      membershipId: member.membership_id,
-      firstName: member.first_name,
-      lastName: member.last_name,
-      email: member.email,
-      permissions: member.permissions,
-    })
-    dialogRef.current?.showModal()
+  const handleOpenInvite = () => handleOpenDialog({ kind: 'invite' })
+
+  const handleOpenEdit = (member: OrganizationMember) => handleOpenDialog({ kind: 'edit', member })
+
+  // Sending invitations comes with the email step; until then the dialog says so instead of pretending
+  const handleInvite = ({ email }: InviteMemberInput) => {
+    setNotice({ tone: 'info', text: `Sending invitations isn’t connected yet, so nothing was sent to ${email}.` })
   }
 
-  // Sending invitations comes with the email step; until then the form says so instead of pretending
-  const handleSubmitAccess = ({ email, firstName, lastName, permissions }: AdminAccessInput) => {
-    if (dialogMode.kind === 'invite') {
-      setNotice({ tone: 'info', text: `Sending invitations isn’t connected yet, so nothing was sent to ${email}.` })
-      return
-    }
-    updateMember.mutate(
-      { organizationId, membershipId: dialogMode.membershipId, first_name: firstName, last_name: lastName, permissions },
-      { onSuccess: (saved) => setNotice({ tone: 'success', text: `Saved changes for ${saved.first_name} ${saved.last_name}.` }) },
-    )
+  const handleSaved = (saved: OrganizationMember) => {
+    setNotice({ tone: 'success', text: `Saved changes for ${fullName(saved)}.` })
   }
 
   const handleRemove = (member: OrganizationMember) => {
     removeMember.mutate(
       { organizationId, membershipId: member.membership_id },
-      { onSuccess: () => setNotice({ tone: 'success', text: `${fullName(member)} no longer has access.` }) },
+      { onSuccess: () => setNotice({ tone: 'success', text: `${fullName(member)} no longer has access.` }), onError: showErrorToast },
     )
   }
 
@@ -80,28 +69,16 @@ export function MembersPage({ organizationId, organizationName }: MembersPagePro
 
   return (
     <div className="flex h-full min-w-0 flex-col overflow-y-auto">
-      <header className="bg-linear-to-b from-green-wash to-white px-[clamp(20px,3.4vw,44px)] pt-[clamp(24px,3.4vw,40px)] pb-6">
-        <div className="flex flex-wrap items-start justify-between gap-5">
-          <div className="flex items-start gap-4">
-            <span
-              className="grid size-14 flex-none place-items-center rounded-2xl bg-white text-green-deep shadow-[0_1px_2px_rgba(22,34,46,0.06),0_10px_24px_-12px_rgba(22,34,46,0.3)]"
-              aria-hidden="true"
-            >
-              <Users size={26} strokeWidth={1.7} />
-            </span>
-            <div>
-              <h1 className="font-display text-[clamp(1.7rem,2.6vw,2.3rem)] leading-[1.05] font-[680] tracking-[-0.03em]">Members</h1>
-              <p className="mt-1.5 text-ink-2">
-                {organizationName} · {adminCount} {adminCount === 1 ? 'school admin' : 'school admins'} · {pendingCount} pending
-              </p>
-            </div>
-          </div>
-          <button type="button" className="button button--primary min-h-11 px-4 text-base" onClick={handleOpenInvite}>
-            <UserPlus size={17} strokeWidth={2} aria-hidden="true" />
-            Invite admin
-          </button>
-        </div>
-      </header>
+      <DashboardPageHeader
+        icon={Users}
+        title="Members"
+        subtitle={`${organizationName} · ${adminCount} ${adminCount === 1 ? 'school admin' : 'school admins'} · ${pendingCount} pending`}
+      >
+        <button type="button" className="button button--primary min-h-11 px-4 text-base" onClick={handleOpenInvite}>
+          <UserPlus size={17} strokeWidth={2} aria-hidden="true" />
+          Invite admin
+        </button>
+      </DashboardPageHeader>
 
       <div className="grid max-w-[1040px] gap-6 px-[clamp(20px,3.4vw,44px)] pb-10">
         {notice ? <NoticeBar notice={notice} onDismiss={() => setNotice(null)} /> : null}
@@ -123,11 +100,18 @@ export function MembersPage({ organizationId, organizationName }: MembersPagePro
             </h2>
             <span className="tabular text-[0.93rem] text-ink-3">{members.data?.length ?? ''}</span>
           </div>
-          <MemberList query={members} onEdit={handleOpenEdit} onRemove={handleRemove} />
+          <MemberList query={members} isRemoving={removeMember.isPending} onEdit={handleOpenEdit} onRemove={handleRemove} />
         </section>
       </div>
 
-      <AdminAccessDialog dialogRef={dialogRef} mode={dialogMode} onSubmit={handleSubmitAccess} />
+      <AdminAccessDialog
+        dialogRef={dialogRef}
+        mode={dialogMode}
+        formKey={dialogFormKey}
+        organizationId={organizationId}
+        onInvite={handleInvite}
+        onSaved={handleSaved}
+      />
     </div>
   )
 }
@@ -216,18 +200,19 @@ function InvitationList({ query, onInvite }: InvitationListProps) {
 
 interface MemberListProps {
   query: ListQuery<OrganizationMember>
+  isRemoving: boolean
   onEdit: (member: OrganizationMember) => void
   onRemove: (member: OrganizationMember) => void
 }
 
-function MemberList({ query, onEdit, onRemove }: MemberListProps) {
+function MemberList({ query, isRemoving, onEdit, onRemove }: MemberListProps) {
   if (query.status === 'pending') return <SkeletonRows />
   if (query.status === 'error') return <LoadError what="members" onRetry={() => void query.refetch()} />
 
   return (
     <ul>
       {(query.data ?? []).map((member) => (
-        <MemberRow key={member.membership_id} member={member} onEdit={onEdit} onRemove={onRemove} />
+        <MemberRow key={member.membership_id} member={member} isRemoving={isRemoving} onEdit={onEdit} onRemove={onRemove} />
       ))}
     </ul>
   )
@@ -235,11 +220,12 @@ function MemberList({ query, onEdit, onRemove }: MemberListProps) {
 
 interface MemberRowProps {
   member: OrganizationMember
+  isRemoving: boolean
   onEdit: (member: OrganizationMember) => void
   onRemove: (member: OrganizationMember) => void
 }
 
-function MemberRow({ member, onEdit, onRemove }: MemberRowProps) {
+function MemberRow({ member, isRemoving, onEdit, onRemove }: MemberRowProps) {
   const isOwner = member.role === 'OWNER'
   const name = fullName(member)
 
@@ -258,20 +244,20 @@ function MemberRow({ member, onEdit, onRemove }: MemberRowProps) {
         </span>
         {isOwner ? <span className="text-[0.9rem] text-ink-2">Full access, including billing and members</span> : <PermissionSummary permissions={member.permissions} />}
       </span>
-      {member.role === 'ADMIN' ? <MemberActions member={member} onEdit={onEdit} onRemove={onRemove} /> : null}
+      {member.role === 'ADMIN' ? <MemberActions member={member} isRemoving={isRemoving} onEdit={onEdit} onRemove={onRemove} /> : null}
     </li>
   )
 }
 
 /** Edit and remove for a School Admin; removing asks once */
-function MemberActions({ member, onEdit, onRemove }: MemberRowProps) {
+function MemberActions({ member, isRemoving, onEdit, onRemove }: MemberRowProps) {
   const [isConfirmingRemove, setIsConfirmingRemove] = useState(false)
 
   if (isConfirmingRemove) {
     return (
       <span className="flex items-center gap-2" role="group" aria-label={`Remove ${fullName(member)}`}>
         <span className="text-[0.93rem] text-ink-2">They lose access right away.</span>
-        <button type="button" className="button min-h-9 bg-coral-deep px-3.5 text-[0.95rem] text-white" onClick={() => onRemove(member)}>
+        <button type="button" className="button min-h-9 bg-coral-deep px-3.5 text-[0.95rem] text-white" onClick={() => onRemove(member)} disabled={isRemoving}>
           Remove
         </button>
         <button type="button" className="button button--ghost min-h-9 px-3.5 text-[0.95rem]" onClick={() => setIsConfirmingRemove(false)}>

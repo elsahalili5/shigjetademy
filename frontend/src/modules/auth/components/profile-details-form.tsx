@@ -22,8 +22,13 @@ export function ProfileDetailsForm({ user }: ProfileDetailsFormProps) {
     updateProfile.mutate(input, { onSuccess: (saved) => profileForm.reset({ first_name: saved.first_name, last_name: saved.last_name, email: saved.email }) })
   })
 
+  // A server error belongs to the values that were sent; editing them clears it
+  const handleEdit = () => {
+    if (updateProfile.isError) updateProfile.reset()
+  }
+
   return (
-    <form className="grid gap-4" noValidate onSubmit={handleSubmit} aria-labelledby="profile-details-title">
+    <form className="grid gap-4" noValidate onSubmit={handleSubmit} onChange={handleEdit} aria-labelledby="profile-details-title">
       <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
         <AuthField
           id={ids.firstName}

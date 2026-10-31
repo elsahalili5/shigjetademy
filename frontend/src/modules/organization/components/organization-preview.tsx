@@ -2,6 +2,7 @@ import { CreditCard, LayoutDashboard, Settings, Users } from 'lucide-react'
 import type { OrganizationType } from '@shigjetademy/shared'
 import type { CountryCode } from '@shigjetademy/shared/organization'
 import { Arcs } from '#/components/Arcs'
+import { regionNames } from '../utils/format'
 
 const OWNER_MODULES = [
   { name: 'Overview', icon: LayoutDashboard },
@@ -9,8 +10,6 @@ const OWNER_MODULES = [
   { name: 'Organization settings', icon: Settings },
   { name: 'Subscription & billing', icon: CreditCard },
 ] as const
-
-const regionNames = new Intl.DisplayNames(undefined, { type: 'region' })
 
 interface OrganizationPreviewProps {
   name: string

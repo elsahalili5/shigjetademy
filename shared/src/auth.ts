@@ -1,6 +1,6 @@
 // The sign-up and login forms and the auth endpoints share these schemas and response shapes.
 import { z } from 'zod'
-import type { OrganizationStatus } from './organization.ts'
+import type { OrganizationStatus, OrganizationTypeValue } from './organization.ts'
 
 export const ROLES = {
   PLATFORM_ADMIN: 'PLATFORM_ADMIN',
@@ -29,14 +29,23 @@ export const PERMISSIONS = [
 
 export type Permission = (typeof PERMISSIONS)[number]
 
-// bcrypt only reads the first 72 bytes
-const passwordSchema = z.string().min(8, 'Use at least 8 characters.').max(72, 'Use at most 72 characters.')
+const NAME_MAX = 80
+// bcrypt only reads the first 72 bytes; letters like ë take two
+const PASSWORD_MAX_BYTES = 72
 
-const emailSchema = z.string().trim().toLowerCase().pipe(z.email('Enter an email address like name@school.org.'))
+const passwordSchema = z
+  .string()
+  .min(8, 'Use at least 8 characters.')
+  .refine((value) => new TextEncoder().encode(value).length <= PASSWORD_MAX_BYTES, 'This password is too long. Use a shorter one.')
+
+export const emailSchema = z.string().trim().toLowerCase().pipe(z.email('Enter an email address like name@school.org.'))
+
+/** A first or last name; the message says which one is missing */
+export const nameSchema = (requiredMessage: string) => z.string().trim().min(1, requiredMessage).max(NAME_MAX)
 
 export const userRegisterSchema = z.object({
-  first_name: z.string().trim().min(1, 'Enter your first name.').max(80),
-  last_name: z.string().trim().min(1, 'Enter your last name.').max(80),
+  first_name: nameSchema('Enter your first name.'),
+  last_name: nameSchema('Enter your last name.'),
   email: emailSchema,
   password: passwordSchema,
 })
@@ -47,8 +56,8 @@ export const userLoginSchema = z.object({
 })
 
 export const updateProfileSchema = z.object({
-  first_name: z.string().trim().min(1, 'Enter your first name.').max(80),
-  last_name: z.string().trim().min(1, 'Enter your last name.').max(80),
+  first_name: nameSchema('Enter your first name.'),
+  last_name: nameSchema('Enter your last name.'),
   email: emailSchema,
 })
 
@@ -90,8 +99,8 @@ export type AuthUser = {
   memberships: {
     id: string
     role: MemberRole
-    permissions: string[]
-    organization: { id: string; name: string; type: string; status: OrganizationStatus }
+    permissions: Permission[]
+    organization: { id: string; name: string; type: OrganizationTypeValue; status: OrganizationStatus }
   }[]
 }
 

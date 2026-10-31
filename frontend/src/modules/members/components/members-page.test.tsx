@@ -1,5 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import type { OrganizationMember } from '@shigjetademy/shared/organization'
 import { buildUser, OWNER_MEMBERSHIPS, signInAs } from '#/test/fixtures'
@@ -28,6 +28,9 @@ const ADMIN: OrganizationMember = {
   joined_at: '2026-10-31T09:00:00.000Z',
 }
 
+// The dialog stays in the page while closed, so it is found even when hidden
+const editDialog = () => screen.getByRole('dialog', { hidden: true })
+
 const signInAsOwnerWithMembers = () => {
   signInAs(buildUser({ memberships: OWNER_MEMBERSHIPS }))
   server.use(
@@ -48,32 +51,63 @@ describe('MembersPage', () => {
     expect(screen.getByText('No open invitations.')).toBeInTheDocument()
   })
 
-  it('saves an admin’s new name', async () => {
+  it('saves an admin’s new access', async () => {
     signInAsOwnerWithMembers()
     server.use(
-      http.patch('*/api/organizations/org-1/members/membership-2', () => HttpResponse.json({ data: { ...ADMIN, first_name: 'Drita', last_name: 'Berisha' } })),
+      http.patch('*/api/organizations/org-1/members/membership-2', () => HttpResponse.json({ data: { ...ADMIN, permissions: ['MANAGE_STUDENTS'] } })),
     )
     const { user } = renderRoute('/dashboard/members')
 
     await user.click(await screen.findByRole('button', { name: 'Edit' }))
-    const firstName = screen.getByLabelText('First name')
-    await user.clear(firstName)
-    await user.type(firstName, 'Drita')
+    expect(screen.queryByLabelText('First name')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('checkbox', { name: /Operational reports/ }))
     await user.click(screen.getByRole('button', { name: 'Save changes' }))
 
-    expect(await screen.findByText('Saved changes for Drita Berisha.')).toBeInTheDocument()
-    expect(within(screen.getByRole('region', { name: 'People with access' })).getByText('Drita Berisha')).toBeInTheDocument()
+    expect(await screen.findByText('Saved changes for Admin One.')).toBeInTheDocument()
+    expect(editDialog()).not.toHaveAttribute('open')
+    expect(within(screen.getByRole('region', { name: 'People with access' })).getByText('Students')).toBeInTheDocument()
   })
 
-  it('asks for a name when editing', async () => {
+  it('asks for at least one permission when editing', async () => {
     signInAsOwnerWithMembers()
     const { user } = renderRoute('/dashboard/members')
 
     await user.click(await screen.findByRole('button', { name: 'Edit' }))
-    await user.clear(screen.getByLabelText('Last name'))
+    await user.click(screen.getByRole('checkbox', { name: /Students/ }))
+    await user.click(screen.getByRole('checkbox', { name: /Operational reports/ }))
     await user.click(screen.getByRole('button', { name: 'Save changes' }))
 
-    expect(screen.getByText('Enter their last name.')).toBeInTheDocument()
+    expect(await screen.findByText('Choose at least one thing they can manage.')).toBeInTheDocument()
+  })
+
+  it('keeps the edit open with the error and the edits when saving fails', async () => {
+    signInAsOwnerWithMembers()
+    server.use(http.patch('*/api/organizations/org-1/members/membership-2', () => HttpResponse.json({ error: 'Only school admins can be changed here' }, { status: 400 })))
+    const { user } = renderRoute('/dashboard/members')
+
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+    await user.click(screen.getByRole('checkbox', { name: /Operational reports/ }))
+    await user.click(screen.getByRole('button', { name: 'Save changes' }))
+
+    expect(await within(editDialog()).findByRole('alert')).toHaveTextContent('Only school admins can be changed here')
+    expect(editDialog()).toHaveAttribute('open')
+    expect(screen.getByRole('checkbox', { name: /Operational reports/ })).not.toBeChecked()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('checkbox', { name: /Lecturers/ }))
+    expect(within(editDialog()).queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('starts a reopened edit from the saved access, not the cancelled changes', async () => {
+    signInAsOwnerWithMembers()
+    const { user } = renderRoute('/dashboard/members')
+
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+    await user.click(screen.getByRole('checkbox', { name: /Operational reports/ }))
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
+
+    expect(screen.getByRole('checkbox', { name: /Operational reports/ })).toBeChecked()
   })
 
   it('removes an admin after confirming', async () => {
@@ -88,13 +122,31 @@ describe('MembersPage', () => {
     expect(screen.queryByText('admin1@oxford.com · joined', { exact: false })).not.toBeInTheDocument()
   })
 
+  it('blocks a second remove while the first is on its way', async () => {
+    signInAsOwnerWithMembers()
+    server.use(
+      http.delete('*/api/organizations/org-1/members/membership-2', async () => {
+        await delay('infinite')
+        return HttpResponse.json({ message: 'Member removed' })
+      }),
+    )
+    const { user } = renderRoute('/dashboard/members')
+
+    await user.click(await screen.findByRole('button', { name: 'Remove' }))
+    await user.click(screen.getByRole('button', { name: 'Remove' }))
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Remove' })).toBeDisabled())
+  })
+
   it('says sending invitations is not connected yet', async () => {
     signInAsOwnerWithMembers()
     const { user } = renderRoute('/dashboard/members')
 
     await user.click(await screen.findByRole('button', { name: 'Invite admin' }))
+    expect(within(editDialog()).getByText('Sending invitations isn’t connected yet', { exact: false })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Send/ })).not.toBeInTheDocument()
     await user.type(screen.getByLabelText('Email'), 'new@oxford.com')
-    await user.click(screen.getByRole('button', { name: 'Send invitation' }))
+    await user.click(screen.getByRole('button', { name: 'Check details' }))
 
     expect(screen.getByRole('status')).toHaveTextContent('nothing was sent to new@oxford.com')
   })

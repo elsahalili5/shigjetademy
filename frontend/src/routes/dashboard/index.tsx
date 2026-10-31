@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { getSessionUser } from '#/lib/route-guard'
-import { getOwnedOrganization, isPlatformAdmin } from '#/modules/auth/utils/get-home-path'
+import { getOwnedOrganization, isPlatformAdmin } from '#/modules/auth/utils/session-user'
 
 // The dashboard opens on Clients for the platform admin, the Overview for an owner and Students for everyone else
 export const Route = createFileRoute('/dashboard/')({

@@ -1,6 +1,6 @@
 // The create-organization form and the endpoint that stores it share this schema.
 import { z } from 'zod'
-import { PERMISSIONS } from './auth.ts'
+import { emailSchema, PERMISSIONS } from './auth.ts'
 import type { ActivityEntry } from './activity.ts'
 import type { MemberRole, Permission } from './auth.ts'
 
@@ -123,14 +123,22 @@ export type OrganizationInvitation = {
   expires_at: string
 }
 
-/** What the owner can change about a school admin: their name and what they may do */
+const memberPermissionsSchema = z.array(z.enum(PERMISSIONS)).min(1, 'Choose at least one thing they can manage.')
+
+/** What the owner can change about a school admin: what they may do; only the person changes their own name */
 export const updateMemberSchema = z.object({
-  first_name: z.string().trim().min(1, 'Enter their first name.').max(80),
-  last_name: z.string().trim().min(1, 'Enter their last name.').max(80),
-  permissions: z.array(z.enum(PERMISSIONS)).min(1, 'Choose at least one thing they can manage.'),
+  permissions: memberPermissionsSchema,
 })
 
 export type UpdateMemberInput = z.infer<typeof updateMemberSchema>
+
+/** Who the owner invites as a School Admin and what they may do */
+export const inviteMemberSchema = z.object({
+  email: emailSchema,
+  permissions: memberPermissionsSchema,
+})
+
+export type InviteMemberInput = z.infer<typeof inviteMemberSchema>
 
 /** An open School Admin invitation on the owner's Overview */
 export type OverviewInvitation = {

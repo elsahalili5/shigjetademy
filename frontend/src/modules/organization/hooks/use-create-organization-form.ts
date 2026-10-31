@@ -7,7 +7,7 @@ import type { CountryCode, CreateOrganizationInput } from '@shigjetademy/shared/
 const DEFAULT_COUNTRY: CountryCode = 'XK'
 
 type UseCreateOrganizationFormParams = {
-  onSubmit: (input: CreateOrganizationInput) => Promise<void>
+  onSubmit: (input: CreateOrganizationInput) => void
 }
 
 export const useCreateOrganizationForm = ({ onSubmit }: UseCreateOrganizationFormParams) => {

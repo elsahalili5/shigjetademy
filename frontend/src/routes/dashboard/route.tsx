@@ -9,7 +9,7 @@ import { OWNER_NAV_SECTIONS } from '#/lib/owner-navigation'
 import type { OwnerNavItem } from '#/lib/owner-navigation'
 import { requireOrganization } from '#/lib/route-guard'
 import { useAuth } from '#/modules/auth/hooks/use-auth'
-import { getOwnedOrganization, isPlatformAdmin } from '#/modules/auth/utils/get-home-path'
+import { getOwnedOrganization, isPlatformAdmin } from '#/modules/auth/utils/session-user'
 import { ROLE_LABELS } from '#/modules/auth/utils/role-labels'
 import { OrganizationSuspended } from '#/modules/organization/components/organization-suspended'
 

@@ -1,11 +1,14 @@
-import { AlertCircle, BarChart3, RotateCw } from 'lucide-react'
+import { BarChart3 } from 'lucide-react'
 import { MEMBER_ROLES } from '@shigjetademy/shared/auth'
 import type { PlatformStats } from '@shigjetademy/shared/organization'
+import { DashboardPageHeader } from '#/components/DashboardPageHeader'
+import { LoadError } from '#/components/LoadError'
 import { usePlatformStats } from '../hooks/use-platform-stats'
 import { MEMBER_ROLE_NOUNS, ORGANIZATION_TYPE_LABELS } from '../utils/labels'
 
 const numberFormat = new Intl.NumberFormat()
-const weekFormat = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' })
+// Weeks start at midnight UTC, so a local time zone behind UTC would label the day before
+const weekFormat = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' })
 
 const CHART_HEIGHT = 160
 const BAR_GAP = 8
@@ -19,20 +22,7 @@ export function StatisticsModule() {
 
   return (
     <div className="flex h-full min-w-0 flex-col overflow-y-auto">
-      <header className="bg-linear-to-b from-green-wash to-white px-[clamp(20px,3.4vw,44px)] pt-[clamp(24px,3.4vw,40px)] pb-6">
-        <div className="flex items-start gap-4">
-          <span
-            className="grid size-14 flex-none place-items-center rounded-2xl bg-white text-green-deep shadow-[0_1px_2px_rgba(22,34,46,0.06),0_10px_24px_-12px_rgba(22,34,46,0.3)]"
-            aria-hidden="true"
-          >
-            <BarChart3 size={26} strokeWidth={1.7} />
-          </span>
-          <div>
-            <h1 className="font-display text-[clamp(1.7rem,2.6vw,2.3rem)] leading-[1.05] font-[680] tracking-[-0.03em]">Statistics</h1>
-            <p className="mt-1.5 text-ink-2">Organizations and people across Shigjetademy</p>
-          </div>
-        </div>
-      </header>
+      <DashboardPageHeader icon={BarChart3} title="Statistics" subtitle="Organizations and people across Shigjetademy" />
 
       <div className="px-[clamp(20px,3.4vw,44px)] pb-10">
         <StatisticsBody status={stats.status} stats={stats.data} onRetry={() => void stats.refetch()} />
@@ -49,16 +39,7 @@ interface StatisticsBodyProps {
 
 function StatisticsBody({ status, stats, onRetry }: StatisticsBodyProps) {
   if (status === 'error') {
-    return (
-      <div className="grid justify-items-center gap-3 py-16 text-center" role="alert">
-        <AlertCircle className="text-coral-deep" size={28} strokeWidth={1.8} aria-hidden="true" />
-        <p className="font-semibold">We couldn’t load the statistics.</p>
-        <button type="button" className="button button--ghost min-h-11 px-4 text-base" onClick={onRetry}>
-          <RotateCw size={16} strokeWidth={2} aria-hidden="true" />
-          Try again
-        </button>
-      </div>
-    )
+    return <LoadError what="statistics" onRetry={onRetry} />
   }
 
   if (!stats) {

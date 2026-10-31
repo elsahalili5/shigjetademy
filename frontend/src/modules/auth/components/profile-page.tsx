@@ -1,5 +1,6 @@
 import { UserRound } from 'lucide-react'
 import type { AuthUser } from '@shigjetademy/shared/auth'
+import { DashboardPageHeader } from '#/components/DashboardPageHeader'
 import { ChangePasswordForm } from './change-password-form'
 import { ProfileDetailsForm } from './profile-details-form'
 import { ROLE_LABELS } from '../utils/role-labels'
@@ -12,20 +13,7 @@ interface ProfilePageProps {
 export function ProfilePage({ user }: ProfilePageProps) {
   return (
     <div className="flex h-full min-w-0 flex-col overflow-y-auto">
-      <header className="bg-linear-to-b from-green-wash to-white px-[clamp(20px,3.4vw,44px)] pt-[clamp(24px,3.4vw,40px)] pb-6">
-        <div className="flex items-start gap-4">
-          <span
-            className="grid size-14 flex-none place-items-center rounded-2xl bg-white text-green-deep shadow-[0_1px_2px_rgba(22,34,46,0.06),0_10px_24px_-12px_rgba(22,34,46,0.3)]"
-            aria-hidden="true"
-          >
-            <UserRound size={26} strokeWidth={1.7} />
-          </span>
-          <div>
-            <h1 className="font-display text-[clamp(1.7rem,2.6vw,2.3rem)] leading-[1.05] font-[680] tracking-[-0.03em]">Your profile</h1>
-            <p className="mt-1.5 text-ink-2">Your name, email and password</p>
-          </div>
-        </div>
-      </header>
+      <DashboardPageHeader icon={UserRound} title="Your profile" subtitle="Your name, email and password" />
 
       <div className="grid max-w-[760px] gap-5 px-[clamp(20px,3.4vw,44px)] pb-10">
         <section className="rounded-card border border-rule p-[clamp(20px,2.4vw,28px)]">

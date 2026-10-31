@@ -18,7 +18,14 @@ import type {
 } from './auth.types.ts'
 
 const MAX_FAILED_ATTEMPTS = 5
-const LOCKOUT_DURATION_MS = 15 * 60 * 1000 // 15 minutes
+const MINUTE_MS = 60 * 1000
+const LOCKOUT_DURATION_MS = 15 * MINUTE_MS
+
+// Whole minutes left on a lock, rounded up, so the message never says "0 minutes"
+const lockedMessage = (lockedUntil: Date | null) => {
+  const minutesLeft = lockedUntil ? Math.max(1, Math.ceil((lockedUntil.getTime() - Date.now()) / MINUTE_MS)) : LOCKOUT_DURATION_MS / MINUTE_MS
+  return `Too many failed attempts. Try again in ${minutesLeft} ${minutesLeft === 1 ? 'minute' : 'minutes'}.`
+}
 
 const issueTokens = async (userId: string): Promise<AuthTokens> => {
   const accessToken = generateAccessToken(userId)
@@ -81,7 +88,7 @@ export const AuthService = {
       case 'ACTIVE':
         break
       case 'LOCKED':
-        throw new HttpError(403, `Too many failed attempts. Try again after ${user.locked_until?.toISOString() ?? 'a while'}`)
+        throw new HttpError(403, lockedMessage(user.locked_until))
       case 'DISABLED':
       case 'PENDING':
         throw new HttpError(403, 'Account access denied')
@@ -112,7 +119,7 @@ export const AuthService = {
         ])
 
         if (isLocking) {
-          throw new HttpError(403, `Too many failed attempts. Try again after ${lockedUntil.toISOString()}`)
+          throw new HttpError(403, lockedMessage(lockedUntil))
         }
       }
       throw new HttpError(401, 'Invalid email or password')
@@ -154,7 +161,11 @@ export const AuthService = {
       throw new HttpError(403, 'Account not allowed to refresh token')
     }
 
-    await prisma.refreshTokens.update({ where: { token: refreshToken }, data: { revoked: true } })
+    // Only the request that flips revoked gets a new pair; a concurrent refresh with the same token finds nothing left to revoke
+    const { count } = await prisma.refreshTokens.updateMany({ where: { token: refreshToken, revoked: false }, data: { revoked: true } })
+    if (count === 0) {
+      throw new HttpError(401, 'Token revoked')
+    }
     return issueTokens(user.id)
   },
 

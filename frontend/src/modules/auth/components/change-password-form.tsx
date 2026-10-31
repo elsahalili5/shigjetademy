@@ -17,8 +17,13 @@ export function ChangePasswordForm() {
     changePassword.mutate({ current_password, new_password }, { onSuccess: () => changePasswordForm.reset() })
   })
 
+  // A server error belongs to the values that were sent; editing them clears it
+  const handleEdit = () => {
+    if (changePassword.isError) changePassword.reset()
+  }
+
   return (
-    <form className="grid gap-4" noValidate onSubmit={handleSubmit} aria-labelledby="change-password-title">
+    <form className="grid gap-4" noValidate onSubmit={handleSubmit} onChange={handleEdit} aria-labelledby="change-password-title">
       <AuthField
         id={ids.current}
         label="Current password"

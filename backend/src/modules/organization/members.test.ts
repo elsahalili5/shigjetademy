@@ -41,12 +41,21 @@ describe('GET /api/organizations/:organizationId/members', () => {
 
     expect(response.status).toBe(403)
   })
+
+  it('refuses a deactivated organization', async () => {
+    await prisma.organization.updateMany({ where: { name: 'Oxford Academy' }, data: { status: 'DEACTIVATED' } })
+
+    const response = await request(app).get(membersPath).set('Authorization', await loginAs('owner@oxford.test'))
+
+    expect(response.status).toBe(403)
+    expect(response.body.error).toBe('This organization is deactivated')
+  })
 })
 
 describe('managing school admins', () => {
   const adminMembership = () => prisma.membership.findFirstOrThrow({ where: { organization_id: organizationId, role: 'ADMIN' } })
 
-  it('lets the owner change an admin’s name and permissions', async () => {
+  it('lets the owner change an admin’s permissions but not their name', async () => {
     const membership = await adminMembership()
 
     const response = await request(app)
@@ -55,16 +64,16 @@ describe('managing school admins', () => {
       .send({ first_name: 'Drita', last_name: 'Berisha', permissions: ['MANAGE_STUDENTS', 'VIEW_REPORTS'] })
 
     expect(response.status).toBe(200)
-    expect(response.body.data).toMatchObject({ first_name: 'Drita', last_name: 'Berisha', permissions: ['MANAGE_STUDENTS', 'VIEW_REPORTS'] })
+    expect(response.body.data).toMatchObject({ first_name: 'Test', last_name: 'User', permissions: ['MANAGE_STUDENTS', 'VIEW_REPORTS'] })
   })
 
-  it('refuses an empty name', async () => {
+  it('refuses an edit with no permissions', async () => {
     const membership = await adminMembership()
 
     const response = await request(app)
       .patch(`${membersPath}/${membership.id}`)
       .set('Authorization', await loginAs('owner@oxford.test'))
-      .send({ first_name: ' ', last_name: 'Berisha', permissions: ['MANAGE_STUDENTS'] })
+      .send({ permissions: [] })
 
     expect(response.status).toBe(400)
   })
@@ -75,7 +84,7 @@ describe('managing school admins', () => {
     const response = await request(app)
       .patch(`${membersPath}/${membership.id}`)
       .set('Authorization', await loginAs('admin1@oxford.com'))
-      .send({ first_name: 'Me', last_name: 'Me', permissions: ['MANAGE_STUDENTS'] })
+      .send({ permissions: ['MANAGE_STUDENTS'] })
 
     expect(response.status).toBe(403)
   })

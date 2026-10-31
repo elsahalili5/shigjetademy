@@ -8,7 +8,7 @@ import { moduleBySlug } from '#/lib/modules'
 import type { Module } from '#/lib/modules'
 import { ActivityModule } from '#/modules/activity/components/activity-module'
 import { useAuth } from '#/modules/auth/hooks/use-auth'
-import { getOwnedOrganization, isPlatformAdmin } from '#/modules/auth/utils/get-home-path'
+import { getOwnedOrganization, isPlatformAdmin } from '#/modules/auth/utils/session-user'
 import { ClientsModule } from '#/modules/organization/components/clients-module'
 import { StatisticsModule } from '#/modules/organization/components/statistics-module'
 

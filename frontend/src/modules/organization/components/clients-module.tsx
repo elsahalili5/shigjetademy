@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { AlertCircle, Building2, RotateCw, Search } from 'lucide-react'
+import { Building2, Search } from 'lucide-react'
 import { MEMBER_ROLES } from '@shigjetademy/shared/auth'
 import type { ClientOrganization, OrganizationStatus, OrganizationTypeValue } from '@shigjetademy/shared/organization'
+import { formatDate } from '#/lib/format'
+import { DashboardPageHeader } from '#/components/DashboardPageHeader'
+import { LoadError } from '#/components/LoadError'
 import { initials } from '#/lib/initials'
 import { useClients } from '../hooks/use-clients'
-import { formatDate, regionNames } from '../utils/format'
+import { regionNames } from '../utils/format'
 import { MEMBER_ROLE_NOUNS, ORGANIZATION_TYPE_LABELS } from '../utils/labels'
 import { ClientStatusChip } from './client-status-chip'
 
@@ -65,25 +68,17 @@ export function ClientsModule() {
 
   return (
     <div className="flex h-full min-w-0 flex-col overflow-y-auto">
-      <header className="bg-linear-to-b from-green-wash to-white px-[clamp(20px,3.4vw,44px)] pt-[clamp(24px,3.4vw,40px)] pb-6">
-        <div className="flex items-start gap-4">
-          <span
-            className="grid size-14 flex-none place-items-center rounded-2xl bg-white text-green-deep shadow-[0_1px_2px_rgba(22,34,46,0.06),0_10px_24px_-12px_rgba(22,34,46,0.3)]"
-            aria-hidden="true"
-          >
-            <Building2 size={26} strokeWidth={1.7} />
-          </span>
-          <div>
-            <h1 className="font-display text-[clamp(1.7rem,2.6vw,2.3rem)] leading-[1.05] font-[680] tracking-[-0.03em]">Clients</h1>
-            <p className="mt-1.5 text-ink-2">
-              {clients.isSuccess
-                ? `${numberFormat.format(allClients.length)} ${allClients.length === 1 ? 'organization' : 'organizations'} · ${numberFormat.format(membersTotal)} ${membersTotal === 1 ? 'member' : 'members'}`
-                : 'Every organization on Shigjetademy'}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-7 flex flex-wrap items-center gap-3">
+      <DashboardPageHeader
+        icon={Building2}
+        title="Clients"
+        subtitle={
+          clients.isSuccess
+            ? `${numberFormat.format(allClients.length)} ${allClients.length === 1 ? 'organization' : 'organizations'} · ${numberFormat.format(membersTotal)} ${membersTotal === 1 ? 'member' : 'members'}`
+            : 'Every organization on Shigjetademy'
+        }
+      >
+        {/* Full width, so the filters wrap onto their own row under the title */}
+        <div className="mt-2 flex w-full flex-wrap items-center gap-3">
           <div className="flex max-w-full overflow-x-auto rounded-full bg-mist p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Filter by status">
             {FILTERS.map((filter) => (
               <button
@@ -127,7 +122,7 @@ export function ClientsModule() {
             </select>
           </label>
         </div>
-      </header>
+      </DashboardPageHeader>
 
       <div className="px-[clamp(20px,3.4vw,44px)] pb-8">
         <ClientsTable
@@ -152,16 +147,7 @@ interface ClientsTableProps {
 
 function ClientsTable({ status, clients, hasClients, onRetry, onClearFilters }: ClientsTableProps) {
   if (status === 'error') {
-    return (
-      <div className="grid justify-items-center gap-3 py-16 text-center" role="alert">
-        <AlertCircle className="text-coral-deep" size={28} strokeWidth={1.8} aria-hidden="true" />
-        <p className="font-semibold">We couldn’t load the clients.</p>
-        <button type="button" className="button button--ghost min-h-11 px-4 text-base" onClick={onRetry}>
-          <RotateCw size={16} strokeWidth={2} aria-hidden="true" />
-          Try again
-        </button>
-      </div>
-    )
+    return <LoadError what="clients" onRetry={onRetry} />
   }
 
   if (status === 'success' && clients.length === 0) {

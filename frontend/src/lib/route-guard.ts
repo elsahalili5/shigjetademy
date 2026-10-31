@@ -1,9 +1,9 @@
 import { redirect } from '@tanstack/react-router'
 import type { QueryClient } from '@tanstack/react-query'
 import type { AuthUser } from '@shigjetademy/shared/auth'
-import { ME_QUERY_KEY } from '#/modules/auth/components/auth-context'
+import { ME_QUERY_KEY } from '#/modules/auth/hooks/use-me-query'
 import { readStoredTokens } from '#/modules/auth/utils/auth-storage'
-import { getHomePath, getManagedMembership, hasOrganization, isPlatformAdmin } from '#/modules/auth/utils/get-home-path'
+import { getHomePath, getManagedMembership, hasOrganization, isPlatformAdmin } from '#/modules/auth/utils/session-user'
 
 // Guards read the query cache, not React state, so a navigate right after login already sees the new session
 export const getSessionUser = (queryClient: QueryClient) =>

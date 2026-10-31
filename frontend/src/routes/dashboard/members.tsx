@@ -2,7 +2,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 import { getSessionUser } from '#/lib/route-guard'
 import { useTitle } from '#/lib/use-title'
 import { useAuth } from '#/modules/auth/hooks/use-auth'
-import { getOwnedOrganization } from '#/modules/auth/utils/get-home-path'
+import { getOwnedOrganization } from '#/modules/auth/utils/session-user'
 import { MembersPage } from '#/modules/members/components/members-page'
 
 // Only the organization's owner manages who has access

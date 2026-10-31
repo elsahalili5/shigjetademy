@@ -20,13 +20,18 @@ export function SignupForm() {
     register.mutate(input, { onSuccess: () => void navigate({ to: '/onboarding' }) })
   })
 
+  // A server error belongs to the values that were sent; editing them clears it
+  const handleEdit = () => {
+    if (register.isError) register.reset()
+  }
+
   return (
     <>
       <p className="font-data text-[0.807rem] tracking-[0.06em] text-ink-3 uppercase">Step 1 of 2 · Your account</p>
       <h1 className="mt-3">Create your account</h1>
       <p className="mt-2.5 text-ink-2">For schools, kindergartens, academies and lecturers. Your team joins later by invitation.</p>
 
-      <form className="mt-8 grid gap-4" noValidate onSubmit={handleSubmit}>
+      <form className="mt-8 grid gap-4" noValidate onSubmit={handleSubmit} onChange={handleEdit}>
         <div className="grid grid-cols-2 gap-3 max-[480px]:grid-cols-1">
           <AuthField
             id={ids.firstName}

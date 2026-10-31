@@ -2,7 +2,7 @@ import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import type { CreateOrganizationInput } from '@shigjetademy/shared/organization'
 import { requireAuthenticated } from '#/lib/route-guard'
 import { useTitle } from '#/lib/use-title'
-import { hasOrganization } from '#/modules/auth/utils/get-home-path'
+import { hasOrganization } from '#/modules/auth/utils/session-user'
 import { CreateOrganization } from '#/modules/organization/components/create-organization'
 import { useCreateOrganization } from '#/modules/organization/hooks/use-create-organization'
 
@@ -21,15 +21,14 @@ function OnboardingPage() {
   const createOrganization = useCreateOrganization()
   const navigate = useNavigate()
 
-  const handleCreate = async (input: CreateOrganizationInput) => {
-    try {
-      await createOrganization.mutateAsync(input)
-      await navigate({ to: '/dashboard' })
-    } catch {
-      // The form shows the mutation's error above its button and on the fields it names
-    }
+  const handleCreate = (input: CreateOrganizationInput) => {
+    createOrganization.mutate(input, { onSuccess: () => void navigate({ to: '/dashboard' }) })
   }
 
+  // A server error belongs to the values that were sent; editing them clears it
+  const handleEdit = () => {
+    if (createOrganization.isError) createOrganization.reset()
+  }
 
-  return <CreateOrganization onCreate={handleCreate} backendError={createOrganization.error} />
+  return <CreateOrganization onCreate={handleCreate} onEdit={handleEdit} isPending={createOrganization.isPending} backendError={createOrganization.error} />
 }

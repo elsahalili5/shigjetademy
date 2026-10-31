@@ -7,6 +7,13 @@ import { API_BASE_URL } from './config'
 type RetriableRequestConfig = InternalAxiosRequestConfig & { _retry?: boolean }
 
 const LOGIN_PATH = '/login'
+// Pages that need a session; anywhere else a dead session just turns the user into a visitor
+const PROTECTED_PATH_PREFIXES = ['/dashboard', '/onboarding']
+
+const isOnProtectedPage = () => {
+  const { pathname } = window.location
+  return PROTECTED_PATH_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+}
 
 // A 401 from these means wrong credentials or a dead token, not an expired access token
 const NO_REFRESH_ENDPOINTS = ['/auth/login', '/auth/register', '/auth/refresh-token', '/auth/logout']
@@ -45,15 +52,18 @@ export const createRefreshTokenInterceptor = (client: AxiosInstance) => async (e
   }
 
   originalRequest._retry = true
+  let newTokens: RefreshTokenResponse
   try {
-    const newTokens = await refreshOnce(tokens.refreshToken)
-    storeTokens(newTokens)
-    originalRequest.headers.Authorization = `Bearer ${newTokens.accessToken}`
-    return await client(originalRequest)
+    newTokens = await refreshOnce(tokens.refreshToken)
   } catch (refreshError) {
-    // The session is over: start again from the login page
+    // The session is over; only a protected page needs to start again from login
     clearStoredTokens()
-    window.location.assign(LOGIN_PATH)
+    if (isOnProtectedPage()) {
+      window.location.assign(LOGIN_PATH)
+    }
     throw refreshError
   }
+  storeTokens(newTokens)
+  originalRequest.headers.Authorization = `Bearer ${newTokens.accessToken}`
+  return client(originalRequest)
 }

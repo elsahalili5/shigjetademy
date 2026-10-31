@@ -3,18 +3,18 @@ import { AlertCircle, ArrowLeft, Mail, RotateCw } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import type { ClientOrganizationDetail } from '@shigjetademy/shared/organization'
 import { isApiError } from '#/api/client'
+import { showErrorToast } from '#/lib/error-toast'
+import { formatDate } from '#/lib/format'
 import { initials } from '#/lib/initials'
 import { ROLE_LABELS } from '#/modules/auth/utils/role-labels'
 import { useClient } from '../hooks/use-client'
 import { useUpdateClientStatus } from '../hooks/use-update-client-status'
-import { formatDate, regionNames } from '../utils/format'
+import { currencyNames, regionNames } from '../utils/format'
 import { ORGANIZATION_TYPE_LABELS } from '../utils/labels'
 import { ClientStatusChip } from './client-status-chip'
 
 // A malformed id is refused with 400; to the admin it is as missing as an unknown one
 const NOT_FOUND_STATUSES = [400, 404]
-
-const currencyNames = new Intl.DisplayNames(undefined, { type: 'currency' })
 
 interface ClientDetailProps {
   organizationId: string
@@ -167,7 +167,7 @@ function StatusControl({ client }: StatusControlProps) {
   const [isConfirming, setIsConfirming] = useState(false)
 
   const handleSuspend = () => {
-    updateStatus.mutate({ organizationId: client.id, status: 'SUSPENDED' }, { onSuccess: () => setIsConfirming(false) })
+    updateStatus.mutate({ organizationId: client.id, status: 'SUSPENDED' }, { onSuccess: () => setIsConfirming(false), onError: showErrorToast })
   }
 
   const handleOpenConfirm = () => {
@@ -179,7 +179,7 @@ function StatusControl({ client }: StatusControlProps) {
   }
 
   const handleReactivate = () => {
-    updateStatus.mutate({ organizationId: client.id, status: 'ACTIVE' })
+    updateStatus.mutate({ organizationId: client.id, status: 'ACTIVE' }, { onError: showErrorToast })
   }
 
 

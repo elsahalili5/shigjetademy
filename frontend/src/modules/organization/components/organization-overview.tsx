@@ -2,10 +2,10 @@ import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { AlertCircle, Circle, CircleCheck, History, LayoutDashboard, Mail, RotateCw, ShieldCheck } from 'lucide-react'
 import type { OrganizationOverview as Overview, OverviewInvitation } from '@shigjetademy/shared/organization'
+import { formatDate } from '#/lib/format'
 import type { ModuleSlug } from '#/lib/modules'
 import { ActivityRow, ActivityRowSkeleton } from '#/modules/activity/components/activity-row'
 import { useOrganizationOverview } from '../hooks/use-organization-overview'
-import { formatDate } from '../utils/format'
 
 const SKELETON_ROWS = 3
 

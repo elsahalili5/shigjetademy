@@ -2,7 +2,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 import { getSessionUser } from '#/lib/route-guard'
 import { useTitle } from '#/lib/use-title'
 import { useAuth } from '#/modules/auth/hooks/use-auth'
-import { getOwnedOrganization } from '#/modules/auth/utils/get-home-path'
+import { getOwnedOrganization } from '#/modules/auth/utils/session-user'
 import { OrganizationOverview } from '#/modules/organization/components/organization-overview'
 
 // The owner's landing page; everyone else goes back to their own dashboard home
