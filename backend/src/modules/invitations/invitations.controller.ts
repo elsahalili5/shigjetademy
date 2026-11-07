@@ -2,18 +2,24 @@ import type { Response } from 'express'
 import { sendError } from '@lib/httpError.ts'
 import type { AuthRequest, TypedRequest } from '@lib/types.ts'
 import type { OrganizationIdParam } from '@modules/organization/organization.types.ts'
+import { LecturerService } from '@modules/lecturers/lecturers.service.ts'
+import type { LecturerParam } from '@modules/lecturers/lecturers.types.ts'
 import { StudentService } from '@modules/students/students.service.ts'
 import type { StudentParam } from '@modules/students/students.types.ts'
 import { InvitationService } from './invitations.service.ts'
-import type { InvitationParam, InviteMemberInput, InviteStudentInput, TokenParam } from './invitations.types.ts'
+import type { InvitationParam, InviteMemberInput, InviteRecordInput, TokenParam } from './invitations.types.ts'
 
 type InviteAdminRequest = AuthRequest & TypedRequest<InviteMemberInput, OrganizationIdParam>
 
 type AdminInvitationRequest = AuthRequest & TypedRequest<unknown, InvitationParam>
 
-type InviteStudentRequest = AuthRequest & TypedRequest<InviteStudentInput, StudentParam>
+type InviteStudentRequest = AuthRequest & TypedRequest<InviteRecordInput, StudentParam>
 
 type StudentInvitationRequest = AuthRequest & TypedRequest<unknown, StudentParam>
+
+type InviteLecturerRequest = AuthRequest & TypedRequest<InviteRecordInput, LecturerParam>
+
+type LecturerInvitationRequest = AuthRequest & TypedRequest<unknown, LecturerParam>
 
 export const InvitationController = {
   inviteAdmin: async (req: InviteAdminRequest, res: Response) => {
@@ -114,6 +120,48 @@ export const InvitationController = {
       const { organizationId, studentId } = req.params
       await InvitationService.revokeInvitation({ organizationId, actorId, match: { studentId } })
       return res.status(200).json({ data: await StudentService.getStudent({ organizationId, studentId }) })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to revoke the invitation' })
+    }
+  },
+
+  inviteLecturer: async (req: InviteLecturerRequest, res: Response) => {
+    try {
+      const actorId = req.user?.id
+      if (!actorId) {
+        return res.status(401).json({ error: 'Unauthorized' })
+      }
+      const { organizationId, lecturerId } = req.params
+      await InvitationService.createInvitation({ organizationId, actorId, email: req.body.email, target: { role: 'LECTURER', lecturerId } })
+      return res.status(201).json({ data: await LecturerService.getLecturer({ organizationId, lecturerId }) })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to send the invitation' })
+    }
+  },
+
+  resendLecturerInvitation: async (req: LecturerInvitationRequest, res: Response) => {
+    try {
+      const actorId = req.user?.id
+      if (!actorId) {
+        return res.status(401).json({ error: 'Unauthorized' })
+      }
+      const { organizationId, lecturerId } = req.params
+      await InvitationService.resendInvitation({ organizationId, actorId, match: { lecturerId } })
+      return res.status(200).json({ data: await LecturerService.getLecturer({ organizationId, lecturerId }) })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to resend the invitation' })
+    }
+  },
+
+  revokeLecturerInvitation: async (req: LecturerInvitationRequest, res: Response) => {
+    try {
+      const actorId = req.user?.id
+      if (!actorId) {
+        return res.status(401).json({ error: 'Unauthorized' })
+      }
+      const { organizationId, lecturerId } = req.params
+      await InvitationService.revokeInvitation({ organizationId, actorId, match: { lecturerId } })
+      return res.status(200).json({ data: await LecturerService.getLecturer({ organizationId, lecturerId }) })
     } catch (error) {
       return sendError({ res, error, fallback: 'Failed to revoke the invitation' })
     }

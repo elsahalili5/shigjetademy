@@ -4,12 +4,13 @@ import { requireMembership } from '@shared/middleware/membershipMiddleware.ts'
 import { requirePermission } from '@shared/middleware/permissionMiddleware.ts'
 import { validateRequestMiddleware } from '@shared/middleware/validateRequest.middleware.ts'
 import { organizationIdParamSchema } from '@modules/organization/organization.schema.ts'
+import { lecturerParamSchema } from '@modules/lecturers/lecturers.schema.ts'
 import { studentParamSchema } from '@modules/students/students.schema.ts'
 import { InvitationController } from './invitations.controller.ts'
-import { invitationParamSchema, inviteMemberSchema, inviteStudentSchema } from './invitations.schema.ts'
+import { invitationParamSchema, inviteMemberSchema, inviteRecordSchema } from './invitations.schema.ts'
 
 // Mounted at /api/organizations. Only the owner invites school admins; the role is always ADMIN, never OWNER.
-// A student's login invitation is for the owner and admins with MANAGE_STUDENTS, like the record itself.
+// A student's login invitation is for the owner and admins with MANAGE_STUDENTS, like the record itself; a lecturer's for those with MANAGE_LECTURERS.
 const router = Router()
 
 const INVITATIONS = '/:organizationId/invitations'
@@ -17,9 +18,13 @@ const INVITATION = `${INVITATIONS}/:invitationId`
 
 const STUDENT_INVITATION = '/:organizationId/students/:studentId/invitation'
 
+const LECTURER_INVITATION = '/:organizationId/lecturers/:lecturerId/invitation'
+
 const isOwner = requireMembership(['OWNER'])
 
 const canManageStudents = requirePermission('MANAGE_STUDENTS')
+
+const canManageLecturers = requirePermission('MANAGE_LECTURERS')
 
 router.post(INVITATIONS, authMiddleware, validateRequestMiddleware(organizationIdParamSchema, 'params'), isOwner, validateRequestMiddleware(inviteMemberSchema), InvitationController.inviteAdmin)
 
@@ -34,12 +39,25 @@ router.post(
   authMiddleware,
   validateRequestMiddleware(studentParamSchema, 'params'),
   canManageStudents,
-  validateRequestMiddleware(inviteStudentSchema),
+  validateRequestMiddleware(inviteRecordSchema),
   InvitationController.inviteStudent,
 )
 
 router.post(`${STUDENT_INVITATION}/resend`, authMiddleware, validateRequestMiddleware(studentParamSchema, 'params'), canManageStudents, InvitationController.resendStudentInvitation)
 
 router.delete(STUDENT_INVITATION, authMiddleware, validateRequestMiddleware(studentParamSchema, 'params'), canManageStudents, InvitationController.revokeStudentInvitation)
+
+router.post(
+  LECTURER_INVITATION,
+  authMiddleware,
+  validateRequestMiddleware(lecturerParamSchema, 'params'),
+  canManageLecturers,
+  validateRequestMiddleware(inviteRecordSchema),
+  InvitationController.inviteLecturer,
+)
+
+router.post(`${LECTURER_INVITATION}/resend`, authMiddleware, validateRequestMiddleware(lecturerParamSchema, 'params'), canManageLecturers, InvitationController.resendLecturerInvitation)
+
+router.delete(LECTURER_INVITATION, authMiddleware, validateRequestMiddleware(lecturerParamSchema, 'params'), canManageLecturers, InvitationController.revokeLecturerInvitation)
 
 export default router

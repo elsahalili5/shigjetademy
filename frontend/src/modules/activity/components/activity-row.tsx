@@ -36,6 +36,10 @@ const ACTION_ICONS = {
   STUDENT_UPDATED: UserPen,
   STUDENT_ARCHIVED: Archive,
   STUDENT_RESTORED: ArchiveRestore,
+  LECTURER_ADDED: UserPlus,
+  LECTURER_UPDATED: UserPen,
+  LECTURER_ARCHIVED: Archive,
+  LECTURER_RESTORED: ArchiveRestore,
   INVITATION_SENT: Mail,
   INVITATION_RESENT: Send,
   INVITATION_REVOKED: MailX,
@@ -181,6 +185,14 @@ function ActivitySentence({ entry, shouldLinkOrganization }: ActivityRowProps) {
       return <SubjectSentence entry={entry} verb="archived" noun="student" organization={subjectOrganization} />
     case 'STUDENT_RESTORED':
       return <SubjectSentence entry={entry} verb="restored" noun="student" organization={subjectOrganization} />
+    case 'LECTURER_ADDED':
+      return <SubjectSentence entry={entry} verb="added" noun="lecturer" organization={subjectOrganization} />
+    case 'LECTURER_UPDATED':
+      return <SubjectSentence entry={entry} verb="changed" noun="lecturer" organization={subjectOrganization} />
+    case 'LECTURER_ARCHIVED':
+      return <SubjectSentence entry={entry} verb="archived" noun="lecturer" organization={subjectOrganization} />
+    case 'LECTURER_RESTORED':
+      return <SubjectSentence entry={entry} verb="restored" noun="lecturer" organization={subjectOrganization} />
     case 'INVITATION_SENT':
       return (
         <>
@@ -218,7 +230,7 @@ function ActivitySentence({ entry, shouldLinkOrganization }: ActivityRowProps) {
 interface SubjectSentenceProps {
   entry: ActivityEntry
   verb: 'added' | 'changed' | 'removed' | 'archived' | 'restored'
-  noun: 'location' | 'department' | 'school year' | 'term' | 'holiday' | 'student'
+  noun: 'location' | 'department' | 'school year' | 'term' | 'holiday' | 'student' | 'lecturer'
   organization: ReactNode
 }
 

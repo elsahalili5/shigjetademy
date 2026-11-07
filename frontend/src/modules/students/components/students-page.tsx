@@ -11,7 +11,7 @@ import type { Notice } from '#/components/NoticeBar'
 import { showErrorToast } from '#/lib/error-toast'
 import { useSetStudentStatus } from '../hooks/use-set-student-status'
 import { useStudentInvitationAction } from '../hooks/use-student-invitation-action'
-import { useStudentSearch } from '../hooks/use-student-search'
+import { useDebouncedSearch } from '#/lib/use-debounced-search'
 import { useStudents } from '../hooks/use-students'
 import type { LoadedStudents } from '../hooks/use-students'
 import { SkeletonRows } from './skeleton-rows'
@@ -40,7 +40,7 @@ export function StudentsPage({ organizationId, organizationName }: StudentsPageP
   const dialogRef = useRef<HTMLDialogElement>(null)
   const inviteDialogRef = useRef<HTMLDialogElement>(null)
   const searchId = useId()
-  const studentSearch = useStudentSearch()
+  const studentSearch = useDebouncedSearch()
   const [status, setStatus] = useState<StudentStatus>('ACTIVE')
   const students = useStudents({ organizationId, search: studentSearch.search, status })
   const setStudentStatus = useSetStudentStatus(organizationId)
@@ -104,7 +104,7 @@ export function StudentsPage({ organizationId, organizationName }: StudentsPageP
         </button>
       </DashboardPageHeader>
 
-      <div className="grid max-w-[1120px] gap-5 px-[clamp(20px,3.4vw,44px)] pb-10">
+      <div className="grid min-w-0 gap-5 px-[clamp(20px,3.4vw,44px)] pb-10">
         {notice ? <NoticeBar notice={notice} onDismiss={() => setNotice(null)} /> : null}
 
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -204,7 +204,7 @@ function StudentList({
   if (data.students.length === 0) return <EmptyStudents listStatus={listStatus} hasSearch={hasSearch} onAdd={onAdd} />
 
   return (
-    <div className="grid justify-items-center gap-4 pb-4">
+    <div className="grid min-w-0 justify-items-center gap-4 pb-4">
       <StudentTable students={data.students} renderActions={(student) => (
             <StudentActions
               student={student}

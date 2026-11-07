@@ -15,12 +15,12 @@ export const INVITED_ROLE_PHRASES = {
   GUARDIAN: 'as a parent or guardian',
 } as const satisfies Record<MemberRole, string>
 
-/** Who staff invite to log in as a student; the email lives on the invitation, not on the student record */
-export const inviteStudentSchema = z.object({
+/** Who staff invite to log in for a student or lecturer record; the email lives on the invitation, and a lecturer's record email only prefills it */
+export const inviteRecordSchema = z.object({
   email: emailSchema,
 })
 
-export type InviteStudentInput = z.infer<typeof inviteStudentSchema>
+export type InviteRecordInput = z.infer<typeof inviteRecordSchema>
 
 /** An invitation as the people who sent it see it; never the token or its hash */
 export type SentInvitation = {

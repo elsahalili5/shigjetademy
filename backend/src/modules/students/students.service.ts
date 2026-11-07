@@ -5,6 +5,7 @@ import { HttpError } from '@lib/httpError.ts'
 import { lockOrganization } from '@lib/organization-lock.ts'
 import type { OrganizationScope } from '@lib/organization-lock.ts'
 import { prisma } from '@lib/prisma.ts'
+import { revokePendingRecordInvitation } from '@modules/invitations/invitations.service.ts'
 import type { CreateStudentInput, ListStudentsQuery, StudentLoginStatus, StudentStatus, UpdateStudentInput } from './students.types.ts'
 
 const studentSelect = {
@@ -138,18 +139,6 @@ type SetStudentStatusParams = StudentChangeParams & {
   status: StudentStatus
 }
 
-type RevokePendingInvitationParams = FindStudentParams & {
-  actorId: string
-}
-
-/** An archived student can't be invited, so archiving withdraws their open login invitation */
-const revokePendingInvitation = async ({ tx, organizationId, studentId, actorId }: RevokePendingInvitationParams) => {
-  const pending = await tx.invitation.findFirst({ where: { organization_id: organizationId, student_id: studentId, status: 'PENDING' }, select: { id: true, email: true } })
-  if (!pending) return
-  await tx.invitation.update({ where: { id: pending.id }, data: { status: 'REVOKED', revoked_at: new Date() } })
-  await tx.activityLog.create({ data: { actor_id: actorId, action: 'INVITATION_REVOKED', organization_id: organizationId, subject_name: pending.email } })
-}
-
 const STATUS_CHANGE = {
   ARCHIVED: { action: 'STUDENT_ARCHIVED', alreadyMessage: 'This student is already archived.' },
   ACTIVE: { action: 'STUDENT_RESTORED', alreadyMessage: 'This student is already active.' },
@@ -210,7 +199,7 @@ export const StudentService = {
       }
       await tx.activityLog.create({ data: { actor_id: actorId, action: change.action, organization_id: organizationId, subject_name: getStudentName(student) } })
       if (status === 'ARCHIVED') {
-        await revokePendingInvitation({ tx, organizationId, studentId, actorId })
+        await revokePendingRecordInvitation({ tx, organizationId, record: { kind: 'STUDENT', id: studentId }, actorId })
       }
       return toStudentJson(await findStudent({ tx, organizationId, studentId }))
     }),

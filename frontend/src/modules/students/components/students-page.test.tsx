@@ -80,6 +80,8 @@ describe('StudentsPage: list', () => {
     expect(arta).toHaveTextContent('1 Sep 2025')
     expect(besa).toHaveTextContent('Besa Berisha')
     expect(besa).toHaveTextContent('Not recorded')
+    // The row actions stay on one line; the table scrolls sideways instead
+    expect(within(arta).getByRole('group', { name: 'Actions for Arta Gashi' })).toHaveClass('flex-nowrap')
   })
 })
 

@@ -2,7 +2,7 @@ import { Construction } from 'lucide-react'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
 import { adminModuleBySlug } from '#/lib/admin-modules'
 import type { AdminModule } from '#/lib/admin-modules'
-import { getSessionUser, refuseOrganizationStudent } from '#/lib/route-guard'
+import { getSessionUser, refuseHomeOnlyMember } from '#/lib/route-guard'
 import { useTitle } from '#/lib/use-title'
 import { moduleBySlug } from '#/lib/modules'
 import type { Module } from '#/lib/modules'
@@ -14,9 +14,9 @@ import { ClientsModule } from '#/modules/organization/components/clients-module'
 import { StatisticsModule } from '#/modules/organization/components/statistics-module'
 
 export const Route = createFileRoute('/dashboard/$module')({
-  // The platform admin only has the platform modules, organization staff only the school ones, and students only My school
+  // The platform admin only has the platform modules, organization staff only the school ones, students only My school and lecturers only My teaching
   beforeLoad: ({ context, params }) => {
-    refuseOrganizationStudent(context.queryClient)
+    refuseHomeOnlyMember(context.queryClient)
     const user = getSessionUser(context.queryClient)
     const isAdmin = !!user && isPlatformAdmin(user)
     if (isAdmin && !adminModuleBySlug(params.module)) {

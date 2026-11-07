@@ -95,8 +95,8 @@ const emailInvitation = async ({ invitationId, token, actorId }: EmailInvitation
   }
 }
 
-/** Who an invitation lets in: a school admin with chosen permissions, or the login for one existing student record */
-export type InvitationTarget = { role: 'ADMIN'; permissions: Permission[] } | { role: 'STUDENT'; studentId: string }
+/** Who an invitation lets in: a school admin with chosen permissions, or the login for one existing student or lecturer record */
+export type InvitationTarget = { role: 'ADMIN'; permissions: Permission[] } | { role: 'STUDENT'; studentId: string } | { role: 'LECTURER'; lecturerId: string }
 
 type CreateInvitationParams = {
   organizationId: string
@@ -106,6 +106,131 @@ type CreateInvitationParams = {
 }
 
 const emailTaken = (message: string) => new HttpError(409, message, { fieldErrors: { email: [message] } })
+
+/** A student or lecturer record an invitation logs in to */
+export type RecordRef = { kind: 'STUDENT' | 'LECTURER'; id: string }
+
+const toRecord = (target: Exclude<InvitationTarget, { role: 'ADMIN' }>): RecordRef =>
+  target.role === 'STUDENT' ? { kind: 'STUDENT', id: target.studentId } : { kind: 'LECTURER', id: target.lecturerId }
+
+/** What differs between the two kinds of record: their words, and whether an account linked elsewhere is refused already when inviting */
+const RECORD_KINDS = {
+  STUDENT: {
+    noun: 'student',
+    notFoundMessage: 'Student not found',
+    otherRoleMessage: 'This email belongs to someone who already works in your organization.',
+    isLinkedElsewhereRefusedOnInvite: false,
+  },
+  LECTURER: {
+    noun: 'lecturer',
+    notFoundMessage: 'Lecturer not found',
+    otherRoleMessage: 'This email belongs to someone with another role in your organization.',
+    isLinkedElsewhereRefusedOnInvite: true,
+  },
+} as const satisfies Record<RecordRef['kind'], { noun: string; notFoundMessage: string; otherRoleMessage: string; isLinkedElsewhereRefusedOnInvite: boolean }>
+
+type RecordScope = OrganizationScope & {
+  record: RecordRef
+}
+
+/** The organization's record of this kind, with its status and login, or null */
+const findRecord = ({ tx, organizationId, record }: RecordScope) => {
+  const where = { id: record.id, organization_id: organizationId }
+  const select = { status: true, user_id: true } as const
+  switch (record.kind) {
+    case 'STUDENT':
+      return tx.student.findFirst({ where, select })
+    case 'LECTURER':
+      return tx.lecturer.findFirst({ where, select })
+    default: {
+      const unhandled: never = record.kind
+      throw new Error(`Unhandled record kind: ${String(unhandled)}`)
+    }
+  }
+}
+
+type FindLinkedElsewhereParams = RecordScope & {
+  user: Prisma.UserWhereInput
+}
+
+/** Another record of the same kind in the organization that this user's login is already linked to, or null */
+const findLinkedElsewhere = ({ tx, organizationId, record, user }: FindLinkedElsewhereParams) => {
+  const where = { organization_id: organizationId, id: { not: record.id }, user }
+  switch (record.kind) {
+    case 'STUDENT':
+      return tx.student.findFirst({ where, select: { id: true } })
+    case 'LECTURER':
+      return tx.lecturer.findFirst({ where, select: { id: true } })
+    default: {
+      const unhandled: never = record.kind
+      throw new Error(`Unhandled record kind: ${String(unhandled)}`)
+    }
+  }
+}
+
+type SetRecordLoginParams = RecordScope & {
+  userId: string
+}
+
+/** Links the login, guarded on the record having none, so a record never gets a second one; how many records changed */
+const setRecordLogin = async ({ tx, organizationId, record, userId }: SetRecordLoginParams) => {
+  const where = { id: record.id, organization_id: organizationId, user_id: null }
+  const data = { user_id: userId }
+  switch (record.kind) {
+    case 'STUDENT':
+      return (await tx.student.updateMany({ where, data })).count
+    case 'LECTURER':
+      return (await tx.lecturer.updateMany({ where, data })).count
+    default: {
+      const unhandled: never = record.kind
+      throw new Error(`Unhandled record kind: ${String(unhandled)}`)
+    }
+  }
+}
+
+const recordInvitationWhere = (record: RecordRef): Prisma.InvitationWhereInput => (record.kind === 'STUDENT' ? { student_id: record.id } : { lecturer_id: record.id })
+
+type RefuseUninvitableRecordParams = RecordScope & {
+  email: string
+}
+
+const refuseUninvitableRecord = async ({ tx, organizationId, email, record }: RefuseUninvitableRecordParams) => {
+  const { noun, notFoundMessage, otherRoleMessage, isLinkedElsewhereRefusedOnInvite } = RECORD_KINDS[record.kind]
+  const found = await findRecord({ tx, organizationId, record })
+  if (!found) {
+    throw new HttpError(404, notFoundMessage)
+  }
+  if (found.user_id) {
+    throw new HttpError(409, `This ${noun} already has a login.`)
+  }
+  if (found.status === 'ARCHIVED') {
+    throw new HttpError(409, `Restore this ${noun} before inviting them.`)
+  }
+  // One role per organization
+  const otherRole = await tx.membership.findFirst({ where: { organization_id: organizationId, status: 'ACTIVE', role: { not: record.kind }, user: { email } }, select: { id: true } })
+  if (otherRole) {
+    throw emailTaken(otherRoleMessage)
+  }
+  if (isLinkedElsewhereRefusedOnInvite && (await findLinkedElsewhere({ tx, organizationId, record, user: { email } }))) {
+    throw emailTaken(`This email’s account is already linked to another ${noun} in your organization.`)
+  }
+  const pending = await tx.invitation.findFirst({ where: { ...recordInvitationWhere(record), status: 'PENDING' }, select: { id: true } })
+  if (pending) {
+    throw new HttpError(409, `This ${noun} already has a pending invitation.`)
+  }
+}
+
+type RevokePendingRecordInvitationParams = RecordScope & {
+  actorId: string
+}
+
+/** An archived record can't be invited, so archiving withdraws its open login invitation, and logs it */
+export const revokePendingRecordInvitation = async ({ tx, organizationId, record, actorId }: RevokePendingRecordInvitationParams) => {
+  const pending = await tx.invitation.findFirst({ where: { organization_id: organizationId, ...recordInvitationWhere(record), status: 'PENDING' }, select: { id: true, email: true } })
+  if (!pending) return
+  await tx.invitation.update({ where: { id: pending.id }, data: { status: 'REVOKED', revoked_at: new Date() } })
+  await tx.activityLog.create({ data: { actor_id: actorId, action: 'INVITATION_REVOKED', organization_id: organizationId, subject_name: pending.email } })
+}
 
 type RefuseTargetParams = OrganizationScope & {
   email: string
@@ -121,27 +246,9 @@ const refuseUninvitable = async ({ tx, organizationId, email, target }: RefuseTa
       }
       return
     }
-    case 'STUDENT': {
-      const student = await tx.student.findFirst({ where: { id: target.studentId, organization_id: organizationId }, select: { status: true, user_id: true } })
-      if (!student) {
-        throw new HttpError(404, 'Student not found')
-      }
-      if (student.user_id) {
-        throw new HttpError(409, 'This student already has a login.')
-      }
-      if (student.status === 'ARCHIVED') {
-        throw new HttpError(409, 'Restore this student before inviting them.')
-      }
-      const staff = await tx.membership.findFirst({ where: { organization_id: organizationId, status: 'ACTIVE', role: { not: 'STUDENT' }, user: { email } }, select: { id: true } })
-      if (staff) {
-        throw emailTaken('This email belongs to someone who already works in your organization.')
-      }
-      const pending = await tx.invitation.findFirst({ where: { student_id: target.studentId, status: 'PENDING' }, select: { id: true } })
-      if (pending) {
-        throw new HttpError(409, 'This student already has a pending invitation.')
-      }
-      return
-    }
+    case 'STUDENT':
+    case 'LECTURER':
+      return refuseUninvitableRecord({ tx, organizationId, email, record: toRecord(target) })
     default: {
       const unhandled: never = target
       throw new Error(`Unhandled invitation target: ${JSON.stringify(unhandled)}`)
@@ -152,9 +259,11 @@ const refuseUninvitable = async ({ tx, organizationId, email, target }: RefuseTa
 const targetData = (target: InvitationTarget) => {
   switch (target.role) {
     case 'ADMIN':
-      return { role: target.role, permissions: target.permissions, student_id: null }
+      return { role: target.role, permissions: target.permissions, student_id: null, lecturer_id: null }
     case 'STUDENT':
-      return { role: target.role, permissions: [], student_id: target.studentId }
+      return { role: target.role, permissions: [], student_id: target.studentId, lecturer_id: null }
+    case 'LECTURER':
+      return { role: target.role, permissions: [], student_id: null, lecturer_id: target.lecturerId }
     default: {
       const unhandled: never = target
       throw new Error(`Unhandled invitation target: ${JSON.stringify(unhandled)}`)
@@ -196,12 +305,15 @@ const findPending = async ({ tx, where }: { tx: Transaction; where: Prisma.Invit
 type InvitationChangeParams = {
   organizationId: string
   actorId: string
-  /** Which of the organization's invitations: an admin invitation by id, or a student's by the student */
-  match: { invitationId: string } | { studentId: string }
+  /** Which of the organization's invitations: an admin invitation by id, or a student's or lecturer's by their record */
+  match: { invitationId: string } | { studentId: string } | { lecturerId: string }
 }
 
-const matchWhere = ({ organizationId, match }: Pick<InvitationChangeParams, 'organizationId' | 'match'>): Prisma.InvitationWhereInput =>
-  'invitationId' in match ? { id: match.invitationId, organization_id: organizationId, student_id: null } : { student_id: match.studentId, organization_id: organizationId }
+const matchWhere = ({ organizationId, match }: Pick<InvitationChangeParams, 'organizationId' | 'match'>): Prisma.InvitationWhereInput => {
+  if ('invitationId' in match) return { id: match.invitationId, organization_id: organizationId, student_id: null, lecturer_id: null }
+  if ('studentId' in match) return { student_id: match.studentId, organization_id: organizationId }
+  return { lecturer_id: match.lecturerId, organization_id: organizationId }
+}
 
 type JoinOrganizationParams = OrganizationScope & {
   userId: string
@@ -221,26 +333,30 @@ const joinOrganization = async ({ tx, organizationId, userId, role, permissions 
   }
 }
 
-type LinkStudentParams = OrganizationScope & {
-  studentId: string
+/** The record a stored invitation logs in to, if any */
+const recordOf = ({ student_id, lecturer_id }: { student_id: string | null; lecturer_id: string | null }): RecordRef | null => {
+  if (student_id) return { kind: 'STUDENT', id: student_id }
+  if (lecturer_id) return { kind: 'LECTURER', id: lecturer_id }
+  return null
+}
+
+type LinkRecordParams = RecordScope & {
   userId: string
   organizationName: string
 }
 
-/** Puts the login on the existing record; the record, its number and history stay as they are */
-const linkStudent = async ({ tx, organizationId, studentId, userId, organizationName }: LinkStudentParams) => {
-  const student = await tx.student.findFirst({ where: { id: studentId, organization_id: organizationId }, select: { status: true } })
-  if (student?.status === 'ARCHIVED') {
-    throw new HttpError(409, 'This student record is archived. Ask your school to restore it first.')
+/** Puts the login on the existing record; the record and its history stay as they are, and no second record is made */
+const linkRecord = async ({ tx, organizationId, record, userId, organizationName }: LinkRecordParams) => {
+  const { noun } = RECORD_KINDS[record.kind]
+  const found = await findRecord({ tx, organizationId, record })
+  if (found?.status === 'ARCHIVED') {
+    throw new HttpError(409, `This ${noun} record is archived. Ask your school to restore it first.`)
   }
-  const linkedElsewhere = await tx.student.findFirst({ where: { organization_id: organizationId, user_id: userId, id: { not: studentId } }, select: { id: true } })
-  if (linkedElsewhere) {
-    throw new HttpError(409, `Your account is already linked to another student at ${organizationName}.`)
+  if (await findLinkedElsewhere({ tx, organizationId, record, user: { id: userId } })) {
+    throw new HttpError(409, `Your account is already linked to another ${noun} at ${organizationName}.`)
   }
-  // Guarded on a missing login, so a record never gets a second one
-  const { count } = await tx.student.updateMany({ where: { id: studentId, organization_id: organizationId, user_id: null }, data: { user_id: userId } })
-  if (count === 0) {
-    throw new HttpError(409, 'This student already has a login.')
+  if ((await setRecordLogin({ tx, organizationId, record, userId })) === 0) {
+    throw new HttpError(409, `This ${noun} already has a login.`)
   }
 }
 
@@ -348,7 +464,7 @@ export const InvitationService = {
       // Read again under the lock, so two accepts at once can't both pass, and a resend in between (new hash) kills this link
       const invitation = await tx.invitation.findFirst({
         where: { id: found.id, token_hash: hashToken(token) },
-        select: { id: true, email: true, role: true, permissions: true, status: true, expires_at: true, student_id: true, organization: { select: { name: true, status: true } } },
+        select: { id: true, email: true, role: true, permissions: true, status: true, expires_at: true, student_id: true, lecturer_id: true, organization: { select: { name: true, status: true } } },
       })
       if (!invitation) {
         throw new HttpError(404, INVALID_LINK_MESSAGE)
@@ -360,8 +476,9 @@ export const InvitationService = {
       if (invitation.organization.status !== 'ACTIVE') {
         throw new HttpError(410, `${invitation.organization.name} isn’t taking new members right now.`)
       }
-      if (invitation.student_id) {
-        await linkStudent({ tx, organizationId, studentId: invitation.student_id, userId: user.id, organizationName: invitation.organization.name })
+      const record = recordOf(invitation)
+      if (record) {
+        await linkRecord({ tx, organizationId, record, userId: user.id, organizationName: invitation.organization.name })
       }
       await joinOrganization({ tx, organizationId, userId: user.id, role: invitation.role, permissions: invitation.permissions })
       await tx.invitation.update({ where: { id: invitation.id }, data: { status: 'ACCEPTED', accepted_at: new Date() } })
