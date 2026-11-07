@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { nameSchema } from './auth.ts'
 import { todayDay } from './calendar-day.ts'
 import type { CurrentPeriod } from './academic-periods.ts'
+import type { GroupScheduleEntry } from './groups.ts'
 import { optionalText } from './organization.ts'
 
 export const STUDENT_STATUSES = ['ACTIVE', 'ARCHIVED'] as const
@@ -92,7 +93,20 @@ export type StudentPage = {
   counts: Record<StudentStatus, number>
 }
 
-/** What a student sees of their organization: their own record only, and the current school year and term */
+/** A group as one of its students reads it: no lecturer history, staff notes or other students */
+export type MySchoolGroup = {
+  id: string
+  name: string
+  course: string
+  academic_year: string
+  /** The group runs for this term, or the whole school year when null */
+  academic_term: string | null
+  location: string | null
+  /** In the organization's week */
+  schedule: GroupScheduleEntry[]
+}
+
+/** What a student sees of their organization: their own record only, the current school year and term, and their groups */
 export type MySchool = {
   organization: { id: string; name: string }
   /** Null while no record is linked to their login */
@@ -100,4 +114,6 @@ export type MySchool = {
   academic_year: CurrentPeriod | null
   /** The term today falls in; null between terms */
   term: CurrentPeriod | null
+  /** The active groups they are in now, in a school year that includes today, by name */
+  groups: MySchoolGroup[]
 }

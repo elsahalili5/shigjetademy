@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it, vi } from 'vitest'
 import { courseSchema } from '@shigjetademy/shared/courses'
@@ -138,6 +138,67 @@ describe('CoursesPage: list', () => {
     serveCourses()
     await user.click(screen.getByRole('button', { name: 'Try again' }))
     expect(await screen.findByText('Mathematics')).toBeInTheDocument()
+  })
+})
+
+describe('CoursesPage: opening a course', () => {
+  it('links the course’s name to its page', async () => {
+    signInAsOwner()
+    renderRoute('/dashboard/courses')
+
+    const [mathematics] = await rowsOf()
+    expect(within(mathematics).getByRole('link', { name: 'Mathematics' })).toHaveAttribute('href', `/dashboard/courses/${MATHEMATICS.id}`)
+  })
+
+  it('opens the course’s page from anywhere on its row', async () => {
+    signInAsOwner()
+    server.use(http.get(`${COURSES_PATH}/${MATHEMATICS.id}`, () => new Promise<never>(() => {})))
+    const { router, user } = renderRoute('/dashboard/courses')
+
+    const [mathematics] = await rowsOf()
+    await user.click(within(mathematics).getByText('B2'))
+
+    await vi.waitFor(() => expect(router.state.location.pathname).toBe(`/dashboard/courses/${MATHEMATICS.id}`))
+  })
+
+  it('leaves a modifier click on the row to the browser, so it doesn’t take over the tab', async () => {
+    signInAsOwner()
+    const { router, user } = renderRoute('/dashboard/courses')
+
+    const [mathematics] = await rowsOf()
+    for (const key of ['Meta', 'Control', 'Shift', 'Alt']) {
+      await user.keyboard(`{${key}>}`)
+      await user.click(within(mathematics).getByText('B2'))
+      await user.keyboard(`{/${key}}`)
+    }
+
+    expect(router.state.location.pathname).toBe('/dashboard/courses')
+  })
+
+  it('doesn’t open the page when the click ends a text selection', async () => {
+    signInAsOwner()
+    const { router } = renderRoute('/dashboard/courses')
+
+    const [mathematics] = await rowsOf()
+    const level = within(mathematics).getByText('B2')
+    window.getSelection()?.selectAllChildren(level)
+    fireEvent.click(level)
+    window.getSelection()?.removeAllRanges()
+
+    expect(router.state.location.pathname).toBe('/dashboard/courses')
+  })
+
+  it('doesn’t open the page from the row’s actions', async () => {
+    signInAsOwner()
+    const { router, user } = renderRoute('/dashboard/courses')
+
+    const [mathematics] = await rowsOf()
+    await user.click(within(mathematics).getByRole('button', { name: 'Edit Mathematics' }))
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+    await user.click(within(mathematics).getByRole('button', { name: 'Archive Mathematics' }))
+    await user.click(within(mathematics).getByRole('button', { name: 'Cancel' }))
+
+    expect(router.state.location.pathname).toBe('/dashboard/courses')
   })
 })
 

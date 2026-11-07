@@ -2,7 +2,7 @@ import request from 'supertest'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { app } from '../../app.ts'
 import { prisma } from '@lib/prisma.ts'
-import { createOrganization, createUser, loginAs } from '../../../test/factories.ts'
+import { createCourse, createOrganization, createUser, loginAs } from '../../../test/factories.ts'
 
 let organizationId: string
 let coursesPath: string
@@ -205,6 +205,63 @@ describe('course access', () => {
 
     expect((await addCourse(course(), auth)).status).toBe(403)
     expect((await listCourses({}, auth)).status).toBe(403)
+    expect((await readCourse('00000000-0000-4000-8000-000000000000', auth)).status).toBe(403)
+  })
+})
+
+const readCourse = async (id: string, auth = ownerAuth) => request(app).get(`${coursesPath}/${id}`).set('Authorization', auth)
+
+describe('reading one course', () => {
+  it('answers the course with its department and its groups, each with its year, lecturer, schedule and count', async () => {
+    const added = await addCourse(course({ code: 'MATH-1', description: 'Algebra' }))
+    const courseId = added.body.data.id
+    const lastYear = await prisma.academicYear.create({ data: { organization_id: organizationId, name: '2025–26', start_date: new Date('2025-09-01'), end_date: new Date('2026-06-30') } })
+    const thisYear = await prisma.academicYear.create({ data: { organization_id: organizationId, name: '2026–27', start_date: new Date('2026-09-01'), end_date: new Date('2027-06-30'), is_current: true } })
+    const arben = await prisma.lecturer.create({ data: { organization_id: organizationId, first_name: 'Arben', last_name: 'Hoxha', employment_type: 'FULL_TIME' } })
+    const groupB = await prisma.group.create({ data: { organization_id: organizationId, course_id: courseId, name: 'Group B', academic_year_id: thisYear.id, capacity: 20 } })
+    const groupA = await prisma.group.create({ data: { organization_id: organizationId, course_id: courseId, name: 'Group A', academic_year_id: thisYear.id } })
+    const old = await prisma.group.create({ data: { organization_id: organizationId, course_id: courseId, name: 'Old group', academic_year_id: lastYear.id, status: 'ARCHIVED' } })
+    await prisma.groupLecturerAssignment.create({ data: { group_id: groupB.id, lecturer_id: arben.id, start_date: new Date('2026-01-01') } })
+    await prisma.groupMeeting.create({ data: { group_id: groupB.id, weekday: 'MONDAY', start_time: new Date('1970-01-01T17:00:00.000Z'), end_time: new Date('1970-01-01T18:30:00.000Z') } })
+    const student = await prisma.student.create({ data: { organization_id: organizationId, first_name: 'Arta', last_name: 'Gashi', student_number: 'STU-0001' } })
+    await prisma.groupEnrolment.create({ data: { group_id: groupB.id, student_id: student.id, enrolled_on: new Date('2026-09-01') } })
+    const other = await addCourse(course({ name: 'Physics' }))
+    await prisma.group.create({ data: { organization_id: organizationId, course_id: other.body.data.id, name: 'Physics group', academic_year_id: thisYear.id } })
+
+    const response = await readCourse(courseId, await loginAs('manager@oxford.test'))
+
+    expect(response.status).toBe(200)
+    expect(response.body.data).toMatchObject({ id: courseId, name: 'Mathematics', code: 'MATH-1', description: 'Algebra', level: 'B2', status: 'ACTIVE', department: { id: sciencesId, name: 'Sciences' } })
+    expect(response.body.data.groups.map((item: { id: string }) => item.id)).toEqual([groupA.id, groupB.id, old.id])
+    expect(response.body.data.groups[1]).toMatchObject({
+      name: 'Group B',
+      status: 'ACTIVE',
+      academic_year: { id: thisYear.id, name: '2026–27' },
+      lecturer: { id: arben.id, first_name: 'Arben', last_name: 'Hoxha' },
+      schedule: [{ weekday: 'MONDAY', start_time: '17:00', end_time: '18:30' }],
+      capacity: 20,
+      enrolled_count: 1,
+    })
+    expect(response.body.data.groups[2]).toMatchObject({ name: 'Old group', status: 'ARCHIVED' })
+  })
+
+  it('answers no groups for a course without any', async () => {
+    const added = await addCourse(course())
+
+    expect((await readCourse(added.body.data.id)).body.data.groups).toEqual([])
+  })
+
+  it('answers 404 for an unknown course or one of another organization', async () => {
+    const yllkaOwner = await createUser({ email: 'owner@yllka.test' })
+    const yllka = await createOrganization({ name: 'Yllka Kindergarten', ownerId: yllkaOwner.id })
+    const yllkaCourse = await createCourse({ organizationId: yllka.id, name: 'Yllka course' })
+
+    expect((await readCourse('00000000-0000-4000-8000-000000000000')).status).toBe(404)
+    expect((await readCourse(yllkaCourse.id)).status).toBe(404)
+  })
+
+  it('still reads "options" as the options list, not a course id', async () => {
+    expect((await request(app).get(`${coursesPath}/options`).set('Authorization', ownerAuth)).body.data).toEqual([])
   })
 })
 

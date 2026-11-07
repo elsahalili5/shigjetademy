@@ -2,7 +2,7 @@ import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import type { AuthUser } from '@shigjetademy/shared/auth'
-import type { MySchool } from '@shigjetademy/shared/students'
+import type { MySchool, MySchoolGroup } from '@shigjetademy/shared/students'
 import { buildUser, DEFAULT_SETTINGS, OWNER_MEMBERSHIPS, signInAs } from '#/test/fixtures'
 import { renderRoute } from '#/test/render-route'
 import { server } from '#/test/server'
@@ -16,6 +16,20 @@ const MY_SCHOOL: MySchool = {
   student: { first_name: 'Arta', last_name: 'Gashi', student_number: 'STU-0007' },
   academic_year: { name: '2026–27', start_date: '2026-09-01', end_date: '2027-06-30' },
   term: { name: 'Autumn term', start_date: '2026-09-01', end_date: '2026-12-20' },
+  groups: [],
+}
+
+const GROUP_A: MySchoolGroup = {
+  id: 'group-a',
+  name: 'Group A',
+  course: 'Mathematics',
+  academic_year: '2026–27',
+  academic_term: 'Autumn term',
+  location: 'Main campus',
+  schedule: [
+    { weekday: 'MONDAY', start_time: '17:00', end_time: '18:30' },
+    { weekday: 'WEDNESDAY', start_time: '17:00', end_time: '18:30' },
+  ],
 }
 
 const STUDENT = buildUser({ first_name: 'Arta', last_name: 'Gashi', email: 'arta@student.test', memberships: STUDENT_MEMBERSHIPS })
@@ -58,6 +72,30 @@ describe('My school', () => {
 
     expect(await screen.findByText('Your school hasn’t linked your student record yet.')).toBeInTheDocument()
     expect(screen.getByText('No term right now')).toBeInTheDocument()
+  })
+
+  it('lists the student’s groups with their course, year, term, location and schedule, read-only', async () => {
+    signInAs(STUDENT)
+    serveMySchool({ ...MY_SCHOOL, groups: [GROUP_A, { ...GROUP_A, id: 'group-b', name: 'Group B', academic_term: null, location: null, schedule: [] }] })
+    renderRoute('/dashboard/my-school')
+
+    const groups = await screen.findByRole('region', { name: 'Your groups' })
+    const [groupA, groupB] = within(groups).getAllByRole('listitem')
+    expect(groupA).toHaveTextContent('Group A')
+    expect(groupA).toHaveTextContent('Mathematics · 2026–27 · Autumn term · Main campus')
+    expect(groupA).toHaveTextContent('Mon 17:00–18:30 · Wed 17:00–18:30')
+    expect(groupB).toHaveTextContent('Mathematics · 2026–27')
+    expect(groupB).toHaveTextContent('No schedule')
+    expect(within(groups).queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('says when the student isn’t in any group yet', async () => {
+    signInAs(STUDENT)
+    serveMySchool()
+    renderRoute('/dashboard/my-school')
+
+    const groups = await screen.findByRole('region', { name: 'Your groups' })
+    expect(within(groups).getByText('You aren’t in any group yet.')).toBeInTheDocument()
   })
 
   it('offers to try again when it fails to load', async () => {

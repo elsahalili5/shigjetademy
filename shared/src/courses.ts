@@ -1,6 +1,7 @@
 // The course forms and the endpoints that store courses share these schemas.
 import { z } from 'zod'
 import { nameSchema } from './auth.ts'
+import type { Group } from './groups.ts'
 import { optionalText } from './organization.ts'
 
 export const COURSE_STATUSES = ['ACTIVE', 'ARCHIVED'] as const
@@ -55,6 +56,11 @@ export type Course = {
 
 /** What the group forms and filters offer: every course, by name, archived ones included */
 export type CourseOption = Pick<Course, 'id' | 'name' | 'status'>
+
+/** One course with every group it runs, both statuses, newest school year first */
+export type CourseDetail = Course & {
+  groups: Group[]
+}
 
 /** One page of courses in one status, with how many match the search in each status */
 export type CoursePage = {

@@ -1,10 +1,12 @@
 import { GraduationCap } from 'lucide-react'
-import type { MyTeaching, MyTeachingCover, MyTeachingGroup } from '@shigjetademy/shared/lecturers'
+import { getStudentName } from '@shigjetademy/shared/students'
+import type { MyTeaching, MyTeachingCover, MyTeachingCoverGroup, MyTeachingGroup } from '@shigjetademy/shared/lecturers'
 import { DashboardPageHeader } from '#/components/DashboardPageHeader'
 import { Detail, HomeSkeleton, SchoolYearCard } from '#/components/HomeDetails'
 import { LoadError } from '#/components/LoadError'
 import { SectionCard } from '#/components/SectionCard'
 import { useFormatDay } from '#/lib/use-format-date'
+import { getScheduleLabel } from '#/modules/groups/utils/schedule-label'
 import { EMPLOYMENT_TYPE_LABELS } from '#/modules/lecturers/utils/employment-type-labels'
 import { useMyTeaching } from '../hooks/use-my-teaching'
 import { WelcomeBanner } from './welcome-banner'
@@ -71,7 +73,7 @@ function MyTeachingContent({ status, data, onRetry }: MyTeachingContentProps) {
 }
 
 /** "Mathematics · 2026–27 · Main campus" */
-const getGroupDetails = (group: MyTeachingGroup) => [group.course, group.academic_year, group.location].filter(Boolean).join(' · ')
+const getGroupDetails = (group: MyTeachingCoverGroup) => [group.course, group.academic_year, group.location].filter(Boolean).join(' · ')
 
 interface TeachingGroupsProps {
   groups: MyTeachingGroup[]
@@ -85,6 +87,8 @@ function TeachingGroups({ groups }: TeachingGroupsProps) {
         <li key={group.id} className="grid gap-0.5 border-b border-rule px-5 py-3 last:border-b-0">
           <span className="font-semibold">{group.name}</span>
           <span className="text-[0.93rem] text-ink-2">{getGroupDetails(group)}</span>
+          <span className="tabular text-[0.93rem] text-ink-2">{getScheduleLabel(group.schedule) || 'No schedule'}</span>
+          <span className="text-[0.93rem] text-ink-2">{group.students.length > 0 ? `Students: ${group.students.map(getStudentName).join(', ')}` : 'No students yet'}</span>
         </li>
       ))}
     </ul>
@@ -105,6 +109,7 @@ function TeachingCover({ cover }: TeachingCoverProps) {
           <span className="grid gap-0.5">
             <span className="font-semibold">{item.group.name}</span>
             <span className="text-[0.93rem] text-ink-2">{getGroupDetails(item.group)}</span>
+            {item.group.schedule.length > 0 ? <span className="tabular text-[0.93rem] text-ink-2">{getScheduleLabel(item.group.schedule)}</span> : null}
           </span>
           <span className="tabular text-[0.93rem] text-ink-2">
             {COVER_STATUS_LABELS[item.status]} · {item.start_date === item.end_date ? formatDay(item.start_date) : `${formatDay(item.start_date)} – ${formatDay(item.end_date)}`}

@@ -1,4 +1,4 @@
-import { cleanup, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AcademicYear } from '@shigjetademy/shared/academic-periods'
@@ -63,9 +63,26 @@ const GROUP_A: Group = {
   location: { id: MAIN_CAMPUS.id, name: MAIN_CAMPUS.name },
   lecturer: ARBEN,
   lecturer_change: null,
+  schedule: [
+    { weekday: 'MONDAY', start_time: '17:00', end_time: '18:30' },
+    { weekday: 'WEDNESDAY', start_time: '17:00', end_time: '18:30' },
+  ],
+  enrolled_count: 18,
 }
 
-const GROUP_B: Group = { ...GROUP_A, id: '8d4a6e5e-af5d-4a99-9e7c-4b5cdf5a6b02', name: 'Group B', capacity: null, course: ENGLISH, academic_year: { id: NEXT_YEAR.id, name: NEXT_YEAR.name }, academic_term: null, location: null, lecturer: null }
+const GROUP_B: Group = {
+  ...GROUP_A,
+  id: '8d4a6e5e-af5d-4a99-9e7c-4b5cdf5a6b02',
+  name: 'Group B',
+  capacity: null,
+  course: ENGLISH,
+  academic_year: { id: NEXT_YEAR.id, name: NEXT_YEAR.name },
+  academic_term: null,
+  location: null,
+  lecturer: null,
+  schedule: [],
+  enrolled_count: 3,
+}
 
 const GROUPS_PATH = '*/api/organizations/org-1/groups'
 
@@ -124,6 +141,28 @@ const openAddDialog = async (user: ReturnType<typeof renderRoute>['user']) => {
   return screen.getByRole('dialog', { name: 'Add a group' })
 }
 
+type FillEntryParams = {
+  user: ReturnType<typeof renderRoute>['user']
+  dialog: HTMLElement
+  /** 1 for the first day and time */
+  position: number
+  day: string
+  start: string
+  end: string
+}
+
+/** Fills one day and time of the schedule, replacing what it held */
+const fillEntry = async ({ user, dialog, position, day, start, end }: FillEntryParams) => {
+  const entry = within(dialog).getByRole('group', { name: `Day and time ${position}` })
+  await user.selectOptions(within(entry).getByLabelText('Day'), day)
+  await user.clear(within(entry).getByLabelText('Start'))
+  await user.type(within(entry).getByLabelText('Start'), start)
+  await user.clear(within(entry).getByLabelText('End'))
+  await user.type(within(entry).getByLabelText('End'), end)
+}
+
+const MONDAY_EVENING = { weekday: 'MONDAY', start_time: '17:00', end_time: '18:30' } as const
+
 describe('GroupsPage: list', () => {
   it('lists groups with their course, year, term, location and capacity', async () => {
     signInAsOwner({ active: [GROUP_A, GROUP_B] })
@@ -133,6 +172,7 @@ describe('GroupsPage: list', () => {
     const [groupA, groupB] = await rowsOf()
     expect(groupA).toHaveTextContent('Group A')
     expect(groupA).toHaveTextContent('Mathematics')
+    expect(groupA).not.toHaveTextContent('Archived')
     expect(groupA).toHaveTextContent('2026–27')
     expect(groupA).toHaveTextContent('Autumn term')
     expect(groupA).toHaveTextContent('Main campus')
@@ -275,10 +315,23 @@ describe('GroupsPage: add', () => {
     await user.selectOptions(within(dialog).getByLabelText(/^Location/), 'Main campus')
     await user.type(within(dialog).getByLabelText('Capacity (optional)'), '20')
     await user.selectOptions(within(dialog).getByLabelText(/^Lecturer/), await within(dialog).findByRole('option', { name: 'Arben Hoxha · Mathematics, Physics' }))
+    await fillEntry({ user, dialog, position: 1, day: 'Monday', start: '17:00', end: '18:30' })
+    await user.click(within(dialog).getByRole('button', { name: 'Add a day and time' }))
+    await fillEntry({ user, dialog, position: 2, day: 'Wednesday', start: '17:00', end: '18:30' })
     await user.click(within(dialog).getByRole('button', { name: 'Add group' }))
 
     expect(await screen.findByText('Added Group A.')).toBeInTheDocument()
-    expect(sent).toEqual({ course_id: MATHEMATICS.id, name: 'Group A', academic_year_id: THIS_YEAR.id, academic_term_id: AUTUMN.id, location_id: MAIN_CAMPUS.id, capacity: 20, lecturer_id: ARBEN.id, lecturer_effective_from: null })
+    expect(sent).toEqual({
+      course_id: MATHEMATICS.id,
+      name: 'Group A',
+      academic_year_id: THIS_YEAR.id,
+      academic_term_id: AUTUMN.id,
+      location_id: MAIN_CAMPUS.id,
+      capacity: 20,
+      lecturer_id: ARBEN.id,
+      lecturer_effective_from: null,
+      schedule: [MONDAY_EVENING, { weekday: 'WEDNESDAY', start_time: '17:00', end_time: '18:30' }],
+    })
     expect(dialog).not.toBeVisible()
     expect(await screen.findByRole('table', { name: 'Groups' })).toHaveTextContent('Group A')
   })
@@ -297,6 +350,7 @@ describe('GroupsPage: add', () => {
     const dialog = await openAddDialog(user)
     await user.selectOptions(within(dialog).getByLabelText('Course'), 'Mathematics')
     await user.type(within(dialog).getByLabelText('Name'), 'Group A')
+    await fillEntry({ user, dialog, position: 1, day: 'Monday', start: '17:00', end: '18:30' })
     await user.click(within(dialog).getByRole('button', { name: 'Add group' }))
 
     await screen.findByText('Added Group A.')
@@ -336,9 +390,150 @@ describe('GroupsPage: add', () => {
     const dialog = await openAddDialog(user)
     await user.selectOptions(within(dialog).getByLabelText('Course'), 'Mathematics')
     await user.type(within(dialog).getByLabelText('Name'), 'Group A')
+    await fillEntry({ user, dialog, position: 1, day: 'Monday', start: '17:00', end: '18:30' })
     await user.click(within(dialog).getByRole('button', { name: 'Add group' }))
 
     expect(await within(dialog).findByLabelText('Name')).toHaveAccessibleDescription(message)
+  })
+})
+
+describe('GroupsPage: opening a group', () => {
+  it('opens the group’s page from anywhere on its row', async () => {
+    signInAsOwner({ active: [GROUP_A] })
+    server.use(http.get(`${GROUPS_PATH}/${GROUP_A.id}`, () => new Promise<never>(() => {})))
+    const { router, user } = renderRoute('/dashboard/groups')
+
+    const [groupA] = await rowsOf()
+    await user.click(within(groupA).getByText('18/20'))
+
+    await vi.waitFor(() => expect(router.state.location.pathname).toBe(`/dashboard/groups/${GROUP_A.id}`))
+  })
+
+  it('leaves a modifier click on the row to the browser, and ignores a click that ends a text selection', async () => {
+    signInAsOwner({ active: [GROUP_A] })
+    const { router, user } = renderRoute('/dashboard/groups')
+
+    const [groupA] = await rowsOf()
+    const count = within(groupA).getByText('18/20')
+    await user.keyboard('{Meta>}')
+    await user.click(count)
+    await user.keyboard('{/Meta}')
+    window.getSelection()?.selectAllChildren(count)
+    fireEvent.click(count)
+    window.getSelection()?.removeAllRanges()
+
+    expect(router.state.location.pathname).toBe('/dashboard/groups')
+  })
+
+  it('doesn’t open the page from the row’s actions', async () => {
+    signInAsOwner({ active: [GROUP_A] })
+    serveHistory()
+    const { router, user } = renderRoute('/dashboard/groups')
+
+    const [groupA] = await rowsOf()
+    await user.click(within(groupA).getByRole('button', { name: 'Edit Group A' }))
+    await user.click(within(screen.getByRole('dialog', { name: 'Edit Group A' })).getByRole('button', { name: 'Cancel' }))
+    await user.click(within(groupA).getByRole('button', { name: 'Lecturers of Group A' }))
+    await user.click(within(screen.getByRole('dialog', { name: 'Lecturers of Group A' })).getByRole('button', { name: 'Close' }))
+    await user.click(within(groupA).getByRole('button', { name: 'Archive Group A' }))
+    await user.click(within(groupA).getByRole('button', { name: 'Cancel' }))
+
+    expect(router.state.location.pathname).toBe('/dashboard/groups')
+  })
+})
+
+describe('GroupsPage: students', () => {
+  it('shows each group’s students against its capacity, Full when it’s reached, and a plain count without a capacity', async () => {
+    signInAsOwner({ active: [GROUP_A, { ...GROUP_A, id: '8d4a6e5e-af5d-4a99-9e7c-4b5cdf5a6b09', name: 'Group F', enrolled_count: 20 }, GROUP_B] })
+    renderRoute('/dashboard/groups')
+
+    const [groupA, groupF, groupB] = await rowsOf()
+    expect(groupA).toHaveTextContent('18/20')
+    expect(groupA).not.toHaveTextContent('Full')
+    expect(groupF).toHaveTextContent('20/20 · Full')
+    expect(within(groupB).getByText('3 students')).toBeInTheDocument()
+  })
+})
+
+describe('GroupsPage: schedule', () => {
+  it('shows each group’s days and times in the table, or that it has none', async () => {
+    signInAsOwner({ active: [GROUP_A, GROUP_B] })
+    renderRoute('/dashboard/groups')
+
+    const [groupA, groupB] = await rowsOf()
+    expect(groupA).toHaveTextContent('Mon 17:00–18:30 · Wed 17:00–18:30')
+    expect(groupB).toHaveTextContent('No schedule')
+  })
+
+  it('asks for at least one day and time on a new group', async () => {
+    signInAsOwner({ active: [] })
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openAddDialog(user)
+    await user.click(within(dialog).getByRole('button', { name: 'Remove day and time 1' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Add group' }))
+
+    expect(await within(dialog).findByText('Add at least one day and time.')).toBeInTheDocument()
+  })
+
+  it('asks for an end time after the start time', async () => {
+    signInAsOwner({ active: [] })
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openAddDialog(user)
+    await fillEntry({ user, dialog, position: 1, day: 'Monday', start: '18:00', end: '17:00' })
+    await user.click(within(dialog).getByRole('button', { name: 'Add group' }))
+
+    expect(await within(dialog).findByLabelText('End')).toHaveAccessibleDescription('The end time must be after the start time.')
+  })
+
+  it('refuses two overlapping times on the same day', async () => {
+    signInAsOwner({ active: [] })
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openAddDialog(user)
+    await fillEntry({ user, dialog, position: 1, day: 'Monday', start: '17:00', end: '18:30' })
+    await user.click(within(dialog).getByRole('button', { name: 'Add a day and time' }))
+    await fillEntry({ user, dialog, position: 2, day: 'Monday', start: '18:00', end: '19:00' })
+    await user.click(within(dialog).getByRole('button', { name: 'Add group' }))
+
+    const second = within(dialog).getByRole('group', { name: 'Day and time 2' })
+    expect(await within(second).findByLabelText('Start')).toHaveAccessibleDescription('This overlaps another time on the same day.')
+  })
+
+  it('saves other edits of a group without a schedule, and keeps it empty', async () => {
+    signInAsOwner({ active: [GROUP_B] })
+    let sent: unknown
+    server.use(
+      http.put(`${GROUPS_PATH}/${GROUP_B.id}`, async ({ request }) => {
+        sent = groupSchema.parse(await request.json())
+        return HttpResponse.json({ data: { ...GROUP_B, name: 'Group C' } })
+      }),
+    )
+    const { user } = renderRoute('/dashboard/groups')
+
+    await user.click(await screen.findByRole('button', { name: 'Edit Group B' }))
+    const dialog = screen.getByRole('dialog', { name: 'Edit Group B' })
+    expect(within(dialog).getByText('No schedule')).toBeInTheDocument()
+    await user.clear(within(dialog).getByLabelText('Name'))
+    await user.type(within(dialog).getByLabelText('Name'), 'Group C')
+    await user.click(within(dialog).getByRole('button', { name: 'Save changes' }))
+
+    expect(await screen.findByText('Saved Group C.')).toBeInTheDocument()
+    expect(sent).toMatchObject({ name: 'Group C', schedule: [] })
+  })
+
+  it('won’t empty a schedule that has days and times', async () => {
+    signInAsOwner({ active: [GROUP_A] })
+    const { user } = renderRoute('/dashboard/groups')
+
+    await user.click(await screen.findByRole('button', { name: 'Edit Group A' }))
+    const dialog = screen.getByRole('dialog', { name: 'Edit Group A' })
+    await user.click(within(dialog).getByRole('button', { name: 'Remove day and time 2' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Remove day and time 1' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Save changes' }))
+
+    expect(await within(dialog).findByText('Add at least one day and time.')).toBeInTheDocument()
   })
 })
 
@@ -453,7 +648,17 @@ describe('GroupsPage: edit', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Save changes' }))
 
     expect(await screen.findByText('Saved Group A.')).toBeInTheDocument()
-    expect(sent).toEqual({ course_id: MATHEMATICS.id, name: 'Group A', academic_year_id: THIS_YEAR.id, academic_term_id: AUTUMN.id, location_id: MAIN_CAMPUS.id, capacity: 25, lecturer_id: ARBEN.id, lecturer_effective_from: null })
+    expect(sent).toEqual({
+      course_id: MATHEMATICS.id,
+      name: 'Group A',
+      academic_year_id: THIS_YEAR.id,
+      academic_term_id: AUTUMN.id,
+      location_id: MAIN_CAMPUS.id,
+      capacity: 25,
+      lecturer_id: ARBEN.id,
+      lecturer_effective_from: null,
+      schedule: GROUP_A.schedule,
+    })
     expect(dialog).not.toBeVisible()
   })
 

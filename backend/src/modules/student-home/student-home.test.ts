@@ -2,7 +2,7 @@ import request from 'supertest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { app } from '../../app.ts'
 import { prisma } from '@lib/prisma.ts'
-import { createOrganization, createUser, loginAs } from '../../../test/factories.ts'
+import { createCourse, createOrganization, createUser, loginAs } from '../../../test/factories.ts'
 
 let organizationId: string
 let mySchoolPath: string
@@ -63,6 +63,7 @@ describe('My school', () => {
       student: { first_name: 'Arta', last_name: 'Gashi', student_number: 'STU-0007' },
       academic_year: { name: '2026–27', start_date: '2026-09-01', end_date: '2027-06-30' },
       term: { name: 'Autumn term', start_date: '2026-09-01', end_date: '2026-12-20' },
+      groups: [],
     })
   })
 
@@ -97,5 +98,110 @@ describe('My school', () => {
 
     expect((await request(app).get(`/api/organizations/${organizationId}/students`).set('Authorization', auth)).status).toBe(403)
     expect((await request(app).get(`/api/organizations/${organizationId}/members`).set('Authorization', auth)).status).toBe(403)
+  })
+})
+
+describe('My school: groups', () => {
+  let yearId: string
+  let courseId: string
+  let artaId: string
+  let besaId: string
+
+  type AddGroupParams = {
+    name: string
+    status?: 'ACTIVE' | 'ARCHIVED'
+  }
+
+  const addGroup = async ({ name, status = 'ACTIVE' }: AddGroupParams) => {
+    const group = await prisma.group.create({ data: { organization_id: organizationId, course_id: courseId, name, academic_year_id: yearId, status } })
+    await prisma.groupMeeting.createMany({
+      data: [
+        { group_id: group.id, weekday: 'MONDAY', start_time: new Date('1970-01-01T17:00:00.000Z'), end_time: new Date('1970-01-01T18:30:00.000Z') },
+        { group_id: group.id, weekday: 'SUNDAY', start_time: new Date('1970-01-01T09:00:00.000Z'), end_time: new Date('1970-01-01T10:00:00.000Z') },
+      ],
+    })
+    return group
+  }
+
+  type EnrolParams = {
+    groupId: string
+    studentId: string
+    withdrawnOn?: string
+  }
+
+  const enrol = ({ groupId, studentId, withdrawnOn }: EnrolParams) =>
+    prisma.groupEnrolment.create({ data: { group_id: groupId, student_id: studentId, enrolled_on: new Date('2026-09-01'), withdrawn_on: withdrawnOn ? new Date(withdrawnOn) : null } })
+
+  beforeEach(async () => {
+    yearId = (await prisma.academicYear.findFirstOrThrow({ where: { organization_id: organizationId } })).id
+    courseId = (await createCourse({ organizationId, name: 'Mathematics' })).id
+    artaId = (await prisma.student.findFirstOrThrow({ where: { first_name: 'Arta' } })).id
+    besaId = (await prisma.student.findFirstOrThrow({ where: { first_name: 'Besa' } })).id
+  })
+
+  it('lists the student’s active groups by name with their course, year, term, location and schedule, and nothing about other students', async () => {
+    const term = await prisma.academicTerm.findFirstOrThrow({ where: { name: 'Autumn term' } })
+    const location = await prisma.location.create({ data: { organization_id: organizationId, name: 'Main campus', is_main: true } })
+    const groupB = await addGroup({ name: 'Group B' })
+    await prisma.group.update({ where: { id: groupB.id }, data: { academic_term_id: term.id, location_id: location.id } })
+    const groupA = await addGroup({ name: 'Group A' })
+    await enrol({ groupId: groupB.id, studentId: artaId })
+    await enrol({ groupId: groupA.id, studentId: artaId })
+    await enrol({ groupId: groupA.id, studentId: besaId })
+
+    const { groups } = (await readMySchool('arta@student.test')).body.data
+
+    const schedule = [
+      { weekday: 'MONDAY', start_time: '17:00', end_time: '18:30' },
+      { weekday: 'SUNDAY', start_time: '09:00', end_time: '10:00' },
+    ]
+    expect(groups).toEqual([
+      { id: groupA.id, name: 'Group A', course: 'Mathematics', academic_year: '2026–27', academic_term: null, location: null, schedule },
+      { id: groupB.id, name: 'Group B', course: 'Mathematics', academic_year: '2026–27', academic_term: 'Autumn term', location: 'Main campus', schedule },
+    ])
+  })
+
+  it('orders each schedule in the organization’s week', async () => {
+    await prisma.organizationSettings.create({ data: { organization_id: organizationId, time_zone: 'Europe/Belgrade', week_start: 'SUNDAY' } })
+    const group = await addGroup({ name: 'Group A' })
+    await enrol({ groupId: group.id, studentId: artaId })
+
+    const { groups } = (await readMySchool('arta@student.test')).body.data
+
+    expect(groups[0].schedule.map((entry: { weekday: string }) => entry.weekday)).toEqual(['SUNDAY', 'MONDAY'])
+  })
+
+  it('lists only groups whose school year includes today, going by the organization’s day', async () => {
+    await prisma.organizationSettings.create({ data: { organization_id: organizationId, time_zone: 'Europe/Belgrade' } })
+    const lastYear = await prisma.academicYear.create({ data: { organization_id: organizationId, name: '2025–26', start_date: new Date('2025-09-01'), end_date: new Date('2026-06-30') } })
+    const nextYear = await prisma.academicYear.create({ data: { organization_id: organizationId, name: '2027–28', start_date: new Date('2027-09-01'), end_date: new Date('2028-06-30') } })
+    const startsTomorrow = await prisma.academicYear.create({ data: { organization_id: organizationId, name: 'From 1 November', start_date: new Date('2026-11-01'), end_date: new Date('2027-06-30') } })
+    const current = await addGroup({ name: 'This year' })
+    for (const [name, year] of [['Last year', lastYear], ['Next year', nextYear], ['Starts 1 November', startsTomorrow]] as const) {
+      const group = await addGroup({ name })
+      await prisma.group.update({ where: { id: group.id }, data: { academic_year_id: year.id } })
+      await enrol({ groupId: group.id, studentId: artaId })
+    }
+    await enrol({ groupId: current.id, studentId: artaId })
+
+    const before = (await readMySchool('arta@student.test')).body.data.groups
+    // 23:30 UTC on 31 October is already 1 November in Belgrade
+    vi.setSystemTime(new Date('2026-10-31T23:30:00.000Z'))
+    const after = (await readMySchool('arta@student.test')).body.data.groups
+
+    expect(before.map((group: { name: string }) => group.name)).toEqual(['This year'])
+    expect(after.map((group: { name: string }) => group.name)).toEqual(['Starts 1 November', 'This year'])
+  })
+
+  it('leaves out groups the student has left, archived groups and other students’ groups', async () => {
+    const left = await addGroup({ name: 'Left' })
+    const archived = await addGroup({ name: 'Archived', status: 'ARCHIVED' })
+    const others = await addGroup({ name: 'Others' })
+    await enrol({ groupId: left.id, studentId: artaId, withdrawnOn: '2026-10-01' })
+    await enrol({ groupId: archived.id, studentId: artaId })
+    await enrol({ groupId: others.id, studentId: besaId })
+
+    expect((await readMySchool('arta@student.test')).body.data.groups).toEqual([])
+    expect((await readMySchool('unlinked@student.test')).body.data.groups).toEqual([])
   })
 })

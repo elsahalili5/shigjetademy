@@ -2,10 +2,11 @@ import type { Response } from 'express'
 import { sendError } from '@lib/httpError.ts'
 import type { AuthRequest, TypedRequest } from '@lib/types.ts'
 import type { OrganizationIdParam } from '@modules/organization/organization.types.ts'
+import { GroupEnrolmentService } from './group-enrolments.service.ts'
 import { GroupLecturerService } from './group-lecturers.service.ts'
 import { GroupService } from './groups.service.ts'
 import { listGroupsQuerySchema } from './groups.schema.ts'
-import type { GroupInput, GroupParam, GroupSubstitutionInput, SubstitutionParam } from './groups.types.ts'
+import type { EnrolmentParam, GroupEnrolmentInput, GroupInput, GroupMoveInput, GroupParam, GroupSubstitutionInput, SubstitutionParam } from './groups.types.ts'
 
 type CreateGroupRequest = AuthRequest & TypedRequest<GroupInput, OrganizationIdParam>
 
@@ -18,6 +19,12 @@ type UpdateSubstitutionRequest = AuthRequest & TypedRequest<GroupSubstitutionInp
 type SubstitutionRequest = AuthRequest & TypedRequest<unknown, SubstitutionParam>
 
 type GroupRequest = AuthRequest & TypedRequest<unknown, GroupParam>
+
+type EnrolStudentRequest = AuthRequest & TypedRequest<GroupEnrolmentInput, GroupParam>
+
+type EnrolmentRequest = AuthRequest & TypedRequest<unknown, EnrolmentParam>
+
+type MoveStudentRequest = AuthRequest & TypedRequest<GroupMoveInput, EnrolmentParam>
 
 export const GroupController = {
   listGroups: async (req: TypedRequest<unknown, OrganizationIdParam>, res: Response) => {
@@ -36,6 +43,72 @@ export const GroupController = {
       return res.status(200).json({ data: options })
     } catch (error) {
       return sendError({ res, error, fallback: 'Failed to fetch the lecturers' })
+    }
+  },
+
+  getGroup: async (req: GroupRequest, res: Response) => {
+    try {
+      const group = await GroupService.getGroup(req.params)
+      return res.status(200).json({ data: group })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to fetch the group' })
+    }
+  },
+
+  listStudentOptions: async (req: TypedRequest<unknown, OrganizationIdParam>, res: Response) => {
+    try {
+      const options = await GroupEnrolmentService.listStudentOptions(req.params.organizationId)
+      return res.status(200).json({ data: options })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to fetch the students' })
+    }
+  },
+
+  listEnrolments: async (req: GroupRequest, res: Response) => {
+    try {
+      const enrolments = await GroupEnrolmentService.listEnrolments(req.params)
+      return res.status(200).json({ data: enrolments })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to fetch the group’s students' })
+    }
+  },
+
+  enrolStudent: async (req: EnrolStudentRequest, res: Response) => {
+    try {
+      const actorId = req.user?.id
+      if (!actorId) {
+        return res.status(401).json({ error: 'Unauthorized' })
+      }
+      const enrolment = await GroupEnrolmentService.enrolStudent({ ...req.params, actorId, data: req.body })
+      return res.status(201).json({ data: enrolment })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to enrol the student' })
+    }
+  },
+
+  withdrawStudent: async (req: EnrolmentRequest, res: Response) => {
+    try {
+      const actorId = req.user?.id
+      if (!actorId) {
+        return res.status(401).json({ error: 'Unauthorized' })
+      }
+      const enrolment = await GroupEnrolmentService.withdrawStudent({ ...req.params, actorId })
+      return res.status(200).json({ data: enrolment })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to withdraw the student' })
+    }
+  },
+
+  moveStudent: async (req: MoveStudentRequest, res: Response) => {
+    try {
+      const actorId = req.user?.id
+      if (!actorId) {
+        return res.status(401).json({ error: 'Unauthorized' })
+      }
+      const enrolment = await GroupEnrolmentService.moveStudent({ ...req.params, actorId, data: req.body })
+      return res.status(201).json({ data: enrolment })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to move the student' })
     }
   },
 

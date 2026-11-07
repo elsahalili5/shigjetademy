@@ -121,6 +121,9 @@ enum ActivityAction {
   GROUP_SUBSTITUTION_ADDED
   GROUP_SUBSTITUTION_UPDATED
   GROUP_SUBSTITUTION_CANCELLED
+  GROUP_STUDENT_ENROLLED
+  GROUP_STUDENT_WITHDRAWN
+  GROUP_STUDENT_MOVED
   INVITATION_SENT
   INVITATION_RESENT
   INVITATION_REVOKED
@@ -145,6 +148,16 @@ enum CourseStatus {
 enum GroupStatus {
   ACTIVE
   ARCHIVED
+}
+
+enum Weekday {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
 }
 
 enum EmploymentType {
@@ -417,6 +430,7 @@ model Student {
   organization    Organization  @relation(fields: [organization_id], references: [id], onDelete: Cascade)
   user            User?         @relation(fields: [user_id], references: [id], onDelete: SetNull)
   invitations     Invitation[]
+  group_enrolments GroupEnrolment[]
 
   @@unique([organization_id, student_number])
   @@unique([organization_id, user_id])
@@ -520,7 +534,7 @@ model Group {
   academic_term_id String?       @db.Uuid
   /// Stands in for a room until rooms exist; removing the location keeps the group, without one
   location_id      String?       @db.Uuid
-  /// Seats; stored but not enforced until enrolment exists
+  /// Seats; a full group takes no new students and can't drop below its active ones (kept by the groups services); null for no limit
   capacity         Int?
   status           GroupStatus   @default(ACTIVE)
 
@@ -535,12 +549,52 @@ model Group {
   location         Location?     @relation(fields: [location_id], references: [id], onDelete: SetNull)
   lecturer_assignments GroupLecturerAssignment[]
   substitutions    GroupSubstitution[]
+  meetings         GroupMeeting[]
+  enrolments       GroupEnrolment[]
 
   @@unique([course_id, academic_year_id, name])
   @@index([organization_id, status])
   @@index([academic_year_id])
   @@index([academic_term_id])
   @@index([location_id])
+}
+
+/// One weekly meeting of a group, like Monday 17:00 to 18:30. It runs for the group's term, or its whole school year without one; on one day they don't overlap (kept by the groups service).
+model GroupMeeting {
+  id         String   @id @default(uuid()) @db.Uuid
+  group_id   String   @db.Uuid
+  weekday    Weekday
+  /// Wall-clock times with no time zone, like the calendar days in @db.Date; end_time is after start_time
+  start_time DateTime @db.Time(0)
+  end_time   DateTime @db.Time(0)
+
+  created_at DateTime @default(now())
+
+  group      Group    @relation(fields: [group_id], references: [id], onDelete: Cascade)
+
+  @@index([group_id])
+}
+
+/// A student in a group; the course follows from the group. Withdrawing sets withdrawn_on and keeps the row, and enrolling again adds a new one,
+/// so the history stays. A student is active at most once per group, and a group holds at most its capacity of active rows (kept by the group enrolments service).
+model GroupEnrolment {
+  id           String    @id @default(uuid()) @db.Uuid
+  group_id     String    @db.Uuid
+  student_id   String    @db.Uuid
+  /// Calendar days in the organization's time zone
+  enrolled_on  DateTime  @db.Date
+  /// Null while active
+  withdrawn_on DateTime? @db.Date
+
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  group        Group     @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  /// Cascade, not NoAction: a row sits under the organization through the group, so a NoAction check would run before that cascade reaches it and block deleting the organization. Students are archived, never deleted on their own.
+  student      Student   @relation(fields: [student_id], references: [id], onDelete: Cascade)
+
+  @@index([group_id, withdrawn_on])
+  @@index([student_id, withdrawn_on])
 }
 
 /// Who permanently teaches a group, and since when. A change closes the row and adds a new one, so the history stays; the current lecturer is the row covering the organization's today.
@@ -651,7 +705,8 @@ model ActivityLog {
   action          ActivityAction
   organization_id String?        @db.Uuid
   target_user_id  String?        @db.Uuid
-  /// The location's, department's, academic period's, student's, lecturer's, course's or group's name, or the invited email, so the entry still reads right after it is removed
+  /// The location's, department's, academic period's, student's, lecturer's, course's or group's name, or the invited email, so the entry still reads right after it is removed.
+  /// For a student joining, leaving or moving between groups, the student and the groups as they were named then, like "Arta Gashi from Group A to Group B".
   subject_name    String?
   created_at      DateTime       @default(now())
 

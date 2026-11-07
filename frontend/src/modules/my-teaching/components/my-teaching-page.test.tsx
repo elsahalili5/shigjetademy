@@ -2,7 +2,7 @@ import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AuthUser } from '@shigjetademy/shared/auth'
-import type { MyTeaching, MyTeachingGroup } from '@shigjetademy/shared/lecturers'
+import type { MyTeaching, MyTeachingCoverGroup, MyTeachingGroup } from '@shigjetademy/shared/lecturers'
 import { buildUser, DEFAULT_SETTINGS, OWNER_MEMBERSHIPS, signInAs } from '#/test/fixtures'
 import { renderRoute } from '#/test/render-route'
 import { server } from '#/test/server'
@@ -22,7 +22,25 @@ const MY_TEACHING: MyTeaching = {
   cover: [],
 }
 
-const GROUP_A: MyTeachingGroup = { id: 'group-a', name: 'Group A', course: 'Mathematics', academic_year: '2026–27', location: 'Main campus' }
+const COVER_GROUP: MyTeachingCoverGroup = {
+  id: 'group-a',
+  name: 'Group A',
+  course: 'Mathematics',
+  academic_year: '2026–27',
+  location: 'Main campus',
+  schedule: [
+    { weekday: 'MONDAY', start_time: '17:00', end_time: '18:30' },
+    { weekday: 'WEDNESDAY', start_time: '17:00', end_time: '18:30' },
+  ],
+}
+
+const GROUP_A: MyTeachingGroup = {
+  ...COVER_GROUP,
+  students: [
+    { id: 'student-1', first_name: 'Arta', last_name: 'Gashi' },
+    { id: 'student-2', first_name: 'Besa', last_name: 'Berisha' },
+  ],
+}
 
 const LECTURER = buildUser({ first_name: 'Arben', last_name: 'Hoxha', email: 'arben@lecturer.test', memberships: LECTURER_MEMBERSHIPS })
 
@@ -111,14 +129,27 @@ describe('My teaching: groups and cover', () => {
     expect(within(groups).queryByRole('button')).not.toBeInTheDocument()
   })
 
+  it('shows each group’s days and times and its students’ names', async () => {
+    signInAs(LECTURER)
+    serveMyTeaching({ ...MY_TEACHING, groups: [GROUP_A, { ...GROUP_A, id: 'group-b', name: 'Group B', schedule: [], students: [] }] })
+    renderRoute('/dashboard/my-teaching')
+
+    const groups = await screen.findByRole('region', { name: 'Your groups' })
+    const [groupA, groupB] = within(groups).getAllByRole('listitem')
+    expect(groupA).toHaveTextContent('Mon 17:00–18:30 · Wed 17:00–18:30')
+    expect(groupA).toHaveTextContent('Students: Arta Gashi, Besa Berisha')
+    expect(groupB).toHaveTextContent('No schedule')
+    expect(groupB).toHaveTextContent('No students yet')
+  })
+
   it('shows current and upcoming cover apart from the groups, with its dates', async () => {
     signInAs(LECTURER)
     serveMyTeaching({
       ...MY_TEACHING,
       groups: [GROUP_A],
       cover: [
-        { id: 'cover-1', status: 'CURRENT', start_date: '2026-11-02', end_date: '2026-11-02', group: { ...GROUP_A, id: 'group-c', name: 'Group C' } },
-        { id: 'cover-2', status: 'UPCOMING', start_date: '2026-11-10', end_date: '2026-11-12', group: { ...GROUP_A, id: 'group-d', name: 'Group D' } },
+        { id: 'cover-1', status: 'CURRENT', start_date: '2026-11-02', end_date: '2026-11-02', group: { ...COVER_GROUP, id: 'group-c', name: 'Group C' } },
+        { id: 'cover-2', status: 'UPCOMING', start_date: '2026-11-10', end_date: '2026-11-12', group: { ...COVER_GROUP, id: 'group-d', name: 'Group D' } },
       ],
     })
     renderRoute('/dashboard/my-teaching')
@@ -131,6 +162,7 @@ describe('My teaching: groups and cover', () => {
     expect(upcoming).toHaveTextContent('Group D')
     expect(upcoming).toHaveTextContent('Upcoming')
     expect(upcoming).toHaveTextContent('10 Nov 2026 – 12 Nov 2026')
+    expect(current).toHaveTextContent('Mon 17:00–18:30 · Wed 17:00–18:30')
     expect(within(screen.getByRole('region', { name: 'Your groups' })).queryByText('Group C')).not.toBeInTheDocument()
   })
 

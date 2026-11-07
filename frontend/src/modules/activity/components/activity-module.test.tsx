@@ -247,6 +247,36 @@ describe('ActivityModule', () => {
     sentences.forEach((sentence, index) => expect(rows[index]).toHaveTextContent(sentence))
   })
 
+  it('shows students joining, leaving and moving between groups with the names as they were', async () => {
+    signInAs(buildUser({ user_roles: PLATFORM_ADMIN_ROLES }))
+    const oxford = { id: 'org-1', name: 'Oxford Academy' }
+    const entries: { action: ActivityAction; subject_name: string | null }[] = [
+      { action: 'GROUP_STUDENT_ENROLLED', subject_name: 'Arta Gashi in Group A' },
+      { action: 'GROUP_STUDENT_WITHDRAWN', subject_name: 'Arta Gashi from Group A' },
+      { action: 'GROUP_STUDENT_MOVED', subject_name: 'Arta Gashi from Group A to Group B' },
+      { action: 'GROUP_STUDENT_MOVED', subject_name: null },
+    ]
+    server.use(
+      http.get('*/api/organizations', () => HttpResponse.json({ data: CLIENTS })),
+      http.get('*/api/activity', () =>
+        HttpResponse.json({
+          data: entries.map(({ action, subject_name }, index) => ({ id: `${action}-${index}`, action, created_at: '2026-10-04T09:00:00.000Z', actor: ELSA, organization: oxford, target_user: null, subject_name })),
+        }),
+      ),
+    )
+    renderRoute('/dashboard/activity')
+
+    const rows = await within(await screen.findByRole('list', { name: 'Activity' })).findAllByRole('listitem')
+    const sentences = [
+      'Elsa Halili enrolled Arta Gashi in Group A at Oxford Academy',
+      'Elsa Halili withdrew Arta Gashi from Group A at Oxford Academy',
+      'Elsa Halili moved Arta Gashi from Group A to Group B at Oxford Academy',
+      'Elsa Halili moved a student between groups at Oxford Academy',
+    ]
+    expect(rows).toHaveLength(sentences.length)
+    sentences.forEach((sentence, index) => expect(rows[index]).toHaveTextContent(sentence))
+  })
+
   it('shows invitations as sentences with the invited email', async () => {
     signInAs(buildUser({ user_roles: PLATFORM_ADMIN_ROLES }))
     const oxford = { id: 'org-1', name: 'Oxford Academy' }

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export { groupSchema, groupSubstitutionSchema, listGroupsQuerySchema } from '@shigjetademy/shared/groups'
+export { groupEnrolmentSchema, groupMoveSchema, groupSchema, groupSubstitutionSchema, listGroupsQuerySchema, newGroupSchema } from '@shigjetademy/shared/groups'
 
 export const groupParamSchema = z.object({
   organizationId: z.uuid('Invalid organization id'),
@@ -9,4 +9,8 @@ export const groupParamSchema = z.object({
 
 export const substitutionParamSchema = groupParamSchema.extend({
   substitutionId: z.uuid('Invalid substitution id'),
+})
+
+export const enrolmentParamSchema = groupParamSchema.extend({
+  enrolmentId: z.uuid('Invalid enrolment id'),
 })

@@ -1,5 +1,5 @@
 import { apiClient } from '#/api/client'
-import type { Group, GroupInput, GroupLecturerHistory, GroupLecturerOption, GroupPage, GroupSubstitution, GroupSubstitutionInput, ListGroupsQuery } from '@shigjetademy/shared/groups'
+import type { Group, GroupEnrolment, GroupEnrolmentInput, GroupInput, GroupMoveInput, GroupLecturerHistory, GroupLecturerOption, GroupPage, GroupSubstitution, GroupStudentOption, GroupSubstitutionInput, ListGroupsQuery } from '@shigjetademy/shared/groups'
 
 type ListGroupsParams = ListGroupsQuery & {
   organizationId: string
@@ -26,7 +26,17 @@ type SubstitutionActionParams = GroupActionParams & {
 
 type UpdateSubstitutionParams = SubstitutionActionParams & GroupSubstitutionInput
 
+type EnrolStudentParams = GroupActionParams & GroupEnrolmentInput
+
+type EnrolmentActionParams = GroupActionParams & {
+  enrolmentId: string
+}
+
+type MoveStudentParams = EnrolmentActionParams & GroupMoveInput
+
 const groupsPath = (organizationId: string) => `/organizations/${organizationId}/groups`
+
+const enrolmentPath = ({ organizationId, groupId, enrolmentId }: EnrolmentActionParams) => `${groupsPath(organizationId)}/${groupId}/enrolments/${enrolmentId}`
 
 const substitutionPath = ({ organizationId, groupId, substitutionId }: SubstitutionActionParams) => `${groupsPath(organizationId)}/${groupId}/substitutions/${substitutionId}`
 
@@ -34,7 +44,13 @@ export const groupsApi = {
   list: ({ organizationId, ...params }: ListGroupsParams) => apiClient.get<GroupPage>(groupsPath(organizationId), { params }),
   lecturerOptions: (organizationId: string) => apiClient.get<GroupLecturerOption[]>(`${groupsPath(organizationId)}/lecturer-options`),
   create: ({ organizationId, ...input }: CreateGroupParams) => apiClient.post<Group, GroupInput>(groupsPath(organizationId), input),
+  get: ({ organizationId, groupId }: GroupActionParams) => apiClient.get<Group>(`${groupsPath(organizationId)}/${groupId}`),
   update: ({ organizationId, groupId, ...input }: UpdateGroupParams) => apiClient.put<Group, GroupInput>(`${groupsPath(organizationId)}/${groupId}`, input),
+  studentOptions: (organizationId: string) => apiClient.get<GroupStudentOption[]>(`${groupsPath(organizationId)}/student-options`),
+  enrolments: ({ organizationId, groupId }: GroupActionParams) => apiClient.get<GroupEnrolment[]>(`${groupsPath(organizationId)}/${groupId}/enrolments`),
+  enrol: ({ organizationId, groupId, ...input }: EnrolStudentParams) => apiClient.post<GroupEnrolment, GroupEnrolmentInput>(`${groupsPath(organizationId)}/${groupId}/enrolments`, input),
+  withdraw: (params: EnrolmentActionParams) => apiClient.post<GroupEnrolment>(`${enrolmentPath(params)}/withdraw`),
+  move: ({ organizationId, groupId, enrolmentId, ...input }: MoveStudentParams) => apiClient.post<GroupEnrolment, GroupMoveInput>(`${enrolmentPath({ organizationId, groupId, enrolmentId })}/move`, input),
   lecturers: ({ organizationId, groupId }: GroupActionParams) => apiClient.get<GroupLecturerHistory>(`${groupsPath(organizationId)}/${groupId}/lecturers`),
   addSubstitution: ({ organizationId, groupId, ...input }: AddSubstitutionParams) => apiClient.post<GroupSubstitution, GroupSubstitutionInput>(`${groupsPath(organizationId)}/${groupId}/substitutions`, input),
   updateSubstitution: ({ organizationId, groupId, substitutionId, ...input }: UpdateSubstitutionParams) =>

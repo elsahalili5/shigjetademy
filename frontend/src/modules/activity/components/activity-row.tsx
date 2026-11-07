@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Archive, ArchiveRestore, Building2, CalendarCog, CalendarPlus, CalendarRange, CalendarX, CirclePause, CirclePlay, Crown, KeyRound, Layers, Lock, Mail, MailCheck, MailX, MapPin, MapPinOff, MapPinPen, Network, Power, PowerOff, Send, Settings, SquarePen, Trash2, TreePalm, UserMinus, UserPen, UserPlus, UserRoundCheck, UserRoundPen, UserRoundX, UsersRound } from 'lucide-react'
+import { Archive, ArchiveRestore, ArrowRightLeft, Building2, CalendarCog, CalendarPlus, CalendarRange, CalendarX, CirclePause, CirclePlay, Crown, KeyRound, Layers, Lock, Mail, MailCheck, MailX, MapPin, MapPinOff, MapPinPen, Network, Power, PowerOff, Send, Settings, SquarePen, Trash2, TreePalm, UserMinus, UserPen, UserPlus, UserRoundCheck, UserRoundMinus, UserRoundPen, UserRoundPlus, UserRoundX, UsersRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ActivityAction, ActivityEntry, ActivityUser } from '@shigjetademy/shared/activity'
 import { useFormatDateTime } from '#/lib/use-format-date'
@@ -51,6 +51,9 @@ const ACTION_ICONS = {
   GROUP_SUBSTITUTION_ADDED: UserRoundCheck,
   GROUP_SUBSTITUTION_UPDATED: UserRoundPen,
   GROUP_SUBSTITUTION_CANCELLED: UserRoundX,
+  GROUP_STUDENT_ENROLLED: UserRoundPlus,
+  GROUP_STUDENT_WITHDRAWN: UserRoundMinus,
+  GROUP_STUDENT_MOVED: ArrowRightLeft,
   INVITATION_SENT: Mail,
   INVITATION_RESENT: Send,
   INVITATION_REVOKED: MailX,
@@ -226,6 +229,12 @@ function ActivitySentence({ entry, shouldLinkOrganization }: ActivityRowProps) {
       return <SubstitutionSentence entry={entry} verb="changed" organization={subjectOrganization} />
     case 'GROUP_SUBSTITUTION_CANCELLED':
       return <SubstitutionSentence entry={entry} verb="cancelled" organization={subjectOrganization} />
+    case 'GROUP_STUDENT_ENROLLED':
+      return <GroupStudentSentence entry={entry} verb="enrolled" organization={subjectOrganization} />
+    case 'GROUP_STUDENT_WITHDRAWN':
+      return <GroupStudentSentence entry={entry} verb="withdrew" organization={subjectOrganization} />
+    case 'GROUP_STUDENT_MOVED':
+      return <GroupStudentSentence entry={entry} verb="moved" organization={subjectOrganization} />
     case 'INVITATION_SENT':
       return (
         <>
@@ -288,6 +297,29 @@ function SubstitutionSentence({ entry, verb, organization }: SubstitutionSentenc
   return (
     <>
       {fullName({ user: entry.actor, fallback: DELETED_ACTOR })} {verb} a substitution on the group {entry.subject_name ?? UNNAMED_SUBJECT}
+      {organization ? <> at {organization}</> : null}
+    </>
+  )
+}
+
+interface GroupStudentSentenceProps {
+  entry: ActivityEntry
+  verb: 'enrolled' | 'withdrew' | 'moved'
+  organization: ReactNode
+}
+
+// The service always stores the student and groups; this only covers a null column
+const UNNAMED_GROUP_STUDENT = {
+  enrolled: 'a student in a group',
+  withdrew: 'a student from a group',
+  moved: 'a student between groups',
+} as const satisfies Record<GroupStudentSentenceProps['verb'], string>
+
+/** "Elsa Halili moved Arta Gashi from Group A to Group B", with the names stored when it happened, plus "at Oxford Academy" when the organization is given */
+function GroupStudentSentence({ entry, verb, organization }: GroupStudentSentenceProps) {
+  return (
+    <>
+      {fullName({ user: entry.actor, fallback: DELETED_ACTOR })} {verb} {entry.subject_name ?? UNNAMED_GROUP_STUDENT[verb]}
       {organization ? <> at {organization}</> : null}
     </>
   )
