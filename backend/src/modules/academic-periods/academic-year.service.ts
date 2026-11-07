@@ -112,11 +112,15 @@ export const AcademicYearService = {
       return toYearJson(year)
     }),
 
-  // Deleting the current year while others remain needs the one that takes over; its terms and holidays go with it
+  // Deleting the current year while others remain needs the one that takes over; its terms and holidays go with it.
+  // A year with groups stays, archived groups included, since groups are never deleted.
   removeYear: ({ organizationId, yearId, actorId, newCurrentId }: RemoveYearParams) =>
     prisma.$transaction(async (tx) => {
       await lockOrganization({ tx, organizationId })
       const current = await findYear({ tx, organizationId, yearId })
+      if ((await tx.group.count({ where: { academic_year_id: yearId } })) > 0) {
+        throw new HttpError(409, 'This year still has groups. Move them to another year first.')
+      }
       const otherYears = { organization_id: organizationId, id: { not: yearId } }
       if (current.is_current && (await tx.academicYear.count({ where: otherYears })) > 0) {
         if (!newCurrentId) {

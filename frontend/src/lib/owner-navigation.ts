@@ -1,4 +1,4 @@
-import { Building2, CalendarRange, GraduationCap, LayoutDashboard, MapPin, Settings, UserCog, Users } from 'lucide-react'
+import { Building2, CalendarRange, GraduationCap, Layers, LayoutDashboard, MapPin, Settings, UserCog, Users, UsersRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ModuleSlug } from './modules'
 
@@ -17,6 +17,8 @@ export type OwnerNavItem =
         | '/dashboard/organization-settings'
         | '/dashboard/students'
         | '/dashboard/lecturers'
+        | '/dashboard/courses'
+        | '/dashboard/groups'
       label: string
       icon: LucideIcon
     }
@@ -45,8 +47,8 @@ export const OWNER_NAV_SECTIONS: OwnerNavSection[] = [
     items: [
       { kind: 'page', to: '/dashboard/students', label: 'Students', icon: Users },
       { kind: 'page', to: '/dashboard/lecturers', label: 'Lecturers', icon: GraduationCap },
-      { kind: 'module', slug: 'courses' },
-      { kind: 'module', slug: 'groups' },
+      { kind: 'page', to: '/dashboard/courses', label: 'Courses', icon: Layers },
+      { kind: 'page', to: '/dashboard/groups', label: 'Groups', icon: UsersRound },
       { kind: 'module', slug: 'schedule', label: 'Timetables' },
     ],
   },

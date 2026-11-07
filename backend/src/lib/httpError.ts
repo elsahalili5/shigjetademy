@@ -15,6 +15,15 @@ export class HttpError extends Error {
   }
 }
 
+type RefuseFieldParams = {
+  field: string
+  status: number
+  message: string
+}
+
+/** An HttpError that also shows its message under one form field */
+export const refuseField = ({ field, status, message }: RefuseFieldParams) => new HttpError(status, message, { fieldErrors: { [field]: [message] } })
+
 type SendErrorParams = {
   res: Response
   error: unknown
