@@ -15,6 +15,7 @@ import { showErrorToast } from '#/lib/error-toast'
 import { useAcademicYears } from '#/modules/academic-periods/hooks/use-academic-years'
 import { useCourseOptions } from '#/modules/courses/hooks/use-course-options'
 import { useLocations } from '#/modules/locations/hooks/use-locations'
+import { useGroupLecturerOptions } from '../hooks/use-group-lecturer-options'
 import { useGroups } from '../hooks/use-groups'
 import type { LoadedGroups } from '../hooks/use-groups'
 import { useSetGroupStatus } from '../hooks/use-set-group-status'
@@ -26,6 +27,8 @@ import { GroupDialog } from './group-dialog'
 import type { GroupDialogMode, GroupFormOptions } from './group-dialog'
 import { GroupFilters } from './group-filters'
 import type { GroupListFilters } from './group-filters'
+import { GroupLecturersDialog } from './group-lecturers-dialog'
+import type { GroupLecturersDialogMode } from './group-lecturers-dialog'
 import { GroupTable } from './group-table'
 
 const STATUS_TAB_LABELS = {
@@ -38,24 +41,29 @@ const NO_FILTERS: GroupListFilters = { courseId: '', yearId: '' }
 interface GroupsPageProps {
   organizationId: string
   organizationName: string
+  /** The organization's time zone, for what counts as today */
+  timeZone: string
 }
 
 /** The organization's groups: filters, active and archived tabs, and adding, editing and archiving, once it has a school year and a course */
-export function GroupsPage({ organizationId, organizationName }: GroupsPageProps) {
+export function GroupsPage({ organizationId, organizationName, timeZone }: GroupsPageProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const lecturersDialogRef = useRef<HTMLDialogElement>(null)
   const [status, setStatus] = useState<GroupStatus>('ACTIVE')
   const [listFilters, setListFilters] = useState<GroupListFilters>(NO_FILTERS)
   const groups = useGroups({ organizationId, status, ...listFilters })
   const courses = useCourseOptions(organizationId)
   const years = useAcademicYears(organizationId)
   const locations = useLocations(organizationId)
+  const lecturers = useGroupLecturerOptions(organizationId)
   const setGroupStatus = useSetGroupStatus(organizationId)
   const [dialogMode, setDialogMode] = useState<GroupDialogMode>({ kind: 'add', openCount: 0 })
+  const [lecturersDialogMode, setLecturersDialogMode] = useState<GroupLecturersDialogMode>({ group: null, openCount: 0 })
   const [notice, setNotice] = useState<Notice | null>(null)
 
-  const formOptions: GroupFormOptions = { courses: courses.data ?? [], years: years.data ?? [], locations: locations.data ?? [] }
+  const formOptions: GroupFormOptions = { courses: courses.data ?? [], years: years.data ?? [], locations: locations.data ?? [], lecturers: lecturers.data ?? [] }
   const setup = getGroupSetup({ years: years.data, courses: courses.data })
-  const isListFailed = groups.status === 'error' || courses.status === 'error' || years.status === 'error'
+  const isListFailed = groups.status === 'error' || courses.status === 'error' || years.status === 'error' || lecturers.status === 'error'
 
   const handleAdd = () => {
     setDialogMode((current) => ({ kind: 'add', openCount: current.openCount + 1 }))
@@ -65,6 +73,11 @@ export function GroupsPage({ organizationId, organizationName }: GroupsPageProps
   const handleEdit = (group: Group) => {
     setDialogMode((current) => ({ kind: 'edit', group, openCount: current.openCount + 1 }))
     dialogRef.current?.showModal()
+  }
+
+  const handleOpenLecturers = (group: Group) => {
+    setLecturersDialogMode((current) => ({ group, openCount: current.openCount + 1 }))
+    lecturersDialogRef.current?.showModal()
   }
 
   const handleSaved = (saved: Group) => {
@@ -85,6 +98,7 @@ export function GroupsPage({ organizationId, organizationName }: GroupsPageProps
     void groups.refetch()
     void courses.refetch()
     void years.refetch()
+    void lecturers.refetch()
   }
 
   return (
@@ -117,12 +131,13 @@ export function GroupsPage({ organizationId, organizationName }: GroupsPageProps
             onRetry={handleRetry}
             onLoadMore={() => void groups.fetchNextPage()}
             onAdd={handleAdd}
-            renderActions={(group) => <GroupActions group={group} onEdit={handleEdit} onSetStatus={handleSetStatus} />}
+            renderActions={(group) => <GroupActions group={group} onEdit={handleEdit} onOpenLecturers={handleOpenLecturers} onSetStatus={handleSetStatus} />}
           />
         </section>
       </div>
 
-      <GroupDialog dialogRef={dialogRef} organizationId={organizationId} mode={dialogMode} options={formOptions} onSaved={handleSaved} />
+      <GroupDialog dialogRef={dialogRef} organizationId={organizationId} mode={dialogMode} options={formOptions} timeZone={timeZone} onSaved={handleSaved} />
+      <GroupLecturersDialog dialogRef={lecturersDialogRef} organizationId={organizationId} mode={lecturersDialogMode} lecturers={formOptions.lecturers} timeZone={timeZone} />
     </div>
   )
 }

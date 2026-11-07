@@ -2,7 +2,7 @@ import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AuthUser } from '@shigjetademy/shared/auth'
-import type { MyTeaching } from '@shigjetademy/shared/lecturers'
+import type { MyTeaching, MyTeachingGroup } from '@shigjetademy/shared/lecturers'
 import { buildUser, DEFAULT_SETTINGS, OWNER_MEMBERSHIPS, signInAs } from '#/test/fixtures'
 import { renderRoute } from '#/test/render-route'
 import { server } from '#/test/server'
@@ -18,7 +18,11 @@ const MY_TEACHING: MyTeaching = {
   term: { name: 'Autumn term', start_date: '2026-09-01', end_date: '2026-12-20' },
   holiday: null,
   next_term: null,
+  groups: [],
+  cover: [],
 }
+
+const GROUP_A: MyTeachingGroup = { id: 'group-a', name: 'Group A', course: 'Mathematics', academic_year: '2026–27', location: 'Main campus' }
 
 const LECTURER = buildUser({ first_name: 'Arben', last_name: 'Hoxha', email: 'arben@lecturer.test', memberships: LECTURER_MEMBERSHIPS })
 
@@ -90,6 +94,63 @@ describe('My teaching', () => {
     const { router } = renderRoute('/dashboard/my-teaching')
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/overview'))
+  })
+})
+
+describe('My teaching: groups and cover', () => {
+  it('lists the lecturer’s groups, read-only', async () => {
+    signInAs(LECTURER)
+    serveMyTeaching({ ...MY_TEACHING, groups: [GROUP_A, { ...GROUP_A, id: 'group-b', name: 'Group B', location: null }] })
+    renderRoute('/dashboard/my-teaching')
+
+    const groups = await screen.findByRole('region', { name: 'Your groups' })
+    const [groupA, groupB] = within(groups).getAllByRole('listitem')
+    expect(groupA).toHaveTextContent('Group A')
+    expect(groupA).toHaveTextContent('Mathematics · 2026–27 · Main campus')
+    expect(groupB).toHaveTextContent('Mathematics · 2026–27')
+    expect(within(groups).queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('shows current and upcoming cover apart from the groups, with its dates', async () => {
+    signInAs(LECTURER)
+    serveMyTeaching({
+      ...MY_TEACHING,
+      groups: [GROUP_A],
+      cover: [
+        { id: 'cover-1', status: 'CURRENT', start_date: '2026-11-02', end_date: '2026-11-02', group: { ...GROUP_A, id: 'group-c', name: 'Group C' } },
+        { id: 'cover-2', status: 'UPCOMING', start_date: '2026-11-10', end_date: '2026-11-12', group: { ...GROUP_A, id: 'group-d', name: 'Group D' } },
+      ],
+    })
+    renderRoute('/dashboard/my-teaching')
+
+    const cover = await screen.findByRole('region', { name: 'Cover' })
+    const [current, upcoming] = within(cover).getAllByRole('listitem')
+    expect(current).toHaveTextContent('Group C')
+    expect(current).toHaveTextContent('Now')
+    expect(current).toHaveTextContent('2 Nov 2026')
+    expect(upcoming).toHaveTextContent('Group D')
+    expect(upcoming).toHaveTextContent('Upcoming')
+    expect(upcoming).toHaveTextContent('10 Nov 2026 – 12 Nov 2026')
+    expect(within(screen.getByRole('region', { name: 'Your groups' })).queryByText('Group C')).not.toBeInTheDocument()
+  })
+
+  it('says when there are no groups and no cover', async () => {
+    signInAs(LECTURER)
+    serveMyTeaching()
+    renderRoute('/dashboard/my-teaching')
+
+    expect(await screen.findByText('No groups yet.')).toBeInTheDocument()
+    expect(screen.getByText('No cover coming up.')).toBeInTheDocument()
+  })
+
+  it('leaves both out until a record is linked', async () => {
+    signInAs(LECTURER)
+    serveMyTeaching({ ...MY_TEACHING, lecturer: null })
+    renderRoute('/dashboard/my-teaching')
+
+    await screen.findByText('Your school hasn’t linked your lecturer record yet.')
+    expect(screen.queryByRole('region', { name: 'Your groups' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Cover' })).not.toBeInTheDocument()
   })
 })
 

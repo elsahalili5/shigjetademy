@@ -1,7 +1,8 @@
+import { todayIn } from '@shigjetademy/shared/calendar-day'
 import { resolveOrganizationSettings } from '@shigjetademy/shared/organization-settings'
 import type { MySchool } from '@shigjetademy/shared/students'
 import { toDate } from '@lib/calendar-day.ts'
-import { periodSelect, todayIn, toPeriodJson } from '@lib/current-period.ts'
+import { periodSelect, toPeriodJson } from '@lib/current-period.ts'
 import { prisma } from '@lib/prisma.ts'
 
 type GetMySchoolParams = {

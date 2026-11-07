@@ -75,6 +75,8 @@ describe('My teaching', () => {
       term: { name: 'Autumn term', start_date: '2026-09-01', end_date: '2026-12-20' },
       holiday: null,
       next_term: null,
+      groups: [],
+      cover: [],
     })
   })
 
@@ -112,5 +114,132 @@ describe('My teaching', () => {
 
     expect((await request(app).get(`/api/organizations/${organizationId}/lecturers`).set('Authorization', auth)).status).toBe(403)
     expect((await request(app).get(`/api/organizations/${organizationId}/students`).set('Authorization', auth)).status).toBe(403)
+  })
+})
+
+describe('My teaching: groups and cover', () => {
+  let arbenId: string
+  let teutaId: string
+  let courseId: string
+  let yearId: string
+
+  type AddGroupParams = {
+    name: string
+    lecturerId: string
+    startDate?: string
+    endDate?: string
+    status?: 'ACTIVE' | 'ARCHIVED'
+  }
+
+  const addGroup = async ({ name, lecturerId, startDate = '2026-09-01', endDate, status = 'ACTIVE' }: AddGroupParams) => {
+    const group = await prisma.group.create({ data: { organization_id: organizationId, course_id: courseId, name, academic_year_id: yearId, status } })
+    await prisma.groupLecturerAssignment.create({ data: { group_id: group.id, lecturer_id: lecturerId, start_date: new Date(startDate), end_date: endDate ? new Date(endDate) : null } })
+    return group
+  }
+
+  type AddCoverParams = {
+    groupId: string
+    lecturerId: string
+    startDate: string
+    endDate: string
+    cancelledAt?: Date
+  }
+
+  const addCover = ({ groupId, lecturerId, startDate, endDate, cancelledAt }: AddCoverParams) =>
+    prisma.groupSubstitution.create({ data: { group_id: groupId, lecturer_id: lecturerId, start_date: new Date(startDate), end_date: new Date(endDate), note: 'Private note', cancelled_at: cancelledAt } })
+
+  beforeEach(async () => {
+    arbenId = (await prisma.lecturer.findFirstOrThrow({ where: { first_name: 'Arben' } })).id
+    teutaId = (await prisma.lecturer.findFirstOrThrow({ where: { first_name: 'Teuta' } })).id
+    courseId = (await prisma.course.create({ data: { organization_id: organizationId, name: 'Mathematics' } })).id
+    yearId = (await prisma.academicYear.findFirstOrThrow({ where: { organization_id: organizationId } })).id
+  })
+
+  it('lists the groups the lecturer permanently teaches today, by name, with their course, year and location', async () => {
+    const north = await prisma.location.findFirstOrThrow({ where: { name: 'North campus' } })
+    const groupB = await addGroup({ name: 'Group B', lecturerId: arbenId })
+    await prisma.group.update({ where: { id: groupB.id }, data: { location_id: north.id } })
+    const groupA = await addGroup({ name: 'Group A', lecturerId: arbenId })
+
+    const { groups } = (await readMyTeaching('arben@lecturer.test')).body.data
+
+    expect(groups).toEqual([
+      { id: groupA.id, name: 'Group A', course: 'Mathematics', academic_year: '2026–27', location: null },
+      { id: groupB.id, name: 'Group B', course: 'Mathematics', academic_year: '2026–27', location: 'North campus' },
+    ])
+  })
+
+  it('leaves out past and future assignments and archived groups', async () => {
+    await addGroup({ name: 'Ended', lecturerId: arbenId, endDate: '2026-10-30' })
+    await addGroup({ name: 'Upcoming', lecturerId: arbenId, startDate: '2026-11-01' })
+    await addGroup({ name: 'Archived', lecturerId: arbenId, status: 'ARCHIVED' })
+    await addGroup({ name: 'Last day', lecturerId: arbenId, endDate: '2026-10-31' })
+
+    const { groups } = (await readMyTeaching('arben@lecturer.test')).body.data
+
+    expect(groups.map((group: { name: string }) => group.name)).toEqual(['Last day'])
+  })
+
+  it('lists only groups whose school year includes today', async () => {
+    await addGroup({ name: 'This year', lecturerId: arbenId })
+    const lastYear = await prisma.academicYear.create({ data: { organization_id: organizationId, name: '2025–26', start_date: new Date('2025-09-01'), end_date: new Date('2026-06-30') } })
+    const nextYear = await prisma.academicYear.create({ data: { organization_id: organizationId, name: '2027–28', start_date: new Date('2027-09-01'), end_date: new Date('2028-06-30') } })
+    const ended = await addGroup({ name: 'Last year', lecturerId: arbenId })
+    const upcoming = await addGroup({ name: 'Next year', lecturerId: arbenId })
+    await prisma.group.update({ where: { id: ended.id }, data: { academic_year_id: lastYear.id } })
+    await prisma.group.update({ where: { id: upcoming.id }, data: { academic_year_id: nextYear.id } })
+
+    const { groups } = (await readMyTeaching('arben@lecturer.test')).body.data
+
+    expect(groups.map((group: { name: string }) => group.name)).toEqual(['This year'])
+  })
+
+  it('shows current and upcoming cover separately, soonest first, with its dates and without the staff note', async () => {
+    const group = await addGroup({ name: 'Group A', lecturerId: teutaId })
+    const upcoming = await addCover({ groupId: group.id, lecturerId: arbenId, startDate: '2026-11-10', endDate: '2026-11-12' })
+    const current = await addCover({ groupId: group.id, lecturerId: arbenId, startDate: '2026-10-31', endDate: '2026-10-31' })
+
+    const { groups, cover } = (await readMyTeaching('arben@lecturer.test')).body.data
+
+    expect(groups).toEqual([])
+    expect(cover).toEqual([
+      { id: current.id, status: 'CURRENT', start_date: '2026-10-31', end_date: '2026-10-31', group: { id: group.id, name: 'Group A', course: 'Mathematics', academic_year: '2026–27', location: null } },
+      { id: upcoming.id, status: 'UPCOMING', start_date: '2026-11-10', end_date: '2026-11-12', group: { id: group.id, name: 'Group A', course: 'Mathematics', academic_year: '2026–27', location: null } },
+    ])
+  })
+
+  it('leaves out past and cancelled cover, and cover of an archived group', async () => {
+    const group = await addGroup({ name: 'Group A', lecturerId: teutaId })
+    const archived = await addGroup({ name: 'Group B', lecturerId: teutaId, status: 'ARCHIVED' })
+    await addCover({ groupId: group.id, lecturerId: arbenId, startDate: '2026-10-29', endDate: '2026-10-30' })
+    await addCover({ groupId: group.id, lecturerId: arbenId, startDate: '2026-11-10', endDate: '2026-11-12', cancelledAt: new Date('2026-10-30') })
+    await addCover({ groupId: archived.id, lecturerId: arbenId, startDate: '2026-11-20', endDate: '2026-11-20' })
+
+    expect((await readMyTeaching('arben@lecturer.test')).body.data.cover).toEqual([])
+  })
+
+  it('shows a lecturer only their own groups and cover, and an unlinked one none', async () => {
+    const group = await addGroup({ name: 'Group A', lecturerId: arbenId })
+    await addCover({ groupId: group.id, lecturerId: teutaId, startDate: '2026-11-10', endDate: '2026-11-12' })
+    const yllka = await prisma.organization.findFirstOrThrow({ where: { name: 'Yllka Kindergarten' } })
+
+    const teuta = (await readMyTeaching('teuta@lecturer.test')).body.data
+    const unlinked = (await readMyTeaching('unlinked@lecturer.test')).body.data
+    const elsewhere = (await readMyTeaching('teuta@lecturer.test', `/api/organizations/${yllka.id}/me/lecturer`)).body.data
+
+    expect(teuta.groups).toEqual([])
+    expect(teuta.cover).toHaveLength(1)
+    expect(unlinked).toMatchObject({ groups: [], cover: [] })
+    expect(elsewhere).toMatchObject({ groups: [], cover: [] })
+  })
+
+  it('goes by the organization’s day', async () => {
+    await prisma.organizationSettings.create({ data: { organization_id: organizationId, time_zone: 'Europe/Belgrade' } })
+    await addGroup({ name: 'Group A', lecturerId: arbenId, startDate: '2026-11-01' })
+
+    // 23:30 UTC on 31 October is already 1 November in Belgrade
+    vi.setSystemTime(new Date('2026-10-31T23:30:00.000Z'))
+
+    expect((await readMyTeaching('arben@lecturer.test')).body.data.groups).toHaveLength(1)
   })
 })

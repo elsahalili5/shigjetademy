@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Archive, ArchiveRestore, Building2, CalendarCog, CalendarPlus, CalendarRange, CalendarX, CirclePause, CirclePlay, Crown, KeyRound, Layers, Lock, Mail, MailCheck, MailX, MapPin, MapPinOff, MapPinPen, Network, Power, PowerOff, Send, Settings, SquarePen, Trash2, TreePalm, UserMinus, UserPen, UserPlus, UsersRound } from 'lucide-react'
+import { Archive, ArchiveRestore, Building2, CalendarCog, CalendarPlus, CalendarRange, CalendarX, CirclePause, CirclePlay, Crown, KeyRound, Layers, Lock, Mail, MailCheck, MailX, MapPin, MapPinOff, MapPinPen, Network, Power, PowerOff, Send, Settings, SquarePen, Trash2, TreePalm, UserMinus, UserPen, UserPlus, UserRoundCheck, UserRoundPen, UserRoundX, UsersRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ActivityAction, ActivityEntry, ActivityUser } from '@shigjetademy/shared/activity'
 import { useFormatDateTime } from '#/lib/use-format-date'
@@ -48,6 +48,9 @@ const ACTION_ICONS = {
   GROUP_UPDATED: SquarePen,
   GROUP_ARCHIVED: Archive,
   GROUP_RESTORED: ArchiveRestore,
+  GROUP_SUBSTITUTION_ADDED: UserRoundCheck,
+  GROUP_SUBSTITUTION_UPDATED: UserRoundPen,
+  GROUP_SUBSTITUTION_CANCELLED: UserRoundX,
   INVITATION_SENT: Mail,
   INVITATION_RESENT: Send,
   INVITATION_REVOKED: MailX,
@@ -217,6 +220,12 @@ function ActivitySentence({ entry, shouldLinkOrganization }: ActivityRowProps) {
       return <SubjectSentence entry={entry} verb="archived" noun="group" organization={subjectOrganization} />
     case 'GROUP_RESTORED':
       return <SubjectSentence entry={entry} verb="restored" noun="group" organization={subjectOrganization} />
+    case 'GROUP_SUBSTITUTION_ADDED':
+      return <SubstitutionSentence entry={entry} verb="added" organization={subjectOrganization} />
+    case 'GROUP_SUBSTITUTION_UPDATED':
+      return <SubstitutionSentence entry={entry} verb="changed" organization={subjectOrganization} />
+    case 'GROUP_SUBSTITUTION_CANCELLED':
+      return <SubstitutionSentence entry={entry} verb="cancelled" organization={subjectOrganization} />
     case 'INVITATION_SENT':
       return (
         <>
@@ -263,6 +272,22 @@ function SubjectSentence({ entry, verb, noun, organization }: SubjectSentencePro
   return (
     <>
       {fullName({ user: entry.actor, fallback: DELETED_ACTOR })} {verb} the {noun} {entry.subject_name ?? UNNAMED_SUBJECT}
+      {organization ? <> at {organization}</> : null}
+    </>
+  )
+}
+
+interface SubstitutionSentenceProps {
+  entry: ActivityEntry
+  verb: 'added' | 'changed' | 'cancelled'
+  organization: ReactNode
+}
+
+/** "Elsa Halili added a substitution on the group Group A", plus "at Oxford Academy" when the organization is given */
+function SubstitutionSentence({ entry, verb, organization }: SubstitutionSentenceProps) {
+  return (
+    <>
+      {fullName({ user: entry.actor, fallback: DELETED_ACTOR })} {verb} a substitution on the group {entry.subject_name ?? UNNAMED_SUBJECT}
       {organization ? <> at {organization}</> : null}
     </>
   )

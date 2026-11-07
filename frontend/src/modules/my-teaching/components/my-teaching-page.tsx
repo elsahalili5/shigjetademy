@@ -1,9 +1,10 @@
 import { GraduationCap } from 'lucide-react'
-import type { MyTeaching } from '@shigjetademy/shared/lecturers'
+import type { MyTeaching, MyTeachingCover, MyTeachingGroup } from '@shigjetademy/shared/lecturers'
 import { DashboardPageHeader } from '#/components/DashboardPageHeader'
 import { Detail, HomeSkeleton, SchoolYearCard } from '#/components/HomeDetails'
 import { LoadError } from '#/components/LoadError'
 import { SectionCard } from '#/components/SectionCard'
+import { useFormatDay } from '#/lib/use-format-date'
 import { EMPLOYMENT_TYPE_LABELS } from '#/modules/lecturers/utils/employment-type-labels'
 import { useMyTeaching } from '../hooks/use-my-teaching'
 import { WelcomeBanner } from './welcome-banner'
@@ -16,7 +17,12 @@ interface MyTeachingPageProps {
   timeZone: string
 }
 
-/** A lecturer's home: their organization, their own details and the current school year and term, read-only */
+const COVER_STATUS_LABELS = {
+  CURRENT: 'Now',
+  UPCOMING: 'Upcoming',
+} as const satisfies Record<MyTeachingCover['status'], string>
+
+/** A lecturer's home: their organization, their own details, what they teach and the current school year and term, read-only */
 export function MyTeachingPage({ organizationId, organizationName, firstName, timeZone }: MyTeachingPageProps) {
   const myTeaching = useMyTeaching(organizationId)
 
@@ -49,8 +55,63 @@ function MyTeachingContent({ status, data, onRetry }: MyTeachingContentProps) {
       <SectionCard title="Your details">
         <LecturerDetails lecturer={data.lecturer} />
       </SectionCard>
+      {data.lecturer ? (
+        <>
+          <SectionCard title="Your groups">
+            <TeachingGroups groups={data.groups} />
+          </SectionCard>
+          <SectionCard title="Cover">
+            <TeachingCover cover={data.cover} />
+          </SectionCard>
+        </>
+      ) : null}
       <SchoolYearCard academicYear={data.academic_year} term={data.term} />
     </>
+  )
+}
+
+/** "Mathematics · 2026–27 · Main campus" */
+const getGroupDetails = (group: MyTeachingGroup) => [group.course, group.academic_year, group.location].filter(Boolean).join(' · ')
+
+interface TeachingGroupsProps {
+  groups: MyTeachingGroup[]
+}
+
+function TeachingGroups({ groups }: TeachingGroupsProps) {
+  if (groups.length === 0) return <p className="px-5 py-4 text-ink-2">No groups yet.</p>
+  return (
+    <ul className="grid">
+      {groups.map((group) => (
+        <li key={group.id} className="grid gap-0.5 border-b border-rule px-5 py-3 last:border-b-0">
+          <span className="font-semibold">{group.name}</span>
+          <span className="text-[0.93rem] text-ink-2">{getGroupDetails(group)}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+interface TeachingCoverProps {
+  cover: MyTeachingCover[]
+}
+
+function TeachingCover({ cover }: TeachingCoverProps) {
+  const formatDay = useFormatDay()
+  if (cover.length === 0) return <p className="px-5 py-4 text-ink-2">No cover coming up.</p>
+  return (
+    <ul className="grid">
+      {cover.map((item) => (
+        <li key={item.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 border-b border-rule px-5 py-3 last:border-b-0">
+          <span className="grid gap-0.5">
+            <span className="font-semibold">{item.group.name}</span>
+            <span className="text-[0.93rem] text-ink-2">{getGroupDetails(item.group)}</span>
+          </span>
+          <span className="tabular text-[0.93rem] text-ink-2">
+            {COVER_STATUS_LABELS[item.status]} · {item.start_date === item.end_date ? formatDay(item.start_date) : `${formatDay(item.start_date)} – ${formatDay(item.end_date)}`}
+          </span>
+        </li>
+      ))}
+    </ul>
   )
 }
 

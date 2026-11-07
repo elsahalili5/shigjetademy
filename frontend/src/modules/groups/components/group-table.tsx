@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { Group } from '@shigjetademy/shared/groups'
+import { getGroupLecturerName } from '../utils/lecturer-label'
 
 const HEADER_CELL_CLASS = 'px-5 py-3 text-left text-[0.87rem] font-[650] text-ink-3'
 
@@ -39,6 +40,9 @@ export function GroupTable({ groups, renderActions }: GroupTableProps) {
             <th scope="col" className={`${HEADER_CELL_CLASS} ${WIDE_ONLY_CLASS}`}>
               Where
             </th>
+            <th scope="col" className={`${HEADER_CELL_CLASS} ${WIDE_ONLY_CLASS}`}>
+              Lecturer
+            </th>
             <th scope="col" className={HEADER_CELL_CLASS}>
               <span className="sr-only">Actions</span>
             </th>
@@ -62,6 +66,7 @@ interface GroupRowProps {
 function GroupRow({ group, actions }: GroupRowProps) {
   const period = getPeriod(group)
   const where = getWhere(group)
+  const lecturer = group.lecturer ? getGroupLecturerName(group.lecturer) : null
   return (
     <tr className="border-b border-rule last:border-b-0">
       <td className={CELL_CLASS}>
@@ -70,10 +75,12 @@ function GroupRow({ group, actions }: GroupRowProps) {
           <span className="text-[0.88rem] text-ink-3">{group.course.name}</span>
           <span className={`${NARROW_ONLY_CLASS} text-[0.88rem] text-ink-3`}>{period}</span>
           {where ? <span className={`${NARROW_ONLY_CLASS} text-[0.88rem] text-ink-3`}>{where}</span> : null}
+          <span className={`${NARROW_ONLY_CLASS} text-[0.88rem] text-ink-3`}>{lecturer ?? 'No lecturer'}</span>
         </span>
       </td>
       <td className={`${CELL_CLASS} ${WIDE_ONLY_CLASS}`}>{period}</td>
       <td className={`${CELL_CLASS} ${WIDE_ONLY_CLASS}`}>{where || <span className="text-ink-3">Not set</span>}</td>
+      <td className={`${CELL_CLASS} ${WIDE_ONLY_CLASS}`}>{lecturer ?? <span className="text-ink-3">No lecturer</span>}</td>
       <td className={`${CELL_CLASS} w-px text-right whitespace-nowrap`}>{actions}</td>
     </tr>
   )

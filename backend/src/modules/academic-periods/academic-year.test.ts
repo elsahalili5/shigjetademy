@@ -1,5 +1,5 @@
 import request from 'supertest'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { app } from '../../app.ts'
 import { prisma } from '@lib/prisma.ts'
 import { createOrganization, createUser, loginAs } from '../../../test/factories.ts'
@@ -159,6 +159,80 @@ describe('academic years', () => {
       { action: 'ACADEMIC_YEAR_UPDATED', subject_name: '2026/27', actor: { email: 'owner@oxford.test' } },
       { action: 'ACADEMIC_YEAR_REMOVED', subject_name: '2026/27', actor: { email: 'owner@oxford.test' } },
     ])
+  })
+})
+
+describe('shortening a year with groups', () => {
+  const MESSAGE = 'Some substitutions or planned lecturer changes fall outside these dates'
+
+  let currentYearId: string
+  let groupId: string
+  let lecturerId: string
+
+  const moveYear = (startDate: string, endDate: string) => request(app).put(`${yearsPath}/${currentYearId}`).set('Authorization', ownerAuth).send(year('2026–27', startDate, endDate, true))
+
+  const addCover = (startDate: string, endDate: string, cancelledAt?: Date) =>
+    prisma.groupSubstitution.create({ data: { group_id: groupId, lecturer_id: lecturerId, start_date: new Date(startDate), end_date: new Date(endDate), cancelled_at: cancelledAt } })
+
+  beforeEach(async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-02T10:00:00.000Z'))
+    ownerAuth = await loginAs('owner@oxford.test')
+    currentYearId = (await addYear(year('2026–27', '2026-09-01', '2027-06-30', true))).body.data.id
+    const course = await prisma.course.create({ data: { organization_id: organizationId, name: 'Mathematics' } })
+    groupId = (await prisma.group.create({ data: { organization_id: organizationId, course_id: course.id, name: 'Group A', academic_year_id: currentYearId } })).id
+    lecturerId = (await prisma.lecturer.create({ data: { organization_id: organizationId, first_name: 'Arben', last_name: 'Hoxha', employment_type: 'FULL_TIME' } })).id
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('refuses leaving a substitution ending today or later outside, at either end', async () => {
+    await addCover('2026-11-01', '2026-11-02')
+    await addCover('2027-06-10', '2027-06-12')
+
+    const end = await moveYear('2026-09-01', '2027-06-11')
+    const start = await moveYear('2026-11-02', '2027-06-30')
+
+    expect(end.status).toBe(409)
+    expect(end.body.error).toBe(MESSAGE)
+    expect(start.status).toBe(409)
+  })
+
+  it('lets a past substitution fall outside, as history', async () => {
+    await addCover('2026-09-10', '2026-09-12')
+
+    expect((await moveYear('2026-09-11', '2027-06-30')).status).toBe(200)
+  })
+
+  it('doesn’t count a cancelled substitution', async () => {
+    await addCover('2027-06-10', '2027-06-12', new Date('2026-11-01'))
+
+    expect((await moveYear('2026-09-01', '2027-06-01')).status).toBe(200)
+  })
+
+  it('refuses leaving a pending lecturer outside', async () => {
+    await prisma.groupLecturerAssignment.create({ data: { group_id: groupId, lecturer_id: lecturerId, start_date: new Date('2027-06-10') } })
+
+    const response = await moveYear('2026-09-01', '2027-06-01')
+
+    expect(response.status).toBe(409)
+    expect(response.body.error).toBe(MESSAGE)
+  })
+
+  it('lets past and current assignment rows fall outside', async () => {
+    await prisma.groupLecturerAssignment.create({ data: { group_id: groupId, lecturer_id: lecturerId, start_date: new Date('2026-09-01'), end_date: new Date('2026-09-30') } })
+    await prisma.groupLecturerAssignment.create({ data: { group_id: groupId, lecturer_id: lecturerId, start_date: new Date('2026-10-01') } })
+
+    expect((await moveYear('2026-11-01', '2027-06-30')).status).toBe(200)
+  })
+
+  it('takes a longer year or new name, whatever already sits outside', async () => {
+    await prisma.groupLecturerAssignment.create({ data: { group_id: groupId, lecturer_id: lecturerId, start_date: new Date('2026-11-10') } })
+    await prisma.academicYear.update({ where: { id: currentYearId }, data: { start_date: new Date('2026-12-01') } })
+
+    expect((await moveYear('2026-12-01', '2027-07-15')).status).toBe(200)
   })
 })
 

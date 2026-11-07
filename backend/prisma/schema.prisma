@@ -118,6 +118,9 @@ enum ActivityAction {
   GROUP_UPDATED
   GROUP_ARCHIVED
   GROUP_RESTORED
+  GROUP_SUBSTITUTION_ADDED
+  GROUP_SUBSTITUTION_UPDATED
+  GROUP_SUBSTITUTION_CANCELLED
   INVITATION_SENT
   INVITATION_RESENT
   INVITATION_REVOKED
@@ -453,6 +456,8 @@ model Lecturer {
   user            User?              @relation(fields: [user_id], references: [id], onDelete: SetNull)
   locations       LecturerLocation[]
   invitations     Invitation[]
+  group_assignments GroupLecturerAssignment[]
+  group_substitutions GroupSubstitution[]
 
   @@unique([organization_id, user_id])
   @@index([organization_id, status])
@@ -527,12 +532,58 @@ model Group {
   academic_year    AcademicYear  @relation(fields: [academic_year_id], references: [id], onDelete: NoAction)
   academic_term    AcademicTerm? @relation(fields: [academic_term_id], references: [id], onDelete: SetNull)
   location         Location?     @relation(fields: [location_id], references: [id], onDelete: SetNull)
+  lecturer_assignments GroupLecturerAssignment[]
+  substitutions    GroupSubstitution[]
 
   @@unique([course_id, academic_year_id, name])
   @@index([organization_id, status])
   @@index([academic_year_id])
   @@index([academic_term_id])
   @@index([location_id])
+}
+
+/// Who permanently teaches a group, and since when. A change closes the row and adds a new one, so the history stays; the current lecturer is the row covering the organization's today.
+model GroupLecturerAssignment {
+  id          String    @id @default(uuid()) @db.Uuid
+  group_id    String    @db.Uuid
+  lecturer_id String    @db.Uuid
+  /// Calendar days, both included
+  start_date  DateTime  @db.Date
+  /// Null while open
+  end_date    DateTime? @db.Date
+
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  group       Group     @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  /// Cascade, not NoAction: a row sits under the organization through the group, so a NoAction check would run before that cascade reaches it and block deleting the organization. Lecturers are archived, never deleted on their own.
+  lecturer    Lecturer  @relation(fields: [lecturer_id], references: [id], onDelete: Cascade)
+
+  @@index([group_id, start_date])
+  @@index([lecturer_id])
+}
+
+/// Someone covering a group for a day or a date range. It never touches the permanent rows, so when it ends the group simply carries on with its lecturer.
+model GroupSubstitution {
+  id           String    @id @default(uuid()) @db.Uuid
+  group_id     String    @db.Uuid
+  lecturer_id  String    @db.Uuid
+  /// Calendar days, both included; one day when they are equal
+  start_date   DateTime  @db.Date
+  end_date     DateTime  @db.Date
+  note         String?
+  /// Set when cancelled; the row stays on record and frees its days
+  cancelled_at DateTime?
+
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  group        Group     @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  /// Cascade for the same reason as on GroupLecturerAssignment
+  lecturer     Lecturer  @relation(fields: [lecturer_id], references: [id], onDelete: Cascade)
+
+  @@index([group_id, start_date])
+  @@index([lecturer_id, end_date])
 }
 
 /// A user's place in one organization. One user can belong to many organizations, once each.
