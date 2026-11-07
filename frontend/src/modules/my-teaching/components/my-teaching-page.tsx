@@ -25,7 +25,7 @@ export function MyTeachingPage({ organizationId, organizationName, firstName, ti
       <DashboardPageHeader icon={GraduationCap} title="My teaching" subtitle={organizationName} />
       {/* Spans the panel's full width, inside the page's side padding */}
       <div className="px-[clamp(20px,3.4vw,44px)] pb-5">
-        <WelcomeBanner firstName={firstName} timeZone={timeZone} myTeaching={myTeaching.data} />
+        <WelcomeBanner firstName={firstName} organizationName={organizationName} timeZone={timeZone} myTeaching={myTeaching.data} />
       </div>
       <div className="grid max-w-[880px] gap-5 px-[clamp(20px,3.4vw,44px)] pb-10">
         <MyTeachingContent status={myTeaching.status} data={myTeaching.data} onRetry={() => void myTeaching.refetch()} />
