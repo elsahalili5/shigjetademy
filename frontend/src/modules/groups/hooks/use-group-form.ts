@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { groupSchema } from '@shigjetademy/shared/groups'
 import type { Group, GroupInput } from '@shigjetademy/shared/groups'
+import { getPlannedLecturer } from '../utils/lecturer-label'
 
 type UseGroupFormParams = {
   /** The group being edited, or none when adding */
@@ -20,6 +21,8 @@ export function useGroupForm({ group, defaultYearId }: UseGroupFormParams) {
       academic_term_id: group?.academic_term?.id ?? null,
       location_id: group?.location?.id ?? null,
       capacity: group?.capacity ?? null,
+      lecturer_id: (group && getPlannedLecturer(group)?.id) ?? null,
+      lecturer_effective_from: group?.lecturer_change?.start_date ?? null,
     },
   })
 }

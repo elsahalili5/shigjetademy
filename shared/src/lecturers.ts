@@ -123,7 +123,25 @@ export type LecturerPage = {
   counts: Record<LecturerStatus, number>
 }
 
-/** What a lecturer sees of their organization: their own record only, and the current school year and term */
+/** A group as its lecturer reads it */
+export type MyTeachingGroup = {
+  id: string
+  name: string
+  course: string
+  academic_year: string
+  location: string | null
+}
+
+/** A substitution a lecturer covers, running now or still to come; the staff note stays out */
+export type MyTeachingCover = {
+  id: string
+  status: 'CURRENT' | 'UPCOMING'
+  start_date: string
+  end_date: string
+  group: MyTeachingGroup
+}
+
+/** What a lecturer sees of their organization: their own record only, the current school year and term, and what they teach */
 export type MyTeaching = {
   organization: { id: string; name: string }
   /** Null while no record is linked to their login */
@@ -142,4 +160,8 @@ export type MyTeaching = {
   holiday: { name: string } | null
   /** The current year's next term that hasn't started yet */
   next_term: CurrentPeriod | null
+  /** The active groups they permanently teach today, in a school year that includes today, by name */
+  groups: MyTeachingGroup[]
+  /** Soonest first */
+  cover: MyTeachingCover[]
 }

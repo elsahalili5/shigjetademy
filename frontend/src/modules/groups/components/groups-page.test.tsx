@@ -1,10 +1,10 @@
-import { screen, within } from '@testing-library/react'
+import { cleanup, screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AcademicYear } from '@shigjetademy/shared/academic-periods'
 import type { CourseOption } from '@shigjetademy/shared/courses'
-import { groupSchema } from '@shigjetademy/shared/groups'
-import type { Group, GroupPage, GroupStatus } from '@shigjetademy/shared/groups'
+import { groupSchema, groupSubstitutionSchema } from '@shigjetademy/shared/groups'
+import type { Group, GroupLecturer, GroupLecturerHistory, GroupLecturerOption, GroupPage, GroupStatus, GroupSubstitution } from '@shigjetademy/shared/groups'
 import type { OrganizationLocation } from '@shigjetademy/shared/location'
 import { buildUser, OWNER_MEMBERSHIPS, signInAs, YLLKA_ADMIN_MEMBERSHIP } from '#/test/fixtures'
 import { renderRoute } from '#/test/render-route'
@@ -42,6 +42,15 @@ const NEXT_YEAR: AcademicYear = {
 
 const THIS_YEAR: AcademicYear = { ...NEXT_YEAR, id: '6c3f5d4d-9e4c-4f88-8d6b-3a4bce4f5a01', name: '2026–27', start_date: '2026-09-01', end_date: '2027-06-30', is_current: true, terms: [AUTUMN] }
 
+const ARBEN: GroupLecturer = { id: '9e5b7f6f-b06e-4baa-af8d-5c6de06b7c01', first_name: 'Arben', last_name: 'Hoxha', status: 'ACTIVE' }
+
+const TEUTA: GroupLecturer = { id: '9e5b7f6f-b06e-4baa-af8d-5c6de06b7c02', first_name: 'Teuta', last_name: 'Krasniqi', status: 'ACTIVE' }
+
+const LECTURER_OPTIONS: GroupLecturerOption[] = [
+  { id: ARBEN.id, first_name: 'Arben', last_name: 'Hoxha', subjects: ['Mathematics', 'Physics'] },
+  { id: TEUTA.id, first_name: 'Teuta', last_name: 'Krasniqi', subjects: [] },
+]
+
 const GROUP_A: Group = {
   id: '8d4a6e5e-af5d-4a99-9e7c-4b5cdf5a6b01',
   name: 'Group A',
@@ -52,11 +61,15 @@ const GROUP_A: Group = {
   academic_year: { id: THIS_YEAR.id, name: THIS_YEAR.name },
   academic_term: { id: AUTUMN.id, name: AUTUMN.name },
   location: { id: MAIN_CAMPUS.id, name: MAIN_CAMPUS.name },
+  lecturer: ARBEN,
+  lecturer_change: null,
 }
 
-const GROUP_B: Group = { ...GROUP_A, id: '8d4a6e5e-af5d-4a99-9e7c-4b5cdf5a6b02', name: 'Group B', capacity: null, course: ENGLISH, academic_year: { id: NEXT_YEAR.id, name: NEXT_YEAR.name }, academic_term: null, location: null }
+const GROUP_B: Group = { ...GROUP_A, id: '8d4a6e5e-af5d-4a99-9e7c-4b5cdf5a6b02', name: 'Group B', capacity: null, course: ENGLISH, academic_year: { id: NEXT_YEAR.id, name: NEXT_YEAR.name }, academic_term: null, location: null, lecturer: null }
 
 const GROUPS_PATH = '*/api/organizations/org-1/groups'
+
+const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 
 type ServeGroupsParams = {
   active?: Group[]
@@ -93,6 +106,7 @@ const serveOptions = ({ organizationId = 'org-1', courses = [ENGLISH, MATHEMATIC
     http.get(`*/api/organizations/${organizationId}/courses/options`, () => HttpResponse.json({ data: courses })),
     http.get(`*/api/organizations/${organizationId}/academic-periods/years`, () => HttpResponse.json({ data: years })),
     http.get(`*/api/organizations/${organizationId}/locations`, () => HttpResponse.json({ data: [MAIN_CAMPUS] })),
+    http.get(`*/api/organizations/${organizationId}/groups/lecturer-options`, () => HttpResponse.json({ data: LECTURER_OPTIONS })),
   )
 
 type SignInParams = ServeGroupsParams & Omit<ServeOptionsParams, 'organizationId'>
@@ -127,6 +141,24 @@ describe('GroupsPage: list', () => {
     expect(groupB).toHaveTextContent('2027–28')
   })
 
+  it('shows the permanent lecturer of each group, or that there is none', async () => {
+    signInAsOwner({ active: [GROUP_A, GROUP_B] })
+    renderRoute('/dashboard/groups')
+
+    expect(await screen.findByRole('columnheader', { name: 'Lecturer' })).toBeInTheDocument()
+    const [groupA, groupB] = await rowsOf()
+    expect(groupA).toHaveTextContent('Arben Hoxha')
+    expect(groupB).toHaveTextContent('No lecturer')
+  })
+
+  it('marks an archived lecturer who stays on the group', async () => {
+    signInAsOwner({ active: [{ ...GROUP_A, lecturer: { ...ARBEN, status: 'ARCHIVED' } }] })
+    renderRoute('/dashboard/groups')
+
+    const [row] = await rowsOf()
+    expect(row).toHaveTextContent('Arben Hoxha (archived)')
+  })
+
   it('says "1 seat" for a capacity of one', async () => {
     signInAsOwner({ active: [{ ...GROUP_A, capacity: 1 }] })
     renderRoute('/dashboard/groups')
@@ -150,6 +182,17 @@ describe('GroupsPage: list', () => {
 
     expect(await screen.findByText('No groups yet.')).toBeInTheDocument()
     expect(await openAddDialog(user)).toBeVisible()
+  })
+
+  it('offers a retry when the lecturers fail to load', async () => {
+    signInAsOwner()
+    server.use(http.get(`${GROUPS_PATH}/lecturer-options`, () => HttpResponse.json({ error: 'Failed' }, { status: 500 })))
+    const { user } = renderRoute('/dashboard/groups')
+
+    expect(await screen.findByText('We couldn’t load the groups.')).toBeInTheDocument()
+    serveOptions()
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(await screen.findByText('Group A')).toBeInTheDocument()
   })
 
   it('offers a retry when the school years fail to load', async () => {
@@ -202,6 +245,17 @@ describe('GroupsPage: add', () => {
     expect(within(within(dialog).getByLabelText('Course')).getAllByRole('option').map((option) => option.textContent)).toEqual(['Choose a course', 'English', 'Mathematics'])
   })
 
+  it('offers no lecturer, then active lecturers with their subjects', async () => {
+    signInAsOwner({ active: [] })
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openAddDialog(user)
+
+    const lecturer = await within(dialog).findByRole('option', { name: 'Arben Hoxha · Mathematics, Physics' })
+    expect(lecturer).toBeInTheDocument()
+    expect(within(within(dialog).getByLabelText(/^Lecturer/)).getAllByRole('option').map((option) => option.textContent)).toEqual(['No lecturer', 'Arben Hoxha · Mathematics, Physics', 'Teuta Krasniqi'])
+  })
+
   it('adds Group A with every field and shows it in the list', async () => {
     signInAsOwner({ active: [] })
     let sent: unknown
@@ -220,10 +274,11 @@ describe('GroupsPage: add', () => {
     await user.selectOptions(within(dialog).getByLabelText(/^Term/), 'Autumn term')
     await user.selectOptions(within(dialog).getByLabelText(/^Location/), 'Main campus')
     await user.type(within(dialog).getByLabelText('Capacity (optional)'), '20')
+    await user.selectOptions(within(dialog).getByLabelText(/^Lecturer/), await within(dialog).findByRole('option', { name: 'Arben Hoxha · Mathematics, Physics' }))
     await user.click(within(dialog).getByRole('button', { name: 'Add group' }))
 
     expect(await screen.findByText('Added Group A.')).toBeInTheDocument()
-    expect(sent).toEqual({ course_id: MATHEMATICS.id, name: 'Group A', academic_year_id: THIS_YEAR.id, academic_term_id: AUTUMN.id, location_id: MAIN_CAMPUS.id, capacity: 20 })
+    expect(sent).toEqual({ course_id: MATHEMATICS.id, name: 'Group A', academic_year_id: THIS_YEAR.id, academic_term_id: AUTUMN.id, location_id: MAIN_CAMPUS.id, capacity: 20, lecturer_id: ARBEN.id, lecturer_effective_from: null })
     expect(dialog).not.toBeVisible()
     expect(await screen.findByRole('table', { name: 'Groups' })).toHaveTextContent('Group A')
   })
@@ -245,7 +300,7 @@ describe('GroupsPage: add', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Add group' }))
 
     await screen.findByText('Added Group A.')
-    expect(sent).toMatchObject({ academic_term_id: null, location_id: null, capacity: null })
+    expect(sent).toMatchObject({ academic_term_id: null, location_id: null, capacity: null, lecturer_id: null, lecturer_effective_from: null })
   })
 
   it('offers the chosen year’s terms and clears the term when the year changes', async () => {
@@ -398,7 +453,7 @@ describe('GroupsPage: edit', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Save changes' }))
 
     expect(await screen.findByText('Saved Group A.')).toBeInTheDocument()
-    expect(sent).toEqual({ course_id: MATHEMATICS.id, name: 'Group A', academic_year_id: THIS_YEAR.id, academic_term_id: AUTUMN.id, location_id: MAIN_CAMPUS.id, capacity: 25 })
+    expect(sent).toEqual({ course_id: MATHEMATICS.id, name: 'Group A', academic_year_id: THIS_YEAR.id, academic_term_id: AUTUMN.id, location_id: MAIN_CAMPUS.id, capacity: 25, lecturer_id: ARBEN.id, lecturer_effective_from: null })
     expect(dialog).not.toBeVisible()
   })
 
@@ -487,5 +542,644 @@ describe('GroupsPage: archive and restore', () => {
     await user.click(within(screen.getByRole('group', { name: 'Restore Group A' })).getByRole('button', { name: 'Restore' }))
 
     expect(await screen.findByText('Restore the course Old Latin first.')).toBeInTheDocument()
+  })
+})
+
+describe('GroupsPage: changing the lecturer', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  const openEditDialog = async (user: ReturnType<typeof renderRoute>['user']) => {
+    await user.click(await screen.findByRole('button', { name: 'Edit Group A' }))
+    const dialog = screen.getByRole('dialog', { name: 'Edit Group A' })
+    await within(dialog).findByRole('option', { name: 'Teuta Krasniqi' })
+    return dialog
+  }
+
+  it('asks for no date until the lecturer changes, then defaults to the organization’s today', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    // 23:30 UTC on 2 November is already 3 November in Belgrade
+    vi.setSystemTime(new Date('2026-11-02T23:30:00.000Z'))
+    signInAsOwner({ active: [GROUP_A] })
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openEditDialog(user)
+    expect(within(dialog).getByLabelText(/^Lecturer/)).toHaveValue(ARBEN.id)
+    expect(within(dialog).queryByLabelText('Effective from')).not.toBeInTheDocument()
+
+    await user.selectOptions(within(dialog).getByLabelText(/^Lecturer/), 'Teuta Krasniqi')
+
+    expect(within(dialog).getByLabelText('Effective from')).toHaveValue('2026-11-03')
+  })
+
+  const NEXT_YEAR_GROUP: Group = { ...GROUP_A, academic_year: { id: NEXT_YEAR.id, name: NEXT_YEAR.name }, academic_term: null }
+
+  it('defaults to the year’s start for a group without a lecturer in a year that hasn’t started', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-02T10:00:00.000Z'))
+    signInAsOwner({ active: [{ ...NEXT_YEAR_GROUP, lecturer: null }] })
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openEditDialog(user)
+    await user.selectOptions(within(dialog).getByLabelText(/^Lecturer/), 'Teuta Krasniqi')
+
+    expect(within(dialog).getByLabelText('Effective from')).toHaveValue(NEXT_YEAR.start_date)
+  })
+
+  it('defaults to the year’s start for a group with a lecturer too, since an earlier date would be refused', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-02T10:00:00.000Z'))
+    signInAsOwner({ active: [NEXT_YEAR_GROUP] })
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openEditDialog(user)
+    await user.selectOptions(within(dialog).getByLabelText(/^Lecturer/), 'Teuta Krasniqi')
+
+    expect(within(dialog).getByLabelText('Effective from')).toHaveValue(NEXT_YEAR.start_date)
+  })
+
+  it('goes by the year chosen in the form', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-02T10:00:00.000Z'))
+    signInAsOwner({ active: [{ ...GROUP_A, lecturer: null }] })
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openEditDialog(user)
+    await user.selectOptions(within(dialog).getByLabelText('School year'), NEXT_YEAR.name)
+    await user.selectOptions(within(dialog).getByLabelText(/^Lecturer/), 'Teuta Krasniqi')
+
+    expect(within(dialog).getByLabelText('Effective from')).toHaveValue(NEXT_YEAR.start_date)
+  })
+
+  it('sends the new lecturer with the chosen date', async () => {
+    signInAsOwner({ active: [GROUP_A] })
+    let sent: unknown
+    server.use(
+      http.put(`${GROUPS_PATH}/${GROUP_A.id}`, async ({ request }) => {
+        sent = groupSchema.parse(await request.json())
+        return HttpResponse.json({ data: GROUP_A })
+      }),
+    )
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openEditDialog(user)
+    await user.selectOptions(within(dialog).getByLabelText(/^Lecturer/), 'Teuta Krasniqi')
+    await user.clear(within(dialog).getByLabelText('Effective from'))
+    await user.type(within(dialog).getByLabelText('Effective from'), '2026-12-01')
+    await user.click(within(dialog).getByRole('button', { name: 'Save changes' }))
+
+    await screen.findByText('Saved Group A.')
+    expect(sent).toMatchObject({ lecturer_id: TEUTA.id, lecturer_effective_from: '2026-12-01' })
+  })
+
+  it('asks for a date when it’s cleared', async () => {
+    signInAsOwner({ active: [GROUP_A] })
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openEditDialog(user)
+    await user.selectOptions(within(dialog).getByLabelText(/^Lecturer/), 'Teuta Krasniqi')
+    await user.clear(within(dialog).getByLabelText('Effective from'))
+    await user.click(within(dialog).getByRole('button', { name: 'Save changes' }))
+
+    expect(await within(dialog).findByText('Enter the date the change starts.')).toBeInTheDocument()
+  })
+
+  it('drops the date when the lecturer goes back to what it was', async () => {
+    signInAsOwner({ active: [GROUP_A] })
+    let sent: unknown
+    server.use(
+      http.put(`${GROUPS_PATH}/${GROUP_A.id}`, async ({ request }) => {
+        sent = groupSchema.parse(await request.json())
+        return HttpResponse.json({ data: GROUP_A })
+      }),
+    )
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openEditDialog(user)
+    await user.selectOptions(within(dialog).getByLabelText(/^Lecturer/), 'Teuta Krasniqi')
+    await user.selectOptions(within(dialog).getByLabelText(/^Lecturer/), 'Arben Hoxha · Mathematics, Physics')
+
+    expect(within(dialog).queryByLabelText('Effective from')).not.toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Save changes' }))
+    await screen.findByText('Saved Group A.')
+    expect(sent).toMatchObject({ lecturer_id: ARBEN.id, lecturer_effective_from: null })
+  })
+
+  const serveSavedGroup = (group: Group) => {
+    const saved: { body?: unknown } = {}
+    server.use(
+      http.put(`${GROUPS_PATH}/${group.id}`, async ({ request }) => {
+        saved.body = groupSchema.parse(await request.json())
+        return HttpResponse.json({ data: group })
+      }),
+    )
+    return saved
+  }
+
+  it('sends a date with a first lecturer', async () => {
+    const empty: Group = { ...GROUP_A, lecturer: null }
+    signInAsOwner({ active: [empty] })
+    const saved = serveSavedGroup(empty)
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openEditDialog(user)
+    await user.selectOptions(within(dialog).getByLabelText(/^Lecturer/), 'Teuta Krasniqi')
+    await user.click(within(dialog).getByRole('button', { name: 'Save changes' }))
+
+    await screen.findByText('Saved Group A.')
+    expect(saved.body).toMatchObject({ lecturer_id: TEUTA.id, lecturer_effective_from: expect.stringMatching(DAY_PATTERN) })
+  })
+
+  it('sends a date with choosing no lecturer', async () => {
+    signInAsOwner({ active: [GROUP_A] })
+    const saved = serveSavedGroup(GROUP_A)
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openEditDialog(user)
+    await user.selectOptions(within(dialog).getByLabelText(/^Lecturer/), 'No lecturer')
+    expect(within(dialog).getByLabelText('Effective from')).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Save changes' }))
+
+    await screen.findByText('Saved Group A.')
+    expect(saved.body).toMatchObject({ lecturer_id: null, lecturer_effective_from: expect.stringMatching(DAY_PATTERN) })
+  })
+
+  it('asks for no date when choosing the current lecturer drops a pending change, and still sends the change', async () => {
+    const pending: Group = { ...GROUP_A, lecturer_change: { lecturer: TEUTA, start_date: '2026-12-01' } }
+    signInAsOwner({ active: [pending] })
+    const saved = serveSavedGroup(pending)
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openEditDialog(user)
+    await user.selectOptions(within(dialog).getByLabelText(/^Lecturer/), 'Arben Hoxha · Mathematics, Physics')
+
+    expect(within(dialog).queryByLabelText('Effective from')).not.toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Save changes' }))
+    await screen.findByText('Saved Group A.')
+    expect(saved.body).toMatchObject({ lecturer_id: ARBEN.id, lecturer_effective_from: expect.stringMatching(DAY_PATTERN) })
+  })
+
+  it('asks for no date when choosing no lecturer drops a pending first lecturer', async () => {
+    const pending: Group = { ...GROUP_A, lecturer: null, lecturer_change: { lecturer: TEUTA, start_date: '2026-12-01' } }
+    signInAsOwner({ active: [pending] })
+    const saved = serveSavedGroup(pending)
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openEditDialog(user)
+    await user.selectOptions(within(dialog).getByLabelText(/^Lecturer/), 'No lecturer')
+
+    expect(within(dialog).queryByLabelText('Effective from')).not.toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Save changes' }))
+    await screen.findByText('Saved Group A.')
+    expect(saved.body).toMatchObject({ lecturer_id: null, lecturer_effective_from: expect.stringMatching(DAY_PATTERN) })
+  })
+
+  it('shows a refused date under its field', async () => {
+    signInAsOwner({ active: [GROUP_A] })
+    const message = 'The change can’t start before the current lecturer’s start.'
+    server.use(http.put(`${GROUPS_PATH}/${GROUP_A.id}`, () => HttpResponse.json({ error: message, details: { formErrors: [], fieldErrors: { lecturer_effective_from: [message] } } }, { status: 400 })))
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openEditDialog(user)
+    await user.selectOptions(within(dialog).getByLabelText(/^Lecturer/), 'Teuta Krasniqi')
+    await user.click(within(dialog).getByRole('button', { name: 'Save changes' }))
+
+    expect(await within(dialog).findByLabelText('Effective from')).toHaveAccessibleDescription(message)
+  })
+
+  it('opens on the change to come and says when it happens', async () => {
+    signInAsOwner({ active: [{ ...GROUP_A, lecturer_change: { lecturer: TEUTA, start_date: '2026-12-01' } }] })
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openEditDialog(user)
+
+    expect(within(dialog).getByLabelText(/^Lecturer/)).toHaveValue(TEUTA.id)
+    expect(within(dialog).getByText('Changes on 1 Dec 2026. Until then: Arben Hoxha.')).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Effective from')).toHaveValue('2026-12-01')
+  })
+
+  it('moves a pending date in one save', async () => {
+    const pending: Group = { ...GROUP_A, lecturer_change: { lecturer: TEUTA, start_date: '2026-12-01' } }
+    signInAsOwner({ active: [pending] })
+    const saved = serveSavedGroup(pending)
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openEditDialog(user)
+    await user.clear(within(dialog).getByLabelText('Effective from'))
+    await user.type(within(dialog).getByLabelText('Effective from'), '2027-01-15')
+    await user.click(within(dialog).getByRole('button', { name: 'Save changes' }))
+
+    await screen.findByText('Saved Group A.')
+    expect(saved.body).toMatchObject({ lecturer_id: TEUTA.id, lecturer_effective_from: '2027-01-15' })
+  })
+
+  it('moves the date a group is left without a lecturer', async () => {
+    const pending: Group = { ...GROUP_A, lecturer_change: { lecturer: null, start_date: '2026-12-01' } }
+    signInAsOwner({ active: [pending] })
+    const saved = serveSavedGroup(pending)
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openEditDialog(user)
+    expect(within(dialog).getByLabelText(/^Lecturer/)).toHaveValue('')
+    await user.clear(within(dialog).getByLabelText('Effective from'))
+    await user.type(within(dialog).getByLabelText('Effective from'), '2027-01-15')
+    await user.click(within(dialog).getByRole('button', { name: 'Save changes' }))
+
+    await screen.findByText('Saved Group A.')
+    expect(saved.body).toMatchObject({ lecturer_id: null, lecturer_effective_from: '2027-01-15' })
+  })
+
+  it('sends no date when a pending date stays, so a plain edit can’t redo the change', async () => {
+    const pending: Group = { ...GROUP_A, lecturer_change: { lecturer: TEUTA, start_date: '2026-12-01' } }
+    signInAsOwner({ active: [pending] })
+    const saved = serveSavedGroup(pending)
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openEditDialog(user)
+    await user.click(within(dialog).getByRole('button', { name: 'Save changes' }))
+
+    await screen.findByText('Saved Group A.')
+    expect(saved.body).toMatchObject({ lecturer_id: TEUTA.id, lecturer_effective_from: null })
+  })
+
+  it('brings back the pending date when the pending lecturer is chosen again', async () => {
+    signInAsOwner({ active: [{ ...GROUP_A, lecturer: null, lecturer_change: { lecturer: TEUTA, start_date: '2026-12-01' } }] })
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openEditDialog(user)
+    await user.selectOptions(within(dialog).getByLabelText(/^Lecturer/), 'Arben Hoxha · Mathematics, Physics')
+    await user.selectOptions(within(dialog).getByLabelText(/^Lecturer/), 'Teuta Krasniqi')
+
+    expect(within(dialog).getByLabelText('Effective from')).toHaveValue('2026-12-01')
+  })
+
+  it('asks for no date on an archived group with a pending change', async () => {
+    signInAsOwner({ active: [], archived: [{ ...GROUP_A, status: 'ARCHIVED', lecturer_change: { lecturer: TEUTA, start_date: '2026-12-01' } }] })
+    const { user } = renderRoute('/dashboard/groups')
+
+    await user.click(await screen.findByRole('tab', { name: 'Archived 1' }))
+    const dialog = await openEditDialog(user)
+
+    expect(within(dialog).queryByLabelText('Effective from')).not.toBeInTheDocument()
+  })
+
+  it('keeps an archived lecturer already on the group as the current value', async () => {
+    signInAsOwner({ active: [{ ...GROUP_A, lecturer: { ...ARBEN, status: 'ARCHIVED' } }] })
+    server.use(http.get(`${GROUPS_PATH}/lecturer-options`, () => HttpResponse.json({ data: [LECTURER_OPTIONS[1]] })))
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openEditDialog(user)
+
+    expect(within(dialog).getByLabelText(/^Lecturer/)).toHaveValue(ARBEN.id)
+    expect(within(within(dialog).getByLabelText(/^Lecturer/)).getAllByRole('option').map((option) => option.textContent)).toEqual(['No lecturer', 'Teuta Krasniqi', 'Arben Hoxha (archived)'])
+  })
+
+  it('doesn’t offer to change the lecturer of an archived group', async () => {
+    signInAsOwner({ active: [], archived: [{ ...GROUP_A, status: 'ARCHIVED' }] })
+    const { user } = renderRoute('/dashboard/groups')
+
+    await user.click(await screen.findByRole('tab', { name: 'Archived 1' }))
+    const dialog = await openEditDialog(user)
+
+    expect(within(dialog).getByLabelText(/^Lecturer/)).toBeDisabled()
+  })
+})
+
+const HISTORY: GroupLecturerHistory = {
+  assignments: [
+    { id: 'a2', lecturer: TEUTA, start_date: '2026-11-10', end_date: null },
+    { id: 'a1', lecturer: { ...ARBEN, status: 'ARCHIVED' }, start_date: '2026-09-01', end_date: '2026-11-09' },
+  ],
+  substitutions: [],
+}
+
+const serveHistory = (history: GroupLecturerHistory = HISTORY) => server.use(http.get(`${GROUPS_PATH}/${GROUP_A.id}/lecturers`, () => HttpResponse.json({ data: history })))
+
+describe('GroupsPage: lecturers dialog', () => {
+  it('shows the history from the row action, newest first', async () => {
+    signInAsOwner({ active: [GROUP_A] })
+    serveHistory()
+    const { user } = renderRoute('/dashboard/groups')
+
+    await user.click(await screen.findByRole('button', { name: 'Lecturers of Group A' }))
+
+    const dialog = screen.getByRole('dialog', { name: 'Lecturers of Group A' })
+    const history = await within(dialog).findByRole('list', { name: 'Permanent lecturers' })
+    expect(within(history).getAllByRole('listitem').map((item) => item.textContent)).toEqual(['Teuta KrasniqiFrom 10 Nov 2026', 'Arben Hoxha (archived)1 Sep 2026 – 9 Nov 2026'])
+  })
+
+  it('says when the group never had a lecturer', async () => {
+    signInAsOwner({ active: [GROUP_A] })
+    serveHistory({ ...HISTORY, assignments: [] })
+    const { user } = renderRoute('/dashboard/groups')
+
+    await user.click(await screen.findByRole('button', { name: 'Lecturers of Group A' }))
+
+    expect(await screen.findByText('No lecturer so far.')).toBeInTheDocument()
+  })
+
+  it('offers a retry when the history fails to load', async () => {
+    signInAsOwner({ active: [GROUP_A] })
+    server.use(http.get(`${GROUPS_PATH}/${GROUP_A.id}/lecturers`, () => HttpResponse.json({ error: 'Down' }, { status: 500 })))
+    const { user } = renderRoute('/dashboard/groups')
+
+    await user.click(await screen.findByRole('button', { name: 'Lecturers of Group A' }))
+    expect(await screen.findByText('We couldn’t load the lecturers.')).toBeInTheDocument()
+    serveHistory()
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
+
+    expect(await screen.findByRole('list', { name: 'Permanent lecturers' })).toBeInTheDocument()
+  })
+})
+
+const COVER: GroupSubstitution = { id: 'c0a1b2c3-1111-4222-8333-444455556601', lecturer: TEUTA, start_date: '2026-11-10', end_date: '2026-11-12', note: 'Sick leave', cancelled_at: null }
+
+const openLecturersDialog = async (user: ReturnType<typeof renderRoute>['user']) => {
+  await user.click(await screen.findByRole('button', { name: 'Lecturers of Group A' }))
+  const dialog = screen.getByRole('dialog', { name: 'Lecturers of Group A' })
+  await within(dialog).findByRole('list', { name: 'Permanent lecturers' })
+  return dialog
+}
+
+describe('GroupsPage: substitutions', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('lists substitutions with their dates and note, one day as one date, and marks cancelled ones', async () => {
+    signInAsOwner({ active: [GROUP_A] })
+    serveHistory({
+      ...HISTORY,
+      substitutions: [
+        COVER,
+        { ...COVER, id: 'c0a1b2c3-1111-4222-8333-444455556602', start_date: '2026-11-03', end_date: '2026-11-03', note: null },
+        { ...COVER, id: 'c0a1b2c3-1111-4222-8333-444455556603', start_date: '2026-11-01', end_date: '2026-11-01', note: null, cancelled_at: '2026-10-30T09:00:00.000Z' },
+      ],
+    })
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openLecturersDialog(user)
+
+    const [range, oneDay, cancelled] = within(within(dialog).getByRole('list', { name: 'Substitutions' })).getAllByRole('listitem')
+    expect(range).toHaveTextContent('Teuta Krasniqi')
+    expect(range).toHaveTextContent('10 Nov 2026 – 12 Nov 2026')
+    expect(range).toHaveTextContent('Sick leave')
+    expect(oneDay).toHaveTextContent('3 Nov 2026')
+    expect(oneDay).not.toHaveTextContent('–')
+    expect(cancelled).toHaveTextContent('Cancelled')
+  })
+
+  it('says when there are no substitutions', async () => {
+    signInAsOwner({ active: [GROUP_A] })
+    serveHistory()
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openLecturersDialog(user)
+
+    expect(within(dialog).getByText('No substitutions yet.')).toBeInTheDocument()
+  })
+
+  it('adds a substitution for a date range, starting from the organization’s today, and shows it', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-02T23:30:00.000Z'))
+    signInAsOwner({ active: [GROUP_A] })
+    serveHistory()
+    let sent: unknown
+    server.use(
+      http.post(`${GROUPS_PATH}/${GROUP_A.id}/substitutions`, async ({ request }) => {
+        sent = groupSubstitutionSchema.parse(await request.json())
+        serveHistory({ ...HISTORY, substitutions: [COVER] })
+        return HttpResponse.json({ data: COVER }, { status: 201 })
+      }),
+    )
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openLecturersDialog(user)
+    expect(within(dialog).getByLabelText('Start date')).toHaveValue('2026-11-03')
+    expect(within(dialog).getByLabelText('End date')).toHaveValue('2026-11-03')
+    await user.selectOptions(within(dialog).getByLabelText('Substitute'), 'Teuta Krasniqi')
+    await user.clear(within(dialog).getByLabelText('Start date'))
+    await user.type(within(dialog).getByLabelText('Start date'), '2026-11-10')
+    await user.clear(within(dialog).getByLabelText('End date'))
+    await user.type(within(dialog).getByLabelText('End date'), '2026-11-12')
+    await user.type(within(dialog).getByLabelText('Note (optional)'), 'Sick leave')
+    await user.click(within(dialog).getByRole('button', { name: 'Add substitution' }))
+
+    expect(await within(dialog).findByRole('list', { name: 'Substitutions' })).toHaveTextContent('Teuta Krasniqi')
+    expect(sent).toEqual({ lecturer_id: TEUTA.id, start_date: '2026-11-10', end_date: '2026-11-12', note: 'Sick leave' })
+    expect(within(dialog).getByLabelText('Substitute')).toHaveValue('')
+  })
+
+  it('asks for a lecturer, and an end date not before the start', async () => {
+    signInAsOwner({ active: [GROUP_A] })
+    serveHistory()
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openLecturersDialog(user)
+    await user.clear(within(dialog).getByLabelText('End date'))
+    await user.type(within(dialog).getByLabelText('End date'), '2020-01-01')
+    await user.click(within(dialog).getByRole('button', { name: 'Add substitution' }))
+
+    expect(await within(dialog).findByText('Choose a lecturer.')).toBeInTheDocument()
+    expect(within(dialog).getByText('The end date can’t be before the start date.')).toBeInTheDocument()
+  })
+
+  it('shows a refusal under its field', async () => {
+    signInAsOwner({ active: [GROUP_A] })
+    serveHistory()
+    const message = 'Another substitution already covers some of these days.'
+    server.use(http.post(`${GROUPS_PATH}/${GROUP_A.id}/substitutions`, () => HttpResponse.json({ error: message, details: { formErrors: [], fieldErrors: { start_date: [message] } } }, { status: 409 })))
+    const { user } = renderRoute('/dashboard/groups')
+
+    const dialog = await openLecturersDialog(user)
+    await user.selectOptions(within(dialog).getByLabelText('Substitute'), 'Teuta Krasniqi')
+    await user.click(within(dialog).getByRole('button', { name: 'Add substitution' }))
+
+    expect(await within(dialog).findByLabelText('Start date')).toHaveAccessibleDescription(message)
+  })
+
+  it('offers no form on an archived group', async () => {
+    signInAsOwner({ active: [], archived: [{ ...GROUP_A, status: 'ARCHIVED' }] })
+    serveHistory()
+    const { user } = renderRoute('/dashboard/groups')
+
+    await user.click(await screen.findByRole('tab', { name: 'Archived 1' }))
+    const dialog = await openLecturersDialog(user)
+
+    expect(within(dialog).queryByRole('button', { name: 'Add substitution' })).not.toBeInTheDocument()
+  })
+})
+
+describe('GroupsPage: changing substitutions', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  const openOnNovember11 = async ({ substitutions = [COVER], status = 'ACTIVE' }: { substitutions?: GroupSubstitution[]; status?: GroupStatus } = {}) => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-11T10:00:00.000Z'))
+    const group: Group = { ...GROUP_A, status }
+    signInAsOwner(status === 'ACTIVE' ? { active: [group] } : { active: [], archived: [group] })
+    serveHistory({ ...HISTORY, substitutions })
+    const { user } = renderRoute('/dashboard/groups')
+    if (status === 'ARCHIVED') await user.click(await screen.findByRole('tab', { name: 'Archived 1' }))
+    return { user, dialog: await openLecturersDialog(user) }
+  }
+
+  it('edits a running substitution with its values in the form', async () => {
+    let sent: unknown
+    server.use(
+      http.put(`${GROUPS_PATH}/${GROUP_A.id}/substitutions/${COVER.id}`, async ({ request }) => {
+        sent = groupSubstitutionSchema.parse(await request.json())
+        serveHistory({ ...HISTORY, substitutions: [{ ...COVER, end_date: '2026-11-20' }] })
+        return HttpResponse.json({ data: { ...COVER, end_date: '2026-11-20' } })
+      }),
+    )
+    const { user, dialog } = await openOnNovember11()
+
+    await user.click(within(dialog).getByRole('button', { name: 'Edit the substitution by Teuta Krasniqi' }))
+
+    expect(within(dialog).getByLabelText('Substitute')).toHaveValue(TEUTA.id)
+    expect(within(dialog).getByLabelText('Start date')).toHaveValue('2026-11-10')
+    expect(within(dialog).getByLabelText('Note (optional)')).toHaveValue('Sick leave')
+    await user.clear(within(dialog).getByLabelText('End date'))
+    await user.type(within(dialog).getByLabelText('End date'), '2026-11-20')
+    await user.click(within(dialog).getByRole('button', { name: 'Save substitution' }))
+
+    expect(await within(dialog).findByText('10 Nov 2026 – 20 Nov 2026')).toBeInTheDocument()
+    expect(sent).toEqual({ lecturer_id: TEUTA.id, start_date: '2026-11-10', end_date: '2026-11-20', note: 'Sick leave' })
+    expect(within(dialog).getByRole('button', { name: 'Add substitution' })).toBeInTheDocument()
+  })
+
+  it('goes back to adding when editing stops', async () => {
+    const { user, dialog } = await openOnNovember11()
+
+    await user.click(within(dialog).getByRole('button', { name: 'Edit the substitution by Teuta Krasniqi' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Stop editing' }))
+
+    expect(within(dialog).getByLabelText('Substitute')).toHaveValue('')
+    expect(within(dialog).getByRole('button', { name: 'Add substitution' })).toBeInTheDocument()
+  })
+
+  it('keeps an archived substitute as the current value while editing', async () => {
+    server.use(http.get(`${GROUPS_PATH}/lecturer-options`, () => HttpResponse.json({ data: [LECTURER_OPTIONS[0]] })))
+    const { user, dialog } = await openOnNovember11({ substitutions: [{ ...COVER, lecturer: { ...TEUTA, status: 'ARCHIVED' } }] })
+
+    expect(within(within(dialog).getByRole('list', { name: 'Substitutions' })).getByText('Teuta Krasniqi (archived)')).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Edit the substitution by Teuta Krasniqi (archived)' }))
+
+    expect(within(dialog).getByLabelText('Substitute')).toHaveValue(TEUTA.id)
+  })
+
+  it('cancels an upcoming substitution after one confirmation and marks the row', async () => {
+    const upcoming: GroupSubstitution = { ...COVER, start_date: '2026-11-20', end_date: '2026-11-21' }
+    server.use(
+      http.post(`${GROUPS_PATH}/${GROUP_A.id}/substitutions/${COVER.id}/cancel`, () => {
+        const cancelled: GroupSubstitution = { ...upcoming, cancelled_at: '2026-11-11T10:00:00.000Z' }
+        serveHistory({ ...HISTORY, substitutions: [cancelled] })
+        return HttpResponse.json({ data: cancelled })
+      }),
+    )
+    const { user, dialog } = await openOnNovember11({ substitutions: [upcoming] })
+
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel the substitution by Teuta Krasniqi' }))
+    const confirm = within(dialog).getByRole('group', { name: 'Cancel the substitution by Teuta Krasniqi' })
+    expect(confirm).toHaveTextContent('It stays on record.')
+    await user.click(within(confirm).getByRole('button', { name: 'Cancel substitution' }))
+
+    expect(await within(dialog).findByText(/Cancelled/)).toBeInTheDocument()
+    expect(within(dialog).queryByRole('button', { name: 'Edit the substitution by Teuta Krasniqi' })).not.toBeInTheDocument()
+  })
+
+  it('says a running substitution ends yesterday, and shows the days it covered', async () => {
+    server.use(
+      http.post(`${GROUPS_PATH}/${GROUP_A.id}/substitutions/${COVER.id}/cancel`, () => {
+        const ended: GroupSubstitution = { ...COVER, end_date: '2026-11-10' }
+        serveHistory({ ...HISTORY, substitutions: [ended] })
+        return HttpResponse.json({ data: ended })
+      }),
+    )
+    const { user, dialog } = await openOnNovember11()
+
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel the substitution by Teuta Krasniqi' }))
+    const confirm = within(dialog).getByRole('group', { name: 'Cancel the substitution by Teuta Krasniqi' })
+    expect(confirm).toHaveTextContent('It ends yesterday; the days covered stay.')
+    await user.click(within(confirm).getByRole('button', { name: 'Cancel substitution' }))
+
+    await vi.waitFor(() => expect(within(dialog).queryByRole('button', { name: 'Edit the substitution by Teuta Krasniqi' })).not.toBeInTheDocument())
+    expect(within(dialog).getByRole('list', { name: 'Substitutions' })).not.toHaveTextContent('Cancelled')
+  })
+
+  it('locks the start and the substitute of a running substitution, and leaves the end open', async () => {
+    const { user, dialog } = await openOnNovember11()
+
+    await user.click(within(dialog).getByRole('button', { name: 'Edit the substitution by Teuta Krasniqi' }))
+
+    expect(within(dialog).getByLabelText('Substitute')).toBeDisabled()
+    expect(within(dialog).getByLabelText('Start date')).toBeDisabled()
+    expect(within(dialog).getByLabelText('End date')).toBeEnabled()
+  })
+
+  it('leaves every field of an upcoming substitution open', async () => {
+    const { user, dialog } = await openOnNovember11({ substitutions: [{ ...COVER, start_date: '2026-11-20', end_date: '2026-11-21' }] })
+
+    await user.click(within(dialog).getByRole('button', { name: 'Edit the substitution by Teuta Krasniqi' }))
+
+    expect(within(dialog).getByLabelText('Substitute')).toBeEnabled()
+    expect(within(dialog).getByLabelText('Start date')).toBeEnabled()
+  })
+
+  it('resets the form when the substitution being edited is cancelled', async () => {
+    server.use(
+      http.post(`${GROUPS_PATH}/${GROUP_A.id}/substitutions/${COVER.id}/cancel`, () => {
+        const cancelled: GroupSubstitution = { ...COVER, cancelled_at: '2026-11-11T10:00:00.000Z' }
+        serveHistory({ ...HISTORY, substitutions: [cancelled] })
+        return HttpResponse.json({ data: cancelled })
+      }),
+    )
+    const { user, dialog } = await openOnNovember11()
+
+    await user.click(within(dialog).getByRole('button', { name: 'Edit the substitution by Teuta Krasniqi' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel the substitution by Teuta Krasniqi' }))
+    await user.click(within(within(dialog).getByRole('group', { name: 'Cancel the substitution by Teuta Krasniqi' })).getByRole('button', { name: 'Cancel substitution' }))
+
+    expect(await within(dialog).findByRole('button', { name: 'Add substitution' })).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Substitute')).toHaveValue('')
+  })
+
+  it('keeps the form on the substitution being edited when another one is cancelled', async () => {
+    const other: GroupSubstitution = { ...COVER, id: 'c0a1b2c3-1111-4222-8333-444455556606', lecturer: ARBEN, start_date: '2026-11-20', end_date: '2026-11-20' }
+    server.use(http.post(`${GROUPS_PATH}/${GROUP_A.id}/substitutions/${other.id}/cancel`, () => HttpResponse.json({ data: { ...other, cancelled_at: '2026-11-11T10:00:00.000Z' } })))
+    const { user, dialog } = await openOnNovember11({ substitutions: [other, COVER] })
+
+    await user.click(within(dialog).getByRole('button', { name: 'Edit the substitution by Teuta Krasniqi' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel the substitution by Arben Hoxha' }))
+    await user.click(within(within(dialog).getByRole('group', { name: 'Cancel the substitution by Arben Hoxha' })).getByRole('button', { name: 'Cancel substitution' }))
+
+    await vi.waitFor(() => expect(within(dialog).getByRole('button', { name: 'Save substitution' })).toBeInTheDocument())
+    expect(within(dialog).getByLabelText('Substitute')).toHaveValue(TEUTA.id)
+  })
+
+  it('shows why a substitution can’t be cancelled', async () => {
+    server.use(http.post(`${GROUPS_PATH}/${GROUP_A.id}/substitutions/${COVER.id}/cancel`, () => HttpResponse.json({ error: 'This substitution is over, so it can’t change.' }, { status: 409 })))
+    const { user, dialog } = await openOnNovember11()
+
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel the substitution by Teuta Krasniqi' }))
+    await user.click(within(within(dialog).getByRole('group', { name: 'Cancel the substitution by Teuta Krasniqi' })).getByRole('button', { name: 'Cancel substitution' }))
+
+    expect(await screen.findByText('This substitution is over, so it can’t change.')).toBeInTheDocument()
+  })
+
+  it('offers no changes on a past or cancelled substitution, or on an archived group', async () => {
+    const past: GroupSubstitution = { ...COVER, id: 'c0a1b2c3-1111-4222-8333-444455556604', start_date: '2026-11-09', end_date: '2026-11-10' }
+    const cancelled: GroupSubstitution = { ...COVER, id: 'c0a1b2c3-1111-4222-8333-444455556605', start_date: '2026-11-20', end_date: '2026-11-20', cancelled_at: '2026-11-01T10:00:00.000Z' }
+    const { dialog } = await openOnNovember11({ substitutions: [past, cancelled] })
+
+    expect(within(dialog).queryByRole('button', { name: /the substitution by/ })).not.toBeInTheDocument()
+    cleanup()
+
+    const archived = await openOnNovember11({ status: 'ARCHIVED' })
+    expect(within(archived.dialog).queryByRole('button', { name: /the substitution by/ })).not.toBeInTheDocument()
   })
 })

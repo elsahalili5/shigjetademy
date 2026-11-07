@@ -1,14 +1,17 @@
 import type { Prisma } from '@generated/prisma/client.ts'
+import { toDate } from '@lib/calendar-day.ts'
+import { getOrganizationToday } from '@lib/current-period.ts'
 import { HttpError, refuseField } from '@lib/httpError.ts'
 import { escapeLike } from '@lib/like-pattern.ts'
 import { lockOrganization } from '@lib/organization-lock.ts'
 import type { OrganizationScope } from '@lib/organization-lock.ts'
 import { prisma } from '@lib/prisma.ts'
+import { changeLecturer, checkMoveToYear, checkNewLecturer, getLecturerFields, ongoingAssignments } from './group-lecturers.service.ts'
 import type { GroupInput, GroupStatus, ListGroupsQuery } from './groups.types.ts'
 
 const relationSelect = { id: true, name: true } as const
 
-const groupSelect = {
+const groupFields = {
   id: true,
   name: true,
   capacity: true,
@@ -20,6 +23,18 @@ const groupSelect = {
   location: { select: relationSelect },
 } as const satisfies Prisma.GroupSelect
 
+const groupSelectOn = (today: string) => ({ ...groupFields, lecturer_assignments: ongoingAssignments(today) }) satisfies Prisma.GroupSelect
+
+type StoredGroup = Prisma.GroupGetPayload<{ select: ReturnType<typeof groupSelectOn> }>
+
+type ToGroupJsonParams = {
+  group: StoredGroup
+  today: string
+}
+
+/** A group with its lecturer on this day worked out from the rows, so a future date takes effect by itself */
+const toGroupJson = ({ group: { lecturer_assignments: assignments, ...group }, today }: ToGroupJsonParams) => ({ ...group, ...getLecturerFields({ assignments, today }) })
+
 const byCourseAndName = [{ course: { name: 'asc' } }, { name: 'asc' }, { id: 'asc' }] as const satisfies Prisma.GroupOrderByWithRelationInput[]
 
 type FindGroupParams = OrganizationScope & {
@@ -28,12 +43,26 @@ type FindGroupParams = OrganizationScope & {
 
 /** The organization's group, or a 404 when the id belongs to no group of this organization */
 const findGroup = async ({ tx, organizationId, groupId }: FindGroupParams) => {
-  const group = await tx.group.findFirst({ where: { id: groupId, organization_id: organizationId }, select: groupSelect })
+  const group = await tx.group.findFirst({ where: { id: groupId, organization_id: organizationId }, select: groupFields })
   if (!group) {
     throw new HttpError(404, 'Group not found')
   }
   return group
 }
+
+type ReadGroupParams = Pick<OrganizationScope, 'tx'> & {
+  groupId: string
+  today: string
+}
+
+/** The group as the API answers it */
+const readGroup = async ({ tx, groupId, today }: ReadGroupParams) => {
+  const group = await tx.group.findUniqueOrThrow({ where: { id: groupId }, select: groupSelectOn(today) })
+  return toGroupJson({ group, today })
+}
+
+/** The columns of the group itself; the lecturer lives in rows of its own */
+const toGroupColumns = ({ course_id, name, academic_year_id, academic_term_id, location_id, capacity }: GroupInput) => ({ course_id, name, academic_year_id, academic_term_id, location_id, capacity })
 
 type CheckGroupParams = OrganizationScope & {
   data: GroupInput
@@ -118,28 +147,37 @@ export const GroupService = {
   // Counts follow the filters, so each status tab says how many of its groups match
   listGroups: async ({ organizationId, query }: ListGroupsParams) => {
     const where: Prisma.GroupWhereInput = { organization_id: organizationId, course_id: query.course_id, academic_year_id: query.academic_year_id }
+    const today = await getOrganizationToday({ db: prisma, organizationId })
     const [groups, statuses] = await Promise.all([
       prisma.group.findMany({
         where: { ...where, status: query.status },
         orderBy: byCourseAndName,
         skip: (query.page - 1) * query.page_size,
         take: query.page_size,
-        select: groupSelect,
+        select: groupSelectOn(today),
       }),
       prisma.group.groupBy({ by: ['status'], where, _count: { _all: true } }),
     ])
     const countOf = (status: GroupStatus) => statuses.find((item) => item.status === status)?._count._all ?? 0
     const counts = { ACTIVE: countOf('ACTIVE'), ARCHIVED: countOf('ARCHIVED') }
-    return { groups, total: counts[query.status], counts }
+    return { groups: groups.map((group) => toGroupJson({ group, today })), total: counts[query.status], counts }
   },
 
   createGroup: ({ organizationId, actorId, data }: CreateGroupParams) =>
     prisma.$transaction(async (tx) => {
       await lockOrganization({ tx, organizationId })
       await checkGroup({ tx, organizationId, data })
-      const group = await tx.group.create({ data: { organization_id: organizationId, ...data }, select: groupSelect })
-      await tx.activityLog.create({ data: { actor_id: actorId, action: 'GROUP_ADDED', organization_id: organizationId, subject_name: group.name } })
-      return group
+      const today = await getOrganizationToday({ db: tx, organizationId })
+      if (data.lecturer_id) {
+        const year = await tx.academicYear.findUniqueOrThrow({ where: { id: data.academic_year_id }, select: { end_date: true } })
+        await checkNewLecturer({ tx, organizationId, lecturerId: data.lecturer_id, year, today })
+      }
+      const { id: groupId, name } = await tx.group.create({ data: { organization_id: organizationId, ...toGroupColumns(data) }, select: { id: true, name: true } })
+      if (data.lecturer_id) {
+        await tx.groupLecturerAssignment.create({ data: { group_id: groupId, lecturer_id: data.lecturer_id, start_date: toDate(today) } })
+      }
+      await tx.activityLog.create({ data: { actor_id: actorId, action: 'GROUP_ADDED', organization_id: organizationId, subject_name: name } })
+      return readGroup({ tx, groupId, today })
     }),
 
   updateGroup: ({ organizationId, groupId, actorId, data }: UpdateGroupParams) =>
@@ -147,9 +185,14 @@ export const GroupService = {
       await lockOrganization({ tx, organizationId })
       const stored = await findGroup({ tx, organizationId, groupId })
       await checkGroup({ tx, organizationId, data, current: { id: groupId, courseId: stored.course.id } })
-      const group = await tx.group.update({ where: { id: groupId }, data, select: groupSelect })
-      await tx.activityLog.create({ data: { actor_id: actorId, action: 'GROUP_UPDATED', organization_id: organizationId, subject_name: group.name } })
-      return group
+      const today = await getOrganizationToday({ db: tx, organizationId })
+      await changeLecturer({ tx, organizationId, group: stored, data, today })
+      if (data.academic_year_id !== stored.academic_year.id) {
+        await checkMoveToYear({ tx, groupId, yearId: data.academic_year_id, today })
+      }
+      const { name } = await tx.group.update({ where: { id: groupId }, data: toGroupColumns(data), select: { name: true } })
+      await tx.activityLog.create({ data: { actor_id: actorId, action: 'GROUP_UPDATED', organization_id: organizationId, subject_name: name } })
+      return readGroup({ tx, groupId, today })
     }),
 
   // A group comes back only to an active course
@@ -164,8 +207,8 @@ export const GroupService = {
       if (status === 'ACTIVE' && stored.course.status === 'ARCHIVED') {
         throw new HttpError(409, `Restore the course ${stored.course.name} first.`)
       }
-      const group = await tx.group.update({ where: { id: groupId }, data: { status }, select: groupSelect })
-      await tx.activityLog.create({ data: { actor_id: actorId, action: change.action, organization_id: organizationId, subject_name: group.name } })
-      return group
+      await tx.group.update({ where: { id: groupId }, data: { status } })
+      await tx.activityLog.create({ data: { actor_id: actorId, action: change.action, organization_id: organizationId, subject_name: stored.name } })
+      return readGroup({ tx, groupId, today: await getOrganizationToday({ db: tx, organizationId }) })
     }),
 }

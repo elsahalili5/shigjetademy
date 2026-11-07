@@ -222,7 +222,7 @@ describe('ActivityModule', () => {
   it('shows group changes as sentences that name the client', async () => {
     signInAs(buildUser({ user_roles: PLATFORM_ADMIN_ROLES }))
     const oxford = { id: 'org-1', name: 'Oxford Academy' }
-    const actions: ActivityAction[] = ['GROUP_ADDED', 'GROUP_UPDATED', 'GROUP_ARCHIVED', 'GROUP_RESTORED']
+    const actions: ActivityAction[] = ['GROUP_ADDED', 'GROUP_UPDATED', 'GROUP_ARCHIVED', 'GROUP_RESTORED', 'GROUP_SUBSTITUTION_ADDED', 'GROUP_SUBSTITUTION_UPDATED', 'GROUP_SUBSTITUTION_CANCELLED']
     server.use(
       http.get('*/api/organizations', () => HttpResponse.json({ data: CLIENTS })),
       http.get('*/api/activity', () =>
@@ -239,6 +239,9 @@ describe('ActivityModule', () => {
       'Elsa Halili changed the group Group A at Oxford Academy',
       'Elsa Halili archived the group Group A at Oxford Academy',
       'Elsa Halili restored the group Group A at Oxford Academy',
+      'Elsa Halili added a substitution on the group Group A at Oxford Academy',
+      'Elsa Halili changed a substitution on the group Group A at Oxford Academy',
+      'Elsa Halili cancelled a substitution on the group Group A at Oxford Academy',
     ]
     expect(rows).toHaveLength(sentences.length)
     sentences.forEach((sentence, index) => expect(rows[index]).toHaveTextContent(sentence))

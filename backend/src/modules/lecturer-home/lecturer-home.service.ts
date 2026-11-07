@@ -1,8 +1,56 @@
-import type { MyTeaching } from '@shigjetademy/shared/lecturers'
+import type { MyTeaching, MyTeachingCover, MyTeachingGroup } from '@shigjetademy/shared/lecturers'
+import { todayIn } from '@shigjetademy/shared/calendar-day'
 import { resolveOrganizationSettings } from '@shigjetademy/shared/organization-settings'
-import { toDate } from '@lib/calendar-day.ts'
-import { periodSelect, todayIn, toPeriodJson } from '@lib/current-period.ts'
+import { toDate, toDay } from '@lib/calendar-day.ts'
+import { periodSelect, toPeriodJson } from '@lib/current-period.ts'
 import { prisma } from '@lib/prisma.ts'
+
+const teachingGroupSelect = { id: true, name: true, course: { select: { name: true } }, academic_year: { select: { name: true } }, location: { select: { name: true } } } as const
+
+type StoredTeachingGroup = {
+  id: string
+  name: string
+  course: { name: string }
+  academic_year: { name: string }
+  location: { name: string } | null
+}
+
+const toTeachingGroup = (group: StoredTeachingGroup): MyTeachingGroup => ({
+  id: group.id,
+  name: group.name,
+  course: group.course.name,
+  academic_year: group.academic_year.name,
+  location: group.location?.name ?? null,
+})
+
+type ReadTeachingParams = {
+  lecturerId: string
+  today: Date
+}
+
+/** The active groups the lecturer permanently teaches today, in a school year that includes today, and what they cover from today on */
+const readTeaching = async ({ lecturerId, today }: ReadTeachingParams): Promise<Pick<MyTeaching, 'groups' | 'cover'>> => {
+  const [assignments, substitutions] = await Promise.all([
+    prisma.groupLecturerAssignment.findMany({
+      where: { lecturer_id: lecturerId, start_date: { lte: today }, OR: [{ end_date: null }, { end_date: { gte: today } }], group: { status: 'ACTIVE', academic_year: { start_date: { lte: today }, end_date: { gte: today } } } },
+      orderBy: { group: { name: 'asc' } },
+      select: { group: { select: teachingGroupSelect } },
+    }),
+    prisma.groupSubstitution.findMany({
+      where: { lecturer_id: lecturerId, cancelled_at: null, end_date: { gte: today }, group: { status: 'ACTIVE' } },
+      orderBy: { start_date: 'asc' },
+      select: { id: true, start_date: true, end_date: true, group: { select: teachingGroupSelect } },
+    }),
+  ])
+  const toCover = ({ id, start_date, end_date, group }: (typeof substitutions)[number]): MyTeachingCover => ({
+    id,
+    status: start_date <= today ? 'CURRENT' : 'UPCOMING',
+    start_date: toDay(start_date),
+    end_date: toDay(end_date),
+    group: toTeachingGroup(group),
+  })
+  return { groups: assignments.map(({ group }) => toTeachingGroup(group)), cover: substitutions.map(toCover) }
+}
 
 type GetMyTeachingParams = {
   organizationId: string
@@ -21,6 +69,7 @@ export const LecturerHomeService = {
       prisma.lecturer.findFirst({
         where: { organization_id: organizationId, user_id: userId },
         select: {
+          id: true,
           first_name: true,
           last_name: true,
           subjects: true,
@@ -44,6 +93,7 @@ export const LecturerHomeService = {
     const nextTerm = year
       ? await prisma.academicTerm.findFirst({ where: { academic_year_id: year.id, start_date: { gt: today } }, orderBy: { start_date: 'asc' }, select: periodSelect })
       : null
+    const teaching = lecturer ? await readTeaching({ lecturerId: lecturer.id, today }) : { groups: [], cover: [] }
     return {
       organization: { id: organization.id, name: organization.name },
       lecturer: lecturer && {
@@ -58,6 +108,7 @@ export const LecturerHomeService = {
       term: term ? toPeriodJson(term) : null,
       holiday: year?.holidays[0] ?? null,
       next_term: nextTerm ? toPeriodJson(nextTerm) : null,
+      ...teaching,
     }
   },
 }

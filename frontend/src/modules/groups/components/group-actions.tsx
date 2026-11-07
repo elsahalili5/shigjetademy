@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Archive, ArchiveRestore, Pencil } from 'lucide-react'
+import { Archive, ArchiveRestore, GraduationCap, Pencil } from 'lucide-react'
 import type { Group, GroupStatus } from '@shigjetademy/shared/groups'
 import { ConfirmGroup } from '#/components/ConfirmGroup'
 
@@ -14,11 +14,12 @@ const ACTION_CLASS =
 interface GroupActionsProps {
   group: Group
   onEdit: (group: Group) => void
+  onOpenLecturers: (group: Group) => void
   onSetStatus: (change: GroupStatusChange) => void
 }
 
-/** Edit, and archive or restore, which ask once first */
-export function GroupActions({ group, onEdit, onSetStatus }: GroupActionsProps) {
+/** Edit, lecturers, and archive or restore, which ask once first */
+export function GroupActions({ group, onEdit, onOpenLecturers, onSetStatus }: GroupActionsProps) {
   const [isConfirming, setIsConfirming] = useState(false)
   const isArchived = group.status === 'ARCHIVED'
   const nextStatus: GroupStatus = isArchived ? 'ACTIVE' : 'ARCHIVED'
@@ -46,6 +47,10 @@ export function GroupActions({ group, onEdit, onSetStatus }: GroupActionsProps) 
       <button type="button" className={ACTION_CLASS} aria-label={`Edit ${group.name}`} onClick={() => onEdit(group)}>
         <Pencil size={15} strokeWidth={2} aria-hidden="true" />
         <span className="max-[640px]:sr-only">Edit</span>
+      </button>
+      <button type="button" className={ACTION_CLASS} aria-label={`Lecturers of ${group.name}`} onClick={() => onOpenLecturers(group)}>
+        <GraduationCap size={15} strokeWidth={2} aria-hidden="true" />
+        <span className="max-[640px]:sr-only">Lecturers</span>
       </button>
       <button type="button" className={ACTION_CLASS} aria-label={`${verb} ${group.name}`} onClick={() => setIsConfirming(true)}>
         {isArchived ? <ArchiveRestore size={15} strokeWidth={2} aria-hidden="true" /> : <Archive size={15} strokeWidth={2} aria-hidden="true" />}

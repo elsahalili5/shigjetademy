@@ -3,8 +3,10 @@ import { prisma } from '@lib/prisma.ts'
 import { HttpError } from '@lib/httpError.ts'
 import type { AcademicYearInput } from './academic-periods.types.ts'
 import { toDate } from '@lib/calendar-day.ts'
+import { getOrganizationToday } from '@lib/current-period.ts'
 import { lockOrganization } from '@lib/organization-lock.ts'
 import type { OrganizationScope } from '@lib/organization-lock.ts'
+import { countOutsideYear } from '@modules/groups/group-lecturers.service.ts'
 import { findYear, outside, overlapping, periodSelect, toPeriodJson } from './academic-periods.utils.ts'
 
 const byDate = { start_date: 'asc' } as const
@@ -103,6 +105,10 @@ export const AcademicYearService = {
         (await tx.academicHoliday.count({ where: { academic_year_id: yearId, ...outside(range) } }))
       if (outsideCount > 0) {
         throw new HttpError(409, 'Some terms or holidays fall outside these dates')
+      }
+      const isShortened = range.start > current.start_date || range.end < current.end_date
+      if (isShortened && (await countOutsideYear({ tx, groups: { academic_year_id: yearId }, range, today: await getOrganizationToday({ db: tx, organizationId }) })) > 0) {
+        throw new HttpError(409, 'Some substitutions or planned lecturer changes fall outside these dates')
       }
       if (data.is_current && !current.is_current) {
         await unsetCurrent({ tx, organizationId })

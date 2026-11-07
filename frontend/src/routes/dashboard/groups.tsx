@@ -21,5 +21,5 @@ function DashboardGroupsPage() {
   // Switching to an organization where they can't, here or in another tab, sends them to its home
   if (!membership || !isCoursesManager(membership)) return <Navigate to="/dashboard" />
   const { organization } = membership
-  return <GroupsPage organizationId={organization.id} organizationName={organization.name} />
+  return <GroupsPage organizationId={organization.id} organizationName={organization.name} timeZone={organization.time_zone} />
 }
