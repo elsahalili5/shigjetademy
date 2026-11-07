@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Archive, ArchiveRestore, MailPlus, MailX, Pencil, Send } from 'lucide-react'
 import { getStudentName } from '@shigjetademy/shared/students'
 import type { Student, StudentStatus } from '@shigjetademy/shared/students'
+import { ConfirmGroup } from '#/components/ConfirmGroup'
 import type { StudentInvitationAction } from '../hooks/use-student-invitation-action'
 
 export type StudentStatusChange = {
@@ -57,7 +58,7 @@ export function StudentActions({ student, isChangingInvitation, onEdit, onSetSta
       return <ConfirmGroup label={`Revoke invitation to ${name}`} question="The link stops working." confirmLabel="Revoke" onConfirm={handleConfirmRevoke} onCancel={() => setConfirming('NONE')} />
     case 'NONE':
       return (
-        <span className="inline-flex flex-wrap items-center justify-end gap-1.5">
+        <span className="inline-flex flex-nowrap items-center justify-end gap-1.5 whitespace-nowrap" role="group" aria-label={`Actions for ${name}`}>
           <button type="button" className={ACTION_CLASS} aria-label={`Edit ${name}`} onClick={() => onEdit(student)}>
             <Pencil size={15} strokeWidth={2} aria-hidden="true" />
             <span className="max-[640px]:sr-only">Edit</span>
@@ -114,26 +115,4 @@ function LoginActions({ student, name, isDisabled, onInvite, onChangeInvitation,
       throw new Error(`Unknown login status: ${String(unknown)}`)
     }
   }
-}
-
-interface ConfirmGroupProps {
-  label: string
-  question: string
-  confirmLabel: string
-  onConfirm: () => void
-  onCancel: () => void
-}
-
-function ConfirmGroup({ label, question, confirmLabel, onConfirm, onCancel }: ConfirmGroupProps) {
-  return (
-    <span className="inline-flex flex-wrap items-center justify-end gap-2" role="group" aria-label={label}>
-      <span className="text-[0.93rem] text-ink-2">{question}</span>
-      <button type="button" className="button button--primary min-h-9 px-3.5 text-[0.95rem]" onClick={onConfirm}>
-        {confirmLabel}
-      </button>
-      <button type="button" className="button button--ghost min-h-9 px-3.5 text-[0.95rem]" onClick={onCancel}>
-        Cancel
-      </button>
-    </span>
-  )
 }

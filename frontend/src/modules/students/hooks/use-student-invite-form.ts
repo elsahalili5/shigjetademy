@@ -1,11 +1,11 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { inviteStudentSchema } from '@shigjetademy/shared/invitations'
-import type { InviteStudentInput } from '@shigjetademy/shared/invitations'
+import { inviteRecordSchema } from '@shigjetademy/shared/invitations'
+import type { InviteRecordInput } from '@shigjetademy/shared/invitations'
 
 export function useStudentInviteForm() {
-  return useForm<InviteStudentInput>({
+  return useForm<InviteRecordInput>({
     defaultValues: { email: '' },
-    resolver: zodResolver(inviteStudentSchema),
+    resolver: zodResolver(inviteRecordSchema),
   })
 }

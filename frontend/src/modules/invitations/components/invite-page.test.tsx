@@ -48,6 +48,13 @@ const serveAccept = (user: AuthUser) => {
 }
 
 describe('invite page', () => {
+  it('names the role for a lecturer invitation', async () => {
+    servePreview({ ...PREVIEW, email: 'arben@lecturer.test', role: 'LECTURER' })
+    renderRoute(`/invite/${TOKEN}`)
+
+    expect(await screen.findByText(/Drita Krasniqi invited you as a lecturer/)).toBeInTheDocument()
+  })
+
   it('shows a logged-out visitor who invited them, and offers to create an account with the email locked or to log in', async () => {
     servePreview()
     renderRoute(`/invite/${TOKEN}`)

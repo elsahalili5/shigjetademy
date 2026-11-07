@@ -106,6 +106,10 @@ enum ActivityAction {
   STUDENT_UPDATED
   STUDENT_ARCHIVED
   STUDENT_RESTORED
+  LECTURER_ADDED
+  LECTURER_UPDATED
+  LECTURER_ARCHIVED
+  LECTURER_RESTORED
   INVITATION_SENT
   INVITATION_RESENT
   INVITATION_REVOKED
@@ -115,6 +119,17 @@ enum ActivityAction {
 enum StudentStatus {
   ACTIVE
   ARCHIVED
+}
+
+enum LecturerStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
 }
 
 enum WeekStart {
@@ -155,6 +170,7 @@ model User {
   activity_as_actor   ActivityLog[] @relation("ActivityActor")
   activity_as_target  ActivityLog[] @relation("ActivityTarget")
   student_records     Student[]
+  lecturer_records    Lecturer[]
 }
 
 /// Platform-wide roles (PLATFORM_ADMIN); organization roles live on Membership
@@ -236,6 +252,7 @@ model Organization {
   academic_years AcademicYear[]
   settings       OrganizationSettings?
   students       Student[]
+  lecturers      Lecturer[]
 }
 
 /// How one organization runs. An organization without a row reads the defaults; the row is written on its first save.
@@ -267,6 +284,7 @@ model Location {
 
   organization    Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
   departments     Department[]
+  lecturers       LecturerLocation[]
 
   @@index([organization_id])
 }
@@ -284,6 +302,7 @@ model Department {
 
   organization    Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
   location        Location?    @relation(fields: [location_id], references: [id], onDelete: SetNull)
+  lecturers       Lecturer[]
 
   @@unique([organization_id, name])
   @@index([location_id])
@@ -378,6 +397,57 @@ model Student {
   @@index([organization_id, last_name])
 }
 
+// ─────────────────────────────────────────
+// LECTURERS
+// ─────────────────────────────────────────
+
+/// A lecturer the organization keeps a record of, like a student: login optional, linked later by an invitation,
+/// so a school can list a teacher before they have an account.
+model Lecturer {
+  id              String         @id @default(uuid()) @db.Uuid
+  organization_id String         @db.Uuid
+  first_name      String
+  last_name       String
+  email           String?
+  phone           String?
+  /// Free-text tags like "Mathematics", kept in the first casing the organization used
+  subjects        String[]
+  employment_type EmploymentType
+  started_on      DateTime?      @db.Date
+  notes           String?
+  /// At most one; removing the department keeps the lecturer, without one
+  department_id   String?        @db.Uuid
+  status          LecturerStatus @default(ACTIVE)
+  /// The login linked to this record, at most one
+  user_id         String?        @db.Uuid
+
+  created_at      DateTime       @default(now())
+  updated_at      DateTime       @updatedAt
+
+  organization    Organization       @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  department      Department?        @relation(fields: [department_id], references: [id], onDelete: SetNull)
+  user            User?              @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  locations       LecturerLocation[]
+  invitations     Invitation[]
+
+  @@unique([organization_id, user_id])
+  @@index([organization_id, status])
+  @@index([organization_id, last_name])
+  @@index([department_id])
+}
+
+/// Where a lecturer teaches; removing either side removes only the link
+model LecturerLocation {
+  lecturer_id String   @db.Uuid
+  location_id String   @db.Uuid
+
+  lecturer    Lecturer @relation(fields: [lecturer_id], references: [id], onDelete: Cascade)
+  location    Location @relation(fields: [location_id], references: [id], onDelete: Cascade)
+
+  @@id([lecturer_id, location_id])
+  @@index([location_id])
+}
+
 /// A user's place in one organization. One user can belong to many organizations, once each.
 model Membership {
   id              String           @id @default(uuid()) @db.Uuid
@@ -398,7 +468,7 @@ model Membership {
 }
 
 /// An invitation to join an organization by email. The link's token is stored only as its sha256 hash.
-/// At most one PENDING invitation per (organization, email) and per student, kept by the invitation service.
+/// At most one PENDING invitation per (organization, email), per student and per lecturer, kept by the invitation service.
 model Invitation {
   id              String           @id @default(uuid()) @db.Uuid
   organization_id String           @db.Uuid
@@ -407,6 +477,8 @@ model Invitation {
   permissions     Permission[]
   /// Set for a student invitation: accepting links the login to this existing record
   student_id      String?          @db.Uuid
+  /// Set for a lecturer invitation, the same way
+  lecturer_id     String?          @db.Uuid
   token_hash      String           @unique
   status          InvitationStatus @default(PENDING)
   expires_at      DateTime
@@ -420,10 +492,12 @@ model Invitation {
   invited_by      User             @relation("InvitedBy", fields: [invited_by_id], references: [id])
   /// Cascade: an invitation for a deleted record could never be accepted correctly
   student         Student?         @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  lecturer        Lecturer?        @relation(fields: [lecturer_id], references: [id], onDelete: Cascade)
 
   @@index([organization_id, status])
   @@index([email])
   @@index([student_id])
+  @@index([lecturer_id])
 }
 
 // ─────────────────────────────────────────
@@ -438,7 +512,7 @@ model ActivityLog {
   action          ActivityAction
   organization_id String?        @db.Uuid
   target_user_id  String?        @db.Uuid
-  /// The location's, department's, academic period's or student's name, or the invited email, so the entry still reads right after it is removed
+  /// The location's, department's, academic period's, student's or lecturer's name, or the invited email, so the entry still reads right after it is removed
   subject_name    String?
   created_at      DateTime       @default(now())
 

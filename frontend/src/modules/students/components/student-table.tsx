@@ -32,7 +32,8 @@ interface StudentTableProps {
 export function StudentTable({ students, renderActions }: StudentTableProps) {
   const formatDay = useFormatDay()
   return (
-    <div className="overflow-x-auto">
+    // Scrolls sideways on narrow screens, so the row actions never wrap
+    <div className="w-full overflow-x-auto">
       <table className="w-full border-collapse" aria-label="Students">
         <thead className="border-b border-rule">
           <tr>
@@ -71,7 +72,7 @@ export function StudentTable({ students, renderActions }: StudentTableProps) {
               <td className={CELL_CLASS}>
                 <StudentLoginStatus student={student} />
               </td>
-              <td className={`${CELL_CLASS} text-right`}>{renderActions(student)}</td>
+              <td className={`${CELL_CLASS} w-px text-right whitespace-nowrap`}>{renderActions(student)}</td>
             </tr>
           ))}
         </tbody>

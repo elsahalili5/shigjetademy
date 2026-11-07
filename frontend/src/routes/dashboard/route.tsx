@@ -1,24 +1,26 @@
-import { LogOut, School } from 'lucide-react'
+import { GraduationCap, LogOut, School } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { hasOrganizationPermission } from '@shigjetademy/shared/auth'
+import type { Permission } from '@shigjetademy/shared/auth'
 import type { OrganizationStatus } from '@shigjetademy/shared/organization'
 import { Link, Outlet, createFileRoute, useMatchRoute, useNavigate } from '@tanstack/react-router'
 import wordmark from '#/assets/brand/shigjetademy-wordmark.png'
 import { initials } from '#/lib/initials'
 import { ADMIN_MODULES } from '#/lib/admin-modules'
 import { MODULES, moduleBySlug } from '#/lib/modules'
+import type { ModuleSlug } from '#/lib/modules'
 import { OWNER_NAV_SECTIONS } from '#/lib/owner-navigation'
 import type { OwnerNavItem } from '#/lib/owner-navigation'
 import { requireOrganization } from '#/lib/route-guard'
 import { useActiveMembership } from '#/modules/auth/hooks/use-active-membership'
 import { useAuth } from '#/modules/auth/hooks/use-auth'
-import { isOrganizationOwner, isOrganizationStudent, isPlatformAdmin } from '#/modules/auth/utils/session-user'
+import { isOrganizationLecturer, isOrganizationOwner, isOrganizationStudent, isPlatformAdmin } from '#/modules/auth/utils/session-user'
 import type { SessionMembership } from '#/modules/auth/utils/session-user'
 import { ROLE_LABELS } from '#/modules/auth/utils/role-labels'
 import { OrganizationSuspended } from '#/modules/organization/components/organization-suspended'
 import { OrganizationDeactivated } from '#/modules/organization-settings/components/organization-deactivated'
 import { OrganizationMark } from '#/modules/organization/components/organization-mark'
 import { OrganizationSwitcher } from '#/modules/organization/components/organization-switcher'
-import { isStudentsManager } from '#/modules/students/utils/permissions'
 
 const SIDEBAR_LINK_CLASS =
   'flex items-center gap-3 rounded-xl px-3.5 py-[10px] font-[550] text-on-navy-2 no-underline transition-colors duration-[180ms] ease-out hover:text-white aria-[current=page]:bg-navy-2 aria-[current=page]:text-white max-[860px]:flex-none max-[860px]:whitespace-nowrap [&_svg]:flex-none aria-[current=page]:[&_svg]:text-green'
@@ -29,9 +31,22 @@ const BUILT_MODULE_PAGES = {
   locations: '/dashboard/locations',
   'academic-periods': '/dashboard/academic-periods',
   students: '/dashboard/students',
+  lecturers: '/dashboard/lecturers',
 } as const
 
 const isBuiltModule = (slug: string): slug is keyof typeof BUILT_MODULE_PAGES => slug in BUILT_MODULE_PAGES
+
+// Modules a school admin sees only with their permission; the next gated module adds one entry
+const MODULE_PERMISSIONS = {
+  students: 'MANAGE_STUDENTS',
+  lecturers: 'MANAGE_LECTURERS',
+} as const satisfies Partial<Record<ModuleSlug, Permission>>
+
+const isGatedModule = (slug: ModuleSlug): slug is keyof typeof MODULE_PERMISSIONS => slug in MODULE_PERMISSIONS
+
+/** The gated modules this membership may not use, so the sidebar leaves them out */
+const getHiddenModuleSlugs = (membership: SessionMembership | undefined) =>
+  new Set(MODULES.map((m) => m.slug).filter((slug) => isGatedModule(slug) && !(membership && hasOrganizationPermission({ membership, permission: MODULE_PERMISSIONS[slug] }))))
 
 const SIDEBAR_HEADING_CLASS = 'px-3.5 pb-2.5 font-data text-[0.807rem] tracking-[0.06em] text-on-navy-2 uppercase max-[860px]:hidden'
 
@@ -158,11 +173,12 @@ interface SidebarNavigationProps {
   isAdmin: boolean
 }
 
-/** The owner's areas, a student's My school, or the module list for everyone else */
+/** The owner's areas, a student's My school, a lecturer's My teaching, or the module list for everyone else */
 function SidebarNavigation({ membership, isAdmin }: SidebarNavigationProps) {
   if (isOrganizationOwner(membership)) return <OwnerNavigation />
   if (isOrganizationStudent(membership)) return <StudentNavigation />
-  return <ModuleNavigation isAdmin={isAdmin} shouldShowStudents={isStudentsManager(membership)} />
+  if (isOrganizationLecturer(membership)) return <LecturerNavigation />
+  return <ModuleNavigation isAdmin={isAdmin} hiddenSlugs={getHiddenModuleSlugs(membership)} />
 }
 
 /** Students only have My school for now; their profile is at the bottom of the sidebar like everyone's */
@@ -174,6 +190,20 @@ function StudentNavigation() {
       </span>
       <Link to="/dashboard/my-school" className={SIDEBAR_LINK_CLASS}>
         <SidebarLinkContent icon={School} label="My school" />
+      </Link>
+    </>
+  )
+}
+
+/** Lecturers only have My teaching for now; their profile is at the bottom of the sidebar like everyone's */
+function LecturerNavigation() {
+  return (
+    <>
+      <span className={SIDEBAR_HEADING_CLASS} aria-hidden="true">
+        Dashboard
+      </span>
+      <Link to="/dashboard/my-teaching" className={SIDEBAR_LINK_CLASS}>
+        <SidebarLinkContent icon={GraduationCap} label="My teaching" />
       </Link>
     </>
   )
@@ -237,12 +267,12 @@ function SidebarLinkContent({ icon: Icon, label }: SidebarLinkContentProps) {
 
 interface ModuleNavigationProps {
   isAdmin: boolean
-  shouldShowStudents: boolean
+  hiddenSlugs: Set<ModuleSlug>
 }
 
 /** The platform admin's modules, or the flat school module list for everyone else in an organization */
-function ModuleNavigation({ isAdmin, shouldShowStudents }: ModuleNavigationProps) {
-  const modules = isAdmin ? ADMIN_MODULES : MODULES.filter((m) => m.slug !== 'students' || shouldShowStudents)
+function ModuleNavigation({ isAdmin, hiddenSlugs }: ModuleNavigationProps) {
+  const modules = isAdmin ? ADMIN_MODULES : MODULES.filter((m) => !hiddenSlugs.has(m.slug))
   return (
     <>
       <span className={SIDEBAR_HEADING_CLASS} aria-hidden="true">

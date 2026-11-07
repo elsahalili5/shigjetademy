@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { nameSchema } from './auth.ts'
 import { todayDay } from './calendar-day.ts'
+import type { CurrentPeriod } from './academic-periods.ts'
 import { optionalText } from './organization.ts'
 
 export const STUDENT_STATUSES = ['ACTIVE', 'ARCHIVED'] as const
@@ -91,19 +92,12 @@ export type StudentPage = {
   counts: Record<StudentStatus, number>
 }
 
-/** A school year or term on the student's My school page; days are 'YYYY-MM-DD' */
-export type MySchoolPeriod = {
-  name: string
-  start_date: string
-  end_date: string
-}
-
 /** What a student sees of their organization: their own record only, and the current school year and term */
 export type MySchool = {
   organization: { id: string; name: string }
   /** Null while no record is linked to their login */
   student: { first_name: string; last_name: string; student_number: string } | null
-  academic_year: MySchoolPeriod | null
+  academic_year: CurrentPeriod | null
   /** The term today falls in; null between terms */
-  term: MySchoolPeriod | null
+  term: CurrentPeriod | null
 }

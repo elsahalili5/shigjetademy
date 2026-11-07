@@ -62,3 +62,10 @@ export type AcademicYear = AcademicPeriod & {
   terms: AcademicTerm[]
   holidays: AcademicHoliday[]
 }
+
+/** The current school year or term as a home page shows it; days are 'YYYY-MM-DD' */
+export type CurrentPeriod = {
+  name: string
+  start_date: string
+  end_date: string
+}

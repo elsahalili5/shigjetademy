@@ -1,5 +1,5 @@
 import { apiClient } from '#/api/client'
-import type { InviteStudentInput } from '@shigjetademy/shared/invitations'
+import type { InviteRecordInput } from '@shigjetademy/shared/invitations'
 import type { CreateStudentInput, ListStudentsQuery, Student, StudentPage, UpdateStudentInput } from '@shigjetademy/shared/students'
 
 type ListStudentsParams = ListStudentsQuery & {
@@ -20,7 +20,7 @@ type StudentActionParams = {
   studentId: string
 }
 
-type InviteStudentParams = StudentActionParams & InviteStudentInput
+type InviteStudentParams = StudentActionParams & InviteRecordInput
 
 const invitationPath = ({ organizationId, studentId }: StudentActionParams) => `/organizations/${organizationId}/students/${studentId}/invitation`
 
@@ -32,7 +32,7 @@ export const studentsApi = {
   archive: ({ organizationId, studentId }: StudentActionParams) => apiClient.post<Student>(`/organizations/${organizationId}/students/${studentId}/archive`),
   restore: ({ organizationId, studentId }: StudentActionParams) => apiClient.post<Student>(`/organizations/${organizationId}/students/${studentId}/restore`),
   // The invitation endpoints answer with the student, its login status updated
-  invite: ({ organizationId, studentId, ...input }: InviteStudentParams) => apiClient.post<Student, InviteStudentInput>(invitationPath({ organizationId, studentId }), input),
+  invite: ({ organizationId, studentId, ...input }: InviteStudentParams) => apiClient.post<Student, InviteRecordInput>(invitationPath({ organizationId, studentId }), input),
   resendInvitation: (params: StudentActionParams) => apiClient.post<Student>(`${invitationPath(params)}/resend`),
   revokeInvitation: (params: StudentActionParams) => apiClient.delete<Student>(invitationPath(params)),
 }

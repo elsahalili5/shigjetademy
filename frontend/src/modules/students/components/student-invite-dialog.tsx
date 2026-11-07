@@ -1,7 +1,7 @@
 import { useId } from 'react'
 import type { RefObject } from 'react'
 import { INVITATION_VALID_DAYS } from '@shigjetademy/shared/invitations'
-import type { InviteStudentInput } from '@shigjetademy/shared/invitations'
+import type { InviteRecordInput } from '@shigjetademy/shared/invitations'
 import { getStudentName } from '@shigjetademy/shared/students'
 import type { Student } from '@shigjetademy/shared/students'
 import { FormAlert } from '#/components/FormAlert'
@@ -60,11 +60,11 @@ function StudentInviteForm({ organizationId, studentId, onInvited, onCancel }: S
   const form = useStudentInviteForm()
   const inviteStudent = useInviteStudent(organizationId)
   const emailId = useId()
-  const emailError = getFieldError<InviteStudentInput>({ fieldName: 'email', formErrors: form.formState.errors, backendError: inviteStudent.error })
+  const emailError = getFieldError<InviteRecordInput>({ fieldName: 'email', formErrors: form.formState.errors, backendError: inviteStudent.error })
   // A field error from the server already shows under the email
   const hasFormError = inviteStudent.isError && !emailError
 
-  const handleSubmit = form.handleSubmit((input: InviteStudentInput) => {
+  const handleSubmit = form.handleSubmit((input: InviteRecordInput) => {
     inviteStudent.mutate({ studentId, ...input }, { onSuccess: onInvited })
   })
 
