@@ -53,6 +53,29 @@ export const createOrganization = ({ name, ownerId, type = 'SCHOOL', members = [
     },
   })
 
+type CreateCourseParams = {
+  organizationId: string
+  name: string
+  code?: string
+  status?: 'ACTIVE' | 'ARCHIVED'
+  /** The organization's General department when left out */
+  departmentId?: string
+}
+
+const GENERAL_DEPARTMENT = 'General'
+
+/** A course stored straight in the database, with the level and department every course needs */
+export const createCourse = async ({ organizationId, name, code, status, departmentId }: CreateCourseParams) => {
+  const department = departmentId
+    ? { id: departmentId }
+    : await prisma.department.upsert({
+        where: { organization_id_name: { organization_id: organizationId, name: GENERAL_DEPARTMENT } },
+        update: {},
+        create: { organization_id: organizationId, name: GENERAL_DEPARTMENT },
+      })
+  return prisma.course.create({ data: { organization_id: organizationId, name, code, status, level: 'B2', department_id: department.id } })
+}
+
 /** Logs in through the API and returns the bearer header value */
 export const loginAs = async (email: string) => {
   const response = await request(app).post('/api/auth/login').send({ email, password: TEST_PASSWORD })

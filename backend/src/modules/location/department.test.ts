@@ -1,7 +1,9 @@
 import request from 'supertest'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { app } from '../../app.ts'
-import { createOrganization, createUser, loginAs } from '../../../test/factories.ts'
+import { lockOrganization } from '@lib/organization-lock.ts'
+import { prisma } from '@lib/prisma.ts'
+import { createCourse, createOrganization, createUser, loginAs } from '../../../test/factories.ts'
 
 let organizationId: string
 let departmentsPath: string
@@ -16,6 +18,11 @@ const addLocation = async (name: string) => {
     .send({ name, address: '', city: '', phone: '', is_main: false })
   return response.body.data
 }
+
+const DEPARTMENT_IN_USE = 'This department can’t be removed while courses use it, archived ones included. Move them to another department first.'
+
+// Long enough for the request to reach the organization lock
+const LOCK_WAIT_MS = 200
 
 const addDepartment = (body: ReturnType<typeof department>) => request(app).post(departmentsPath).set('Authorization', ownerAuth).send(body)
 
@@ -96,6 +103,66 @@ describe('departments', () => {
 
     expect((await request(app).delete(`${departmentsPath}/${languages.id}`).set('Authorization', ownerAuth)).status).toBe(200)
     expect((await request(app).get(departmentsPath).set('Authorization', ownerAuth)).body.data).toEqual([])
+  })
+
+  it('refuses removing a department a course uses, and keeps it', async () => {
+    const languages = (await addDepartment(department('Languages'))).body.data
+    await createCourse({ organizationId, name: 'English', departmentId: languages.id })
+
+    const response = await request(app).delete(`${departmentsPath}/${languages.id}`).set('Authorization', ownerAuth)
+
+    expect(response.status).toBe(409)
+    expect(response.body.error).toBe(DEPARTMENT_IN_USE)
+    expect((await request(app).get(departmentsPath).set('Authorization', ownerAuth)).body.data).toEqual([expect.objectContaining({ name: 'Languages' })])
+  })
+
+  it('refuses removing a department only an archived course uses', async () => {
+    const languages = (await addDepartment(department('Languages'))).body.data
+    await createCourse({ organizationId, name: 'Old Latin', status: 'ARCHIVED', departmentId: languages.id })
+
+    const response = await request(app).delete(`${departmentsPath}/${languages.id}`).set('Authorization', ownerAuth)
+
+    expect(response.status).toBe(409)
+    expect(response.body.error).toBe(DEPARTMENT_IN_USE)
+  })
+
+  it('removes a department once its courses have moved to another one', async () => {
+    const languages = (await addDepartment(department('Languages'))).body.data
+    const sciences = (await addDepartment(department('Sciences'))).body.data
+    const english = await createCourse({ organizationId, name: 'English', departmentId: languages.id })
+    await request(app)
+      .put(`/api/organizations/${organizationId}/courses/${english.id}`)
+      .set('Authorization', ownerAuth)
+      .send({ name: 'English', code: '', description: '', level: 'B2', department_id: sciences.id })
+
+    expect((await request(app).delete(`${departmentsPath}/${languages.id}`).set('Authorization', ownerAuth)).status).toBe(200)
+  })
+
+  it('waits for a course saved at the same moment, then refuses with the message', async () => {
+    const languages = (await addDepartment(department('Languages'))).body.data
+
+    const removal = await prisma.$transaction(async (tx) => {
+      await lockOrganization({ tx, organizationId })
+      await tx.course.create({ data: { organization_id: organizationId, name: 'English', level: 'B2', department_id: languages.id } })
+      const pendingRemoval = request(app).delete(`${departmentsPath}/${languages.id}`).set('Authorization', ownerAuth).then((response) => response)
+      await new Promise((resolve) => setTimeout(resolve, LOCK_WAIT_MS))
+      return { pendingRemoval }
+    })
+
+    const response = await removal.pendingRemoval
+    expect(response.status).toBe(409)
+    expect(response.body.error).toBe(DEPARTMENT_IN_USE)
+  })
+
+  it('still deletes an organization with a department and courses, archived ones included', async () => {
+    const languages = (await addDepartment(department('Languages'))).body.data
+    await createCourse({ organizationId, name: 'English', departmentId: languages.id })
+    await createCourse({ organizationId, name: 'Old Latin', status: 'ARCHIVED', departmentId: languages.id })
+
+    await prisma.organization.delete({ where: { id: organizationId } })
+
+    expect(await prisma.department.count({ where: { organization_id: organizationId } })).toBe(0)
+    expect(await prisma.course.count({ where: { organization_id: organizationId } })).toBe(0)
   })
 
   it('lets a school admin read but not change departments, and refuses another organization’s owner', async () => {

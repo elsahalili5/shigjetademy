@@ -21,7 +21,7 @@ const MATHEMATICS: Course = {
   department: { id: SCIENCES.id, name: 'Sciences' },
 }
 
-const ENGLISH: Course = { ...MATHEMATICS, id: '7c1c2f43-0d1e-4c55-9a3e-6b1f0c2a2b02', name: 'English', code: null, description: null, level: null, department: null }
+const ENGLISH: Course = { ...MATHEMATICS, id: '7c1c2f43-0d1e-4c55-9a3e-6b1f0c2a2b02', name: 'English', code: null, description: null, level: 'A1' }
 
 const COURSES_PATH = '*/api/organizations/org-1/courses'
 
@@ -38,7 +38,7 @@ const serveCourses = ({ active = [MATHEMATICS], archived = [] }: ServeParams = {
       const params = new URL(request.url).searchParams
       requests.push(params)
       const search = (params.get('search') ?? '').toLowerCase()
-      const matches = (courses: Course[]) => courses.filter((course) => `${course.name} ${course.code ?? ''} ${course.level ?? ''}`.toLowerCase().includes(search))
+      const matches = (courses: Course[]) => courses.filter((course) => `${course.name} ${course.code ?? ''} ${course.level}`.toLowerCase().includes(search))
       const byStatus: Record<CourseStatus, Course[]> = { ACTIVE: matches(active), ARCHIVED: matches(archived) }
       const status = params.get('status') === 'ARCHIVED' ? 'ARCHIVED' : 'ACTIVE'
       const page: CoursePage = { courses: byStatus[status], total: byStatus[status].length, counts: { ACTIVE: byStatus.ACTIVE.length, ARCHIVED: byStatus.ARCHIVED.length } }
@@ -48,7 +48,7 @@ const serveCourses = ({ active = [MATHEMATICS], archived = [] }: ServeParams = {
   return requests
 }
 
-const serveDepartments = (organizationId = 'org-1') => server.use(http.get(`*/api/organizations/${organizationId}/departments`, () => HttpResponse.json({ data: [SCIENCES] })))
+const serveDepartments = (organizationId = 'org-1', departments = [SCIENCES]) => server.use(http.get(`*/api/organizations/${organizationId}/departments`, () => HttpResponse.json({ data: departments })))
 
 const signInAsOwner = (params?: ServeParams) => {
   signInAs(buildUser({ memberships: OWNER_MEMBERSHIPS }))
@@ -91,6 +91,43 @@ describe('CoursesPage: list', () => {
     expect(screen.getByRole('dialog', { name: 'Add a course' })).toBeVisible()
   })
 
+  it('asks for a department first when there are none, and links to them', async () => {
+    signInAs(buildUser({ memberships: OWNER_MEMBERSHIPS }))
+    serveDepartments('org-1', [])
+    serveCourses({ active: [] })
+    renderRoute('/dashboard/courses')
+
+    expect(await screen.findByText('Add a department first.')).toBeInTheDocument()
+    expect(within(screen.getByRole('main')).getByRole('link', { name: 'Go to Locations and departments' })).toHaveAttribute('href', '/dashboard/locations')
+    expect(screen.queryByRole('button', { name: 'Add course' })).not.toBeInTheDocument()
+  })
+
+  it('tells a school admin to ask the owner when there are no departments, without a link', async () => {
+    signInAs(buildUser({ memberships: [{ ...YLLKA_ADMIN_MEMBERSHIP, permissions: ['MANAGE_COURSES'] }] }))
+    serveDepartments('org-2', [])
+    server.use(http.get('*/api/organizations/org-2/courses', () => HttpResponse.json({ data: { courses: [], total: 0, counts: { ACTIVE: 0, ARCHIVED: 0 } } })))
+    renderRoute('/dashboard/courses')
+
+    expect(await screen.findByText('No departments yet.')).toBeInTheDocument()
+    expect(screen.getByText('Ask the owner to add one, then you can add courses.')).toBeInTheDocument()
+    expect(screen.queryByText('Add a department first.')).not.toBeInTheDocument()
+    expect(within(screen.getByRole('main')).queryByRole('link', { name: 'Go to Locations and departments' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add course' })).not.toBeInTheDocument()
+  })
+
+  it('offers a retry when the departments fail to load', async () => {
+    signInAs(buildUser({ memberships: OWNER_MEMBERSHIPS }))
+    serveCourses({ active: [MATHEMATICS] })
+    server.use(http.get('*/api/organizations/org-1/departments', () => HttpResponse.json({ error: 'Failed to fetch departments' }, { status: 500 })))
+    const { user } = renderRoute('/dashboard/courses')
+
+    expect(await screen.findByText('We couldn’t load the courses.')).toBeInTheDocument()
+    serveDepartments()
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(await screen.findByText('Mathematics')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add course' })).toBeInTheDocument()
+  })
+
   it('offers a retry when the list fails to load', async () => {
     signInAs(buildUser({ memberships: OWNER_MEMBERSHIPS }))
     serveDepartments()
@@ -121,9 +158,9 @@ describe('CoursesPage: add', () => {
     const dialog = screen.getByRole('dialog', { name: 'Add a course' })
     await user.type(within(dialog).getByLabelText('Name'), 'Mathematics')
     await user.type(within(dialog).getByLabelText('Code (optional)'), 'MATH-1')
-    await user.type(within(dialog).getByLabelText('Level (optional)'), 'B2')
+    await user.type(within(dialog).getByLabelText('Level'), 'B2')
     await user.type(within(dialog).getByLabelText('Description (optional)'), 'Algebra and geometry')
-    await user.selectOptions(within(dialog).getByLabelText(/^Department/), 'Sciences')
+    await user.selectOptions(within(dialog).getByLabelText('Department'), 'Sciences')
     await user.click(within(dialog).getByRole('button', { name: 'Add course' }))
 
     expect(await screen.findByText('Added Mathematics.')).toBeInTheDocument()
@@ -143,6 +180,41 @@ describe('CoursesPage: add', () => {
     expect(await within(dialog).findByText('Enter the course name.')).toBeInTheDocument()
   })
 
+  it('asks for the level and the department before sending', async () => {
+    signInAsOwner({ active: [] })
+    let isSent = false
+    server.use(
+      http.post(COURSES_PATH, () => {
+        isSent = true
+        return HttpResponse.json({ data: MATHEMATICS }, { status: 201 })
+      }),
+    )
+    const { user } = renderRoute('/dashboard/courses')
+
+    await user.click((await screen.findAllByRole('button', { name: 'Add course' }))[0])
+    const dialog = screen.getByRole('dialog', { name: 'Add a course' })
+    await user.type(within(dialog).getByLabelText('Name'), 'Mathematics')
+    await user.click(within(dialog).getByRole('button', { name: 'Add course' }))
+
+    expect(await within(dialog).findByLabelText('Level')).toHaveAccessibleDescription('Enter the course level.')
+    expect(within(dialog).getByLabelText('Department')).toHaveAccessibleDescription('Choose a department.')
+    expect(isSent).toBe(false)
+  })
+
+  it('marks the name, level and department as required', async () => {
+    signInAsOwner({ active: [] })
+    const { user } = renderRoute('/dashboard/courses')
+
+    await user.click((await screen.findAllByRole('button', { name: 'Add course' }))[0])
+    const dialog = screen.getByRole('dialog', { name: 'Add a course' })
+
+    expect(within(dialog).getByLabelText('Name')).toBeRequired()
+    expect(within(dialog).getByLabelText('Level')).toBeRequired()
+    expect(within(dialog).getByLabelText('Department')).toBeRequired()
+    expect(within(dialog).getByLabelText('Code (optional)')).not.toBeRequired()
+    expect(within(dialog).getByLabelText('Description (optional)')).not.toBeRequired()
+  })
+
   it('shows a taken code under its field', async () => {
     signInAsOwner({ active: [] })
     const message = 'There is already a course with this code.'
@@ -153,6 +225,8 @@ describe('CoursesPage: add', () => {
     const dialog = screen.getByRole('dialog', { name: 'Add a course' })
     await user.type(within(dialog).getByLabelText('Name'), 'Algebra')
     await user.type(within(dialog).getByLabelText('Code (optional)'), 'MATH-1')
+    await user.type(within(dialog).getByLabelText('Level'), 'B2')
+    await user.selectOptions(within(dialog).getByLabelText('Department'), 'Sciences')
     await user.click(within(dialog).getByRole('button', { name: 'Add course' }))
 
     expect(await within(dialog).findByLabelText('Code (optional)')).toHaveAccessibleDescription(message)
@@ -242,9 +316,9 @@ describe('CoursesPage: edit', () => {
     const dialog = screen.getByRole('dialog', { name: 'Edit Mathematics' })
     expect(within(dialog).getByLabelText('Name')).toHaveValue('Mathematics')
     expect(within(dialog).getByLabelText('Code (optional)')).toHaveValue('MATH-1')
-    expect(within(dialog).getByLabelText(/^Department/)).toHaveValue(SCIENCES.id)
-    await user.clear(within(dialog).getByLabelText('Level (optional)'))
-    await user.type(within(dialog).getByLabelText('Level (optional)'), 'C1')
+    expect(within(dialog).getByLabelText('Department')).toHaveValue(SCIENCES.id)
+    await user.clear(within(dialog).getByLabelText('Level'))
+    await user.type(within(dialog).getByLabelText('Level'), 'C1')
     await user.click(within(dialog).getByRole('button', { name: 'Save changes' }))
 
     expect(await screen.findByText('Saved Mathematics.')).toBeInTheDocument()

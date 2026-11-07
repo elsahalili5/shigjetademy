@@ -50,7 +50,8 @@ const LECTURER = {
   department_id: null,
   location_ids: [],
 } as const
-const COURSE = { name: 'Taken over', code: '', description: '', level: '', department_id: null } as const
+// A well-formed id, so the sweep passes validation and reaches the organization checks
+const COURSE = { name: 'Taken over', code: '', description: '', level: 'B2', department_id: '00000000-0000-4000-8000-000000000004' } as const
 
 /** A group body with the given organization's own ids, which tests swap one at a time */
 const groupBody = (ids: TargetIds) => ({ course_id: ids.courseId, name: 'Taken over', academic_year_id: ids.yearId, academic_term_id: null, location_id: null, capacity: null, lecturer_id: null, lecturer_effective_from: null })
@@ -210,7 +211,7 @@ const seedOrganization = async ({ name, slug }: SeedOrganizationParams) => {
       locations: { create: [{ location_id: location.id }] },
     },
   })
-  const course = await prisma.course.create({ data: { organization_id: organization.id, name: `${name} course`, department_id: department.id } })
+  const course = await prisma.course.create({ data: { organization_id: organization.id, name: `${name} course`, level: 'B2', department_id: department.id } })
   // In a year of its own, so the current year stays free to delete
   const groupYear = await prisma.academicYear.create({ data: { organization_id: organization.id, name: `${name} 2027–28`, start_date: new Date('2027-09-01'), end_date: new Date('2028-06-30') } })
   const group = await prisma.group.create({ data: { organization_id: organization.id, course_id: course.id, name: `${name} group`, academic_year_id: groupYear.id, location_id: location.id } })

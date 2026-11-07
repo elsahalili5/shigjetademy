@@ -490,16 +490,17 @@ model Course {
   code            String?
   description     String?
   /// Free text like "B2" or "Grade 5"
-  level           String?
-  /// At most one; removing the department keeps the course, without one
-  department_id   String?      @db.Uuid
+  level           String
+  /// Exactly one; a department with courses, archived ones included, can't be removed
+  department_id   String       @db.Uuid
   status          CourseStatus @default(ACTIVE)
 
   created_at      DateTime     @default(now())
   updated_at      DateTime     @updatedAt
 
   organization    Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  department      Department?  @relation(fields: [department_id], references: [id], onDelete: SetNull)
+  /// NoAction: a department with courses can't be deleted (the department service says why), while deleting the organization still removes both, as both sit directly under it
+  department      Department   @relation(fields: [department_id], references: [id], onDelete: NoAction)
   groups          Group[]
 
   @@unique([organization_id, name])

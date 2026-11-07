@@ -19,13 +19,15 @@ export const COURSE_PAGE_SIZE = 25
 
 const COURSE_PAGE_SIZE_MAX = 100
 
-/** A new course or an edit; optional text comes in as '' when left empty */
+const LEVEL_REQUIRED = 'Enter the course level.'
+
+/** A new course or an edit; a course needs a name, a level and a department, and the optional text comes in as '' when left empty */
 export const courseSchema = z.object({
   name: nameSchema('Enter the course name.'),
   code: optionalText(CODE_MAX),
   description: optionalText(DESCRIPTION_MAX),
-  level: optionalText(LEVEL_MAX),
-  department_id: z.uuid('Choose a department.').nullable(),
+  level: z.string(LEVEL_REQUIRED).trim().min(1, LEVEL_REQUIRED).max(LEVEL_MAX, `Keep it under ${LEVEL_MAX} characters.`),
+  department_id: z.uuid('Choose a department.'),
 })
 
 export type CourseInput = z.infer<typeof courseSchema>
@@ -45,10 +47,10 @@ export type Course = {
   name: string
   code: string | null
   description: string | null
-  level: string | null
+  level: string
   status: CourseStatus
   created_at: string
-  department: { id: string; name: string } | null
+  department: { id: string; name: string }
 }
 
 /** What the group forms and filters offer: every course, by name, archived ones included */

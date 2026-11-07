@@ -76,13 +76,18 @@ type DepartmentActionsProps = Omit<DepartmentRowProps, 'locationName' | 'isOwner
 function DepartmentActions({ department, onEdit, onRemove }: DepartmentActionsProps) {
   const [isConfirmingRemove, setIsConfirmingRemove] = useState(false)
 
+  const handleConfirmRemove = () => {
+    setIsConfirmingRemove(false)
+    onRemove(department)
+  }
+
   if (!isConfirmingRemove) {
     return <RowActions onEdit={() => onEdit(department)} onRemove={() => setIsConfirmingRemove(true)} />
   }
   return (
     <span className="flex flex-wrap items-center gap-2" role="group" aria-label={`Remove ${department.name}`}>
       <span className="text-[0.93rem] text-ink-2">This can’t be undone.</span>
-      <RowAction label="Remove" tone="confirm" onClick={() => onRemove(department)} />
+      <RowAction label="Remove" tone="confirm" onClick={handleConfirmRemove} />
       <RowAction label="Keep" tone="ghost" onClick={() => setIsConfirmingRemove(false)} />
     </span>
   )

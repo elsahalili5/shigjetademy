@@ -2,7 +2,7 @@ import request from 'supertest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { app } from '../../app.ts'
 import { prisma } from '@lib/prisma.ts'
-import { createOrganization, createUser, loginAs } from '../../../test/factories.ts'
+import { createCourse, createOrganization, createUser, loginAs } from '../../../test/factories.ts'
 
 let organizationId: string
 let myTeachingPath: string
@@ -151,7 +151,7 @@ describe('My teaching: groups and cover', () => {
   beforeEach(async () => {
     arbenId = (await prisma.lecturer.findFirstOrThrow({ where: { first_name: 'Arben' } })).id
     teutaId = (await prisma.lecturer.findFirstOrThrow({ where: { first_name: 'Teuta' } })).id
-    courseId = (await prisma.course.create({ data: { organization_id: organizationId, name: 'Mathematics' } })).id
+    courseId = (await createCourse({ organizationId, name: 'Mathematics' })).id
     yearId = (await prisma.academicYear.findFirstOrThrow({ where: { organization_id: organizationId } })).id
   })
 

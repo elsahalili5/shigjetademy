@@ -2,6 +2,7 @@ import { Navigate, createFileRoute, redirect } from '@tanstack/react-router'
 import { getSessionMembership } from '#/lib/route-guard'
 import { useTitle } from '#/lib/use-title'
 import { useActiveMembership } from '#/modules/auth/hooks/use-active-membership'
+import { isOrganizationOwner } from '#/modules/auth/utils/session-user'
 import { CoursesPage } from '#/modules/courses/components/courses-page'
 import { isCoursesManager } from '#/modules/courses/utils/permissions'
 
@@ -21,5 +22,5 @@ function DashboardCoursesPage() {
   // Switching to an organization where they can't, here or in another tab, sends them to its home
   if (!membership || !isCoursesManager(membership)) return <Navigate to="/dashboard" />
   const { organization } = membership
-  return <CoursesPage organizationId={organization.id} organizationName={organization.name} />
+  return <CoursesPage organizationId={organization.id} organizationName={organization.name} isOwner={isOrganizationOwner(membership)} />
 }
