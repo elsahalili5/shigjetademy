@@ -2,7 +2,7 @@ import request from 'supertest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { app } from '../../app.ts'
 import { prisma } from '@lib/prisma.ts'
-import { createOrganization, createUser, loginAs } from '../../../test/factories.ts'
+import { createCourse, createOrganization, createUser, loginAs } from '../../../test/factories.ts'
 
 let organizationId: string
 let yearsPath: string
@@ -179,7 +179,7 @@ describe('shortening a year with groups', () => {
     vi.setSystemTime(new Date('2026-11-02T10:00:00.000Z'))
     ownerAuth = await loginAs('owner@oxford.test')
     currentYearId = (await addYear(year('2026–27', '2026-09-01', '2027-06-30', true))).body.data.id
-    const course = await prisma.course.create({ data: { organization_id: organizationId, name: 'Mathematics' } })
+    const course = await createCourse({ organizationId, name: 'Mathematics' })
     groupId = (await prisma.group.create({ data: { organization_id: organizationId, course_id: course.id, name: 'Group A', academic_year_id: currentYearId } })).id
     lecturerId = (await prisma.lecturer.create({ data: { organization_id: organizationId, first_name: 'Arben', last_name: 'Hoxha', employment_type: 'FULL_TIME' } })).id
   })

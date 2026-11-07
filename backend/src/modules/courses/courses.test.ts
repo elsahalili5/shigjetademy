@@ -14,15 +14,15 @@ type CourseBody = {
   code: string
   description: string
   level: string
-  department_id: string | null
+  department_id: string
 }
 
 const course = (overrides: Partial<CourseBody> = {}): CourseBody => ({
   name: 'Mathematics',
   code: '',
   description: '',
-  level: '',
-  department_id: null,
+  level: 'B2',
+  department_id: sciencesId,
   ...overrides,
 })
 
@@ -70,11 +70,34 @@ describe('adding and listing courses', () => {
     expect(list.body.data.total).toBe(1)
   })
 
-  it('stores fields left empty as null', async () => {
+  it('stores the optional fields left empty as null', async () => {
     const response = await addCourse(course())
 
     expect(response.status).toBe(201)
-    expect(response.body.data).toMatchObject({ code: null, description: null, level: null, department: null })
+    expect(response.body.data).toMatchObject({ code: null, description: null, level: 'B2', department: { id: sciencesId, name: 'Sciences' } })
+  })
+
+  it('asks for a level', async () => {
+    const response = await addCourse(course({ level: '   ' }))
+
+    expect(response.status).toBe(400)
+    expect(response.body.details.fieldErrors.level).toEqual(['Enter the course level.'])
+  })
+
+  it('asks for a department', async () => {
+    const response = await request(app).post(coursesPath).set('Authorization', ownerAuth).send({ ...course(), department_id: null })
+
+    expect(response.status).toBe(400)
+    expect(response.body.details.fieldErrors.department_id).toEqual(['Choose a department.'])
+  })
+
+  it('asks for a level and a department when editing too', async () => {
+    const added = await addCourse(course())
+
+    const response = await request(app).put(`${coursesPath}/${added.body.data.id}`).set('Authorization', ownerAuth).send({ ...course(), level: '', department_id: '' })
+
+    expect(response.status).toBe(400)
+    expect(response.body.details.fieldErrors).toEqual({ level: ['Enter the course level.'], department_id: ['Choose a department.'] })
   })
 
   it('lists courses by name', async () => {
@@ -146,11 +169,12 @@ describe('adding and listing courses', () => {
     await addCourse(course({ name: 'Mathematics', code: 'MATH-1' }))
     const owner = await createUser({ email: 'owner@yllka.test' })
     const yllka = await createOrganization({ name: 'Yllka Kindergarten', ownerId: owner.id })
+    const languages = await prisma.department.create({ data: { organization_id: yllka.id, name: 'Languages' } })
 
     const response = await request(app)
       .post(`/api/organizations/${yllka.id}/courses`)
       .set('Authorization', await loginAs('owner@yllka.test'))
-      .send(course({ name: 'Mathematics', code: 'MATH-1' }))
+      .send(course({ name: 'Mathematics', code: 'MATH-1', department_id: languages.id }))
 
     expect(response.status).toBe(201)
   })
@@ -165,16 +189,6 @@ describe('adding and listing courses', () => {
     expect(response.status).toBe(400)
     expect(response.body.details.fieldErrors.department_id).toEqual(['Choose one of your organization’s departments.'])
     expect((await listCourses()).body.data.courses).toEqual([])
-  })
-
-  it('keeps the course, without a department, when its department is removed', async () => {
-    const added = await addCourse(course({ department_id: sciencesId }))
-
-    const removed = await request(app).delete(`/api/organizations/${organizationId}/departments/${sciencesId}`).set('Authorization', ownerAuth)
-
-    expect(removed.status).toBe(200)
-    const list = await listCourses()
-    expect(list.body.data.courses).toMatchObject([{ id: added.body.data.id, department: null }])
   })
 })
 
@@ -206,10 +220,10 @@ describe('editing courses', () => {
   it('saves every field', async () => {
     const added = await addCourse(course({ code: 'MATH-1' }))
 
-    const response = await updateCourse(added.body.data.id, course({ name: 'Algebra', code: '', description: 'Numbers', level: 'B2', department_id: sciencesId }))
+    const response = await updateCourse(added.body.data.id, course({ name: 'Algebra', code: '', description: 'Numbers', level: 'C1', department_id: sciencesId }))
 
     expect(response.status).toBe(200)
-    expect(response.body.data).toMatchObject({ name: 'Algebra', code: null, description: 'Numbers', level: 'B2', department: { id: sciencesId } })
+    expect(response.body.data).toMatchObject({ name: 'Algebra', code: null, description: 'Numbers', level: 'C1', department: { id: sciencesId } })
     expect(await namesIn()).toEqual(['Algebra'])
   })
 

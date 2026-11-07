@@ -12,7 +12,7 @@ export function useCourseForm(course?: Course) {
       code: course?.code ?? '',
       description: course?.description ?? '',
       level: course?.level ?? '',
-      department_id: course?.department?.id ?? null,
+      department_id: course?.department.id ?? '',
     },
   })
 }

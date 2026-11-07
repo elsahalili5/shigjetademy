@@ -327,6 +327,24 @@ describe('LocationsPage: departments', () => {
     expect(within(region).getByText('No departments yet.')).toBeInTheDocument()
   })
 
+  it('shows the server’s reason and keeps the department when courses use it', async () => {
+    signInAsOwner({ departments: [LANGUAGES] })
+    const message = 'This department can’t be removed while courses use it, archived ones included. Move them to another department first.'
+    server.use(http.delete(`${DEPARTMENTS_PATH}/${LANGUAGES.id}`, () => HttpResponse.json({ error: message }, { status: 409 })))
+    const { user } = renderRoute('/dashboard/locations')
+
+    const region = await departmentsRegion()
+    const row = await within(region).findByRole('listitem')
+    await user.click(within(row).getByRole('button', { name: 'Remove' }))
+    await user.click(within(row).getByRole('button', { name: 'Remove' }))
+
+    expect(await screen.findByText(message)).toBeInTheDocument()
+    expect(within(region).getByRole('listitem')).toHaveTextContent('Languages')
+    expect(screen.queryByText('Removed Languages.')).not.toBeInTheDocument()
+    expect(within(row).queryByText('This can’t be undone.')).not.toBeInTheDocument()
+    expect(within(row).getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+  })
+
   it('keeps a department without a location when its location is removed', async () => {
     signInAsOwner({ departments: [LANGUAGES] })
     server.use(http.delete(`${LOCATIONS_PATH}/${PEJA_BRANCH.id}`, () => HttpResponse.json({ message: 'Location removed' })))

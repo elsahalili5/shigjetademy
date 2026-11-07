@@ -2,7 +2,7 @@ import request from 'supertest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { app } from '../../app.ts'
 import { prisma } from '@lib/prisma.ts'
-import { createOrganization, createUser, loginAs } from '../../../test/factories.ts'
+import { createCourse, createOrganization, createUser, loginAs } from '../../../test/factories.ts'
 
 let organizationId: string
 let groupsPath: string
@@ -56,7 +56,7 @@ const addLecturer = ({ firstName, lastName = 'Lecturer', subjects = [], status =
 
 const yllkaRecords = async () => {
   const yllka = await prisma.organization.findFirstOrThrow({ where: { name: 'Yllka Kindergarten' } })
-  const course = await prisma.course.create({ data: { organization_id: yllka.id, name: 'Yllka course' } })
+  const course = await createCourse({ organizationId: yllka.id, name: 'Yllka course' })
   const year = await prisma.academicYear.create({ data: { organization_id: yllka.id, name: '2026–27', start_date: new Date('2026-09-01'), end_date: new Date('2027-06-30'), is_current: true } })
   const term = await prisma.academicTerm.create({ data: { academic_year_id: year.id, name: 'Autumn', start_date: new Date('2026-09-01'), end_date: new Date('2027-01-31') } })
   const location = await prisma.location.create({ data: { organization_id: yllka.id, name: 'Yllka campus', is_main: true } })
@@ -79,7 +79,7 @@ beforeEach(async () => {
     })
   ).id
   await createOrganization({ name: 'Yllka Kindergarten', ownerId: yllkaOwner.id })
-  mathematicsId = (await prisma.course.create({ data: { organization_id: organizationId, name: 'Mathematics', code: 'MATH-1' } })).id
+  mathematicsId = (await createCourse({ organizationId, name: 'Mathematics', code: 'MATH-1' })).id
   yearId = (await prisma.academicYear.create({ data: { organization_id: organizationId, name: '2026–27', start_date: new Date('2026-09-01'), end_date: new Date('2027-06-30'), is_current: true } })).id
   otherYearId = (await prisma.academicYear.create({ data: { organization_id: organizationId, name: '2027–28', start_date: new Date('2027-09-01'), end_date: new Date('2028-06-30') } })).id
   autumnId = (await prisma.academicTerm.create({ data: { academic_year_id: yearId, name: 'Autumn', start_date: new Date('2026-09-01'), end_date: new Date('2027-01-31') } })).id
@@ -157,7 +157,7 @@ describe('adding and listing groups', () => {
   })
 
   it('lets the same name repeat in another course or another year', async () => {
-    const physics = await prisma.course.create({ data: { organization_id: organizationId, name: 'Physics' } })
+    const physics = await createCourse({ organizationId, name: 'Physics' })
     await addGroup(group())
 
     const otherCourse = await addGroup(group({ course_id: physics.id }))
@@ -270,7 +270,7 @@ const logged = (action: 'GROUP_ADDED' | 'GROUP_UPDATED' | 'GROUP_ARCHIVED' | 'GR
   prisma.activityLog.findMany({ where: { organization_id: organizationId, action }, orderBy: { subject_name: 'asc' }, select: { subject_name: true } })
 
 const addArchivedCourse = async () => {
-  const course = await prisma.course.create({ data: { organization_id: organizationId, name: 'Old Latin', status: 'ARCHIVED' } })
+  const course = await createCourse({ organizationId, name: 'Old Latin', status: 'ARCHIVED' })
   return course.id
 }
 
@@ -278,7 +278,7 @@ describe('filtering groups', () => {
   let physicsId: string
 
   beforeEach(async () => {
-    physicsId = (await prisma.course.create({ data: { organization_id: organizationId, name: 'Physics' } })).id
+    physicsId = (await createCourse({ organizationId, name: 'Physics' })).id
     await addGroup(group({ name: 'Math this year' }))
     await addGroup(group({ name: 'Math next year', academic_year_id: otherYearId }))
     await addGroup(group({ name: 'Physics this year', course_id: physicsId }))
@@ -321,7 +321,7 @@ describe('filtering groups', () => {
 
 describe('editing groups', () => {
   it('saves every field', async () => {
-    const physics = await prisma.course.create({ data: { organization_id: organizationId, name: 'Physics' } })
+    const physics = await createCourse({ organizationId, name: 'Physics' })
     const added = await addGroup(group())
 
     const response = await updateGroup(
@@ -462,7 +462,7 @@ describe('group activity', () => {
 
 describe('archiving a course', () => {
   it('archives its active groups and leaves other courses’ groups alone', async () => {
-    const physics = await prisma.course.create({ data: { organization_id: organizationId, name: 'Physics' } })
+    const physics = await createCourse({ organizationId, name: 'Physics' })
     await addGroup(group({ name: 'Group A' }))
     await addGroup(group({ name: 'Group B', academic_year_id: otherYearId }))
     await addGroup(group({ name: 'Physics group', course_id: physics.id }))

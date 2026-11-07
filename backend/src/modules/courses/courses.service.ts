@@ -52,11 +52,9 @@ const checkCourse = async ({ tx, organizationId, data, courseId }: CheckCoursePa
       throw refuseField({ field: 'code', status: 409, message: 'There is already a course with this code.' })
     }
   }
-  if (data.department_id) {
-    const department = await tx.department.findFirst({ where: { id: data.department_id, organization_id: organizationId }, select: { id: true } })
-    if (!department) {
-      throw refuseField({ field: 'department_id', status: 400, message: 'Choose one of your organization’s departments.' })
-    }
+  const department = await tx.department.findFirst({ where: { id: data.department_id, organization_id: organizationId }, select: { id: true } })
+  if (!department) {
+    throw refuseField({ field: 'department_id', status: 400, message: 'Choose one of your organization’s departments.' })
   }
 }
 
@@ -65,7 +63,7 @@ const toCourseData = (data: CourseInput) => ({
   name: data.name,
   code: data.code || null,
   description: data.description || null,
-  level: data.level || null,
+  level: data.level,
   department_id: data.department_id,
 })
 

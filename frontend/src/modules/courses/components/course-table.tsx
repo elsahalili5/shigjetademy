@@ -10,8 +10,8 @@ const WIDE_ONLY_CLASS = 'max-[640px]:hidden'
 
 const NARROW_ONLY_CLASS = 'hidden max-[640px]:block'
 
-/** "B2 · Sciences", or what of it is recorded */
-const getDetails = (course: Course) => [course.level, course.department?.name].filter(Boolean).join(' · ')
+/** "B2 · Sciences" */
+const getDetails = (course: Course) => `${course.level} · ${course.department.name}`
 
 interface CourseTableProps {
   courses: Course[]
@@ -55,18 +55,17 @@ interface CourseRowProps {
 }
 
 function CourseRow({ course, actions }: CourseRowProps) {
-  const details = getDetails(course)
   return (
     <tr className="border-b border-rule last:border-b-0">
       <td className={CELL_CLASS}>
         <span className="grid gap-0.5 leading-tight">
           <span className="font-semibold">{course.name}</span>
           {course.code ? <span className="text-[0.88rem] text-ink-3">{course.code}</span> : null}
-          {details ? <span className={`${NARROW_ONLY_CLASS} text-[0.88rem] text-ink-3`}>{details}</span> : null}
+          <span className={`${NARROW_ONLY_CLASS} text-[0.88rem] text-ink-3`}>{getDetails(course)}</span>
         </span>
       </td>
-      <td className={`${CELL_CLASS} ${WIDE_ONLY_CLASS}`}>{course.level ?? <span className="text-ink-3">Not set</span>}</td>
-      <td className={`${CELL_CLASS} ${WIDE_ONLY_CLASS}`}>{course.department?.name ?? <span className="text-ink-3">Not set</span>}</td>
+      <td className={`${CELL_CLASS} ${WIDE_ONLY_CLASS}`}>{course.level}</td>
+      <td className={`${CELL_CLASS} ${WIDE_ONLY_CLASS}`}>{course.department.name}</td>
       <td className={`${CELL_CLASS} w-px text-right whitespace-nowrap`}>{actions}</td>
     </tr>
   )

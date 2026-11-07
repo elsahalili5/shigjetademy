@@ -62,10 +62,10 @@ function CourseForm({ organizationId, course, departments, onSaved, onCancel }: 
   return (
     <form className="flex min-h-0 flex-col" noValidate onSubmit={handleSubmit}>
       <div className="grid gap-4 overflow-y-auto px-6 py-5">
-        <AuthField id={ids.name} label="Name" autoComplete="off" disabled={isPending} error={fieldError('name')} {...form.register('name')} />
+        <AuthField id={ids.name} label="Name" required autoComplete="off" disabled={isPending} error={fieldError('name')} {...form.register('name')} />
         <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
           <AuthField id={ids.code} label="Code (optional)" autoComplete="off" disabled={isPending} error={fieldError('code')} {...form.register('code')} />
-          <AuthField id={ids.level} label="Level (optional)" autoComplete="off" disabled={isPending} error={fieldError('level')} {...form.register('level')} />
+          <AuthField id={ids.level} label="Level" required autoComplete="off" disabled={isPending} error={fieldError('level')} {...form.register('level')} />
         </div>
         <Controller
           control={form.control}
@@ -74,15 +74,15 @@ function CourseForm({ organizationId, course, departments, onSaved, onCancel }: 
             <SelectField
               id={ids.department}
               label="Department"
-              hint="(optional)"
+              required
               disabled={isPending}
               error={fieldError('department_id')}
               name={field.name}
-              value={field.value ?? ''}
+              value={field.value}
               onBlur={field.onBlur}
-              onChange={(event) => field.onChange(event.target.value || null)}
+              onChange={field.onChange}
             >
-              <option value="">No department</option>
+              <option value="">Choose a department</option>
               {departments.map((department) => (
                 <option key={department.id} value={department.id}>
                   {department.name}

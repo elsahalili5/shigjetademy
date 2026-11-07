@@ -63,7 +63,7 @@ const findDepartment = async ({ tx, organizationId, departmentId }: FindDepartme
   return department
 }
 
-// Writes lock the organization, so two departments can't be given the same name at the same moment
+// Writes lock the organization, so two departments can't be given the same name at the same moment, and a course saved at the same moment can't slip past the removal check
 export const DepartmentService = {
   listDepartments: (organizationId: string) =>
     prisma.department.findMany({ where: { organization_id: organizationId }, orderBy: { name: 'asc' }, select: departmentSelect }),
@@ -89,12 +89,13 @@ export const DepartmentService = {
 
   removeDepartment: ({ organizationId, departmentId, actorId }: DepartmentChangeParams) =>
     prisma.$transaction(async (tx) => {
+      await lockOrganization({ tx, organizationId })
       const department = await findDepartment({ tx, organizationId, departmentId })
-      // A removal at the same moment may have won; then there is nothing left to remove or log
-      const { count } = await tx.department.deleteMany({ where: { id: departmentId, organization_id: organizationId } })
-      if (count === 0) {
-        throw new HttpError(404, 'Department not found')
+      const course = await tx.course.findFirst({ where: { department_id: departmentId }, select: { id: true } })
+      if (course) {
+        throw new HttpError(409, 'This department can’t be removed while courses use it, archived ones included. Move them to another department first.')
       }
+      await tx.department.delete({ where: { id: departmentId } })
       await tx.activityLog.create({ data: { actor_id: actorId, action: 'DEPARTMENT_REMOVED', organization_id: organizationId, subject_name: department.name } })
     }),
 }
