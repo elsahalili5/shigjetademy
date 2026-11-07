@@ -15,11 +15,15 @@ type GetOrganizationTodayParams = {
   organizationId: string
 }
 
-/** The organization's calendar day right now, as 'YYYY-MM-DD' */
-export const getOrganizationToday = async ({ db, organizationId }: GetOrganizationTodayParams) => {
+/** The organization's calendar day right now, as 'YYYY-MM-DD', and the day its week starts on */
+export const getOrganizationCalendar = async ({ db, organizationId }: GetOrganizationTodayParams) => {
   const organization = await db.organization.findUniqueOrThrow({
     where: { id: organizationId },
     select: { country: true, settings: { select: { time_zone: true, week_start: true, date_format: true } } },
   })
-  return todayIn(resolveOrganizationSettings({ stored: organization.settings, country: organization.country }).time_zone)
+  const settings = resolveOrganizationSettings({ stored: organization.settings, country: organization.country })
+  return { today: todayIn(settings.time_zone), weekStart: settings.week_start }
 }
+
+/** The organization's calendar day right now, as 'YYYY-MM-DD' */
+export const getOrganizationToday = async (params: GetOrganizationTodayParams) => (await getOrganizationCalendar(params)).today

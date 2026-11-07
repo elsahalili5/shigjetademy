@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import type { CurrentPeriod } from './academic-periods.ts'
 import { emailSchema, nameSchema } from './auth.ts'
+import type { GroupScheduleEntry } from './groups.ts'
 import { optionalText } from './organization.ts'
 
 export const LECTURER_STATUSES = ['ACTIVE', 'ARCHIVED'] as const
@@ -123,13 +124,21 @@ export type LecturerPage = {
   counts: Record<LecturerStatus, number>
 }
 
-/** A group as its lecturer reads it */
-export type MyTeachingGroup = {
+/** A group a lecturer covers: when it meets, without its students */
+export type MyTeachingCoverGroup = {
   id: string
   name: string
   course: string
   academic_year: string
   location: string | null
+  /** In the organization's week */
+  schedule: GroupScheduleEntry[]
+}
+
+/** A group as its permanent lecturer reads it */
+export type MyTeachingGroup = MyTeachingCoverGroup & {
+  /** The students in it now, by name, with nothing else about them */
+  students: { id: string; first_name: string; last_name: string }[]
 }
 
 /** A substitution a lecturer covers, running now or still to come; the staff note stays out */
@@ -138,7 +147,7 @@ export type MyTeachingCover = {
   status: 'CURRENT' | 'UPCOMING'
   start_date: string
   end_date: string
-  group: MyTeachingGroup
+  group: MyTeachingCoverGroup
 }
 
 /** What a lecturer sees of their organization: their own record only, the current school year and term, and what they teach */

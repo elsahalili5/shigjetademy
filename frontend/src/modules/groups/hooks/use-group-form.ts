@@ -1,8 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { groupSchema } from '@shigjetademy/shared/groups'
+import { groupSchema, newGroupSchema } from '@shigjetademy/shared/groups'
 import type { Group, GroupInput } from '@shigjetademy/shared/groups'
 import { getPlannedLecturer } from '../utils/lecturer-label'
+import { NEW_SCHEDULE_ENTRY } from '../utils/new-schedule-entry'
 
 type UseGroupFormParams = {
   /** The group being edited, or none when adding */
@@ -12,8 +13,10 @@ type UseGroupFormParams = {
 }
 
 export function useGroupForm({ group, defaultYearId }: UseGroupFormParams) {
+  // Only a group that never had a schedule may save without one
+  const isScheduleOptional = !!group && group.schedule.length === 0
   return useForm<GroupInput>({
-    resolver: zodResolver(groupSchema),
+    resolver: zodResolver(isScheduleOptional ? groupSchema : newGroupSchema),
     defaultValues: {
       course_id: group?.course.id ?? '',
       name: group?.name ?? '',
@@ -23,6 +26,7 @@ export function useGroupForm({ group, defaultYearId }: UseGroupFormParams) {
       capacity: group?.capacity ?? null,
       lecturer_id: (group && getPlannedLecturer(group)?.id) ?? null,
       lecturer_effective_from: group?.lecturer_change?.start_date ?? null,
+      schedule: group ? group.schedule : [{ ...NEW_SCHEDULE_ENTRY }],
     },
   })
 }

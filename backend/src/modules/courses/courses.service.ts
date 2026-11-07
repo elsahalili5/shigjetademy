@@ -4,8 +4,8 @@ import { escapeLike } from '@lib/like-pattern.ts'
 import { lockOrganization } from '@lib/organization-lock.ts'
 import type { OrganizationScope } from '@lib/organization-lock.ts'
 import { prisma } from '@lib/prisma.ts'
-import { archiveCourseGroups } from '@modules/groups/groups.service.ts'
-import type { CourseInput, CourseStatus, ListCoursesQuery } from './courses.types.ts'
+import { archiveCourseGroups, listCourseGroups } from '@modules/groups/groups.service.ts'
+import type { CourseInput, CourseParam, CourseStatus, ListCoursesQuery } from './courses.types.ts'
 
 const courseSelect = {
   id: true,
@@ -122,6 +122,12 @@ export const CourseService = {
     const countOf = (status: CourseStatus) => statuses.find((item) => item.status === status)?._count._all ?? 0
     const counts = { ACTIVE: countOf('ACTIVE'), ARCHIVED: countOf('ARCHIVED') }
     return { courses, total: counts[query.status], counts }
+  },
+
+  // Read-only: the course with every group it runs
+  getCourse: async ({ organizationId, courseId }: CourseParam) => {
+    const course = await findCourse({ tx: prisma, organizationId, courseId })
+    return { ...course, groups: await listCourseGroups({ organizationId, courseId }) }
   },
 
   /** Every course, for the group forms and filters */

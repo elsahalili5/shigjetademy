@@ -18,6 +18,7 @@ import { useCourses } from '../hooks/use-courses'
 import type { LoadedCourses } from '../hooks/use-courses'
 import { useSetCourseStatus } from '../hooks/use-set-course-status'
 import { getCourseSetup } from '../utils/course-setup'
+import { COURSE_STATUS_LABELS } from '../utils/status-labels'
 import type { CourseSetup } from '../utils/course-setup'
 import { CourseActions } from './course-actions'
 import type { CourseStatusChange } from './course-actions'
@@ -25,10 +26,6 @@ import { CourseDialog } from './course-dialog'
 import type { CourseDialogMode } from './course-dialog'
 import { CourseTable } from './course-table'
 
-const STATUS_TAB_LABELS = {
-  ACTIVE: 'Active',
-  ARCHIVED: 'Archived',
-} as const satisfies Record<CourseStatus, string>
 
 interface CoursesPageProps {
   organizationId: string
@@ -96,7 +93,7 @@ export function CoursesPage({ organizationId, organizationName, isOwner }: Cours
         {notice ? <NoticeBar notice={notice} onDismiss={() => setNotice(null)} /> : null}
 
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <StatusTabs label="Course status" statuses={COURSE_STATUSES} labels={STATUS_TAB_LABELS} counts={courses.data?.counts} current={status} onChange={setStatus} />
+          <StatusTabs label="Course status" statuses={COURSE_STATUSES} labels={COURSE_STATUS_LABELS} counts={courses.data?.counts} current={status} onChange={setStatus} />
 
           <div className="relative w-[min(100%,340px)]">
             <label htmlFor={searchId} className="visually-hidden">
@@ -114,7 +111,7 @@ export function CoursesPage({ organizationId, organizationName, isOwner }: Cours
           </div>
         </div>
 
-        <section className="rounded-card border border-rule" role="tabpanel" aria-label={STATUS_TAB_LABELS[status]}>
+        <section className="rounded-card border border-rule" role="tabpanel" aria-label={COURSE_STATUS_LABELS[status]}>
           <CourseList
             isFailed={isListFailed}
             data={courses.data}

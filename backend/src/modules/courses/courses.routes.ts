@@ -20,6 +20,9 @@ router.post(COURSES, authMiddleware, validateRequestMiddleware(organizationIdPar
 
 router.get(`${COURSES}/options`, authMiddleware, validateRequestMiddleware(organizationIdParamSchema, 'params'), canManage, CourseController.listCourseOptions)
 
+// After /options, so "options" is never read as a course id
+router.get(COURSE, authMiddleware, validateRequestMiddleware(courseParamSchema, 'params'), canManage, CourseController.getCourse)
+
 router.put(COURSE, authMiddleware, validateRequestMiddleware(courseParamSchema, 'params'), canManage, validateRequestMiddleware(courseSchema), CourseController.updateCourse)
 
 router.post(`${COURSE}/archive`, authMiddleware, validateRequestMiddleware(courseParamSchema, 'params'), canManage, CourseController.archiveCourse)

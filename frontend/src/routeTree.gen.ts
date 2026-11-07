@@ -43,6 +43,8 @@ import { Route as OrganizationsNewRouteImport } from './routes/organizations/new
 import { Route as appPlatformIndexRouteImport } from './routes/(app)/platform/index'
 import { Route as appPlatformSlugRouteImport } from './routes/(app)/platform/$slug'
 import { Route as DashboardClientsOrganizationIdRouteImport } from './routes/dashboard/clients/$organizationId'
+import { Route as DashboardCoursesCourseIdRouteImport } from './routes/dashboard/courses_.$courseId'
+import { Route as DashboardGroupsGroupIdRouteImport } from './routes/dashboard/groups_.$groupId'
 
 const appRouteRoute = appRouteRouteImport.update({
   id: '/(app)',
@@ -216,6 +218,17 @@ const DashboardClientsOrganizationIdRoute =
     path: '/clients/$organizationId',
     getParentRoute: () => DashboardRouteRoute,
   } as any)
+const DashboardCoursesCourseIdRoute =
+  DashboardCoursesCourseIdRouteImport.update({
+    id: '/courses_/$courseId',
+    path: '/courses/$courseId',
+    getParentRoute: () => DashboardRouteRoute,
+  } as any)
+const DashboardGroupsGroupIdRoute = DashboardGroupsGroupIdRouteImport.update({
+  id: '/groups_/$groupId',
+  path: '/groups/$groupId',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRouteRouteWithChildren
@@ -249,6 +262,8 @@ export interface FileRoutesByFullPath {
   '/dashboard/': typeof DashboardIndexRoute
   '/platform/$slug': typeof appPlatformSlugRoute
   '/dashboard/clients/$organizationId': typeof DashboardClientsOrganizationIdRoute
+  '/dashboard/courses/$courseId': typeof DashboardCoursesCourseIdRoute
+  '/dashboard/groups/$groupId': typeof DashboardGroupsGroupIdRoute
   '/platform/': typeof appPlatformIndexRoute
 }
 export interface FileRoutesByTo {
@@ -282,6 +297,8 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardIndexRoute
   '/platform/$slug': typeof appPlatformSlugRoute
   '/dashboard/clients/$organizationId': typeof DashboardClientsOrganizationIdRoute
+  '/dashboard/courses/$courseId': typeof DashboardCoursesCourseIdRoute
+  '/dashboard/groups/$groupId': typeof DashboardGroupsGroupIdRoute
   '/platform': typeof appPlatformIndexRoute
 }
 export interface FileRoutesById {
@@ -319,6 +336,8 @@ export interface FileRoutesById {
   '/dashboard/': typeof DashboardIndexRoute
   '/(app)/platform/$slug': typeof appPlatformSlugRoute
   '/dashboard/clients/$organizationId': typeof DashboardClientsOrganizationIdRoute
+  '/dashboard/courses_/$courseId': typeof DashboardCoursesCourseIdRoute
+  '/dashboard/groups_/$groupId': typeof DashboardGroupsGroupIdRoute
   '/(app)/platform/': typeof appPlatformIndexRoute
 }
 export interface FileRouteTypes {
@@ -355,6 +374,8 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/platform/$slug'
     | '/dashboard/clients/$organizationId'
+    | '/dashboard/courses/$courseId'
+    | '/dashboard/groups/$groupId'
     | '/platform/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -388,6 +409,8 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/platform/$slug'
     | '/dashboard/clients/$organizationId'
+    | '/dashboard/courses/$courseId'
+    | '/dashboard/groups/$groupId'
     | '/platform'
   id:
     | '__root__'
@@ -424,6 +447,8 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/(app)/platform/$slug'
     | '/dashboard/clients/$organizationId'
+    | '/dashboard/courses_/$courseId'
+    | '/dashboard/groups_/$groupId'
     | '/(app)/platform/'
   fileRoutesById: FileRoutesById
 }
@@ -676,6 +701,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardClientsOrganizationIdRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
+    '/dashboard/courses_/$courseId': {
+      id: '/dashboard/courses_/$courseId'
+      path: '/courses/$courseId'
+      fullPath: '/dashboard/courses/$courseId'
+      preLoaderRoute: typeof DashboardCoursesCourseIdRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
+    '/dashboard/groups_/$groupId': {
+      id: '/dashboard/groups_/$groupId'
+      path: '/groups/$groupId'
+      fullPath: '/dashboard/groups/$groupId'
+      preLoaderRoute: typeof DashboardGroupsGroupIdRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
   }
 }
 
@@ -740,6 +779,8 @@ interface DashboardRouteRouteChildren {
   DashboardStudentsRoute: typeof DashboardStudentsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardClientsOrganizationIdRoute: typeof DashboardClientsOrganizationIdRoute
+  DashboardCoursesCourseIdRoute: typeof DashboardCoursesCourseIdRoute
+  DashboardGroupsGroupIdRoute: typeof DashboardGroupsGroupIdRoute
 }
 
 const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
@@ -759,6 +800,8 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardStudentsRoute: DashboardStudentsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardClientsOrganizationIdRoute: DashboardClientsOrganizationIdRoute,
+  DashboardCoursesCourseIdRoute: DashboardCoursesCourseIdRoute,
+  DashboardGroupsGroupIdRoute: DashboardGroupsGroupIdRoute,
 }
 
 const DashboardRouteRouteWithChildren = DashboardRouteRoute._addFileChildren(

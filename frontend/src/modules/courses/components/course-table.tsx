@@ -1,5 +1,7 @@
-import type { ReactNode } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
+import { Link, useNavigate } from '@tanstack/react-router'
 import type { Course } from '@shigjetademy/shared/courses'
+import { CLICKABLE_ROW_CLASS, ROW_ACTIONS_ATTRIBUTE, ROW_LINK_CLASS, isRowClickIgnored } from '#/lib/row-click'
 
 const HEADER_CELL_CLASS = 'px-5 py-3 text-left text-[0.87rem] font-[650] text-ink-3'
 
@@ -55,18 +57,30 @@ interface CourseRowProps {
 }
 
 function CourseRow({ course, actions }: CourseRowProps) {
+  const navigate = useNavigate()
+
+  // The whole row opens the course; the name stays a real link for keyboards and screen readers
+  const handleRowClick = (event: MouseEvent<HTMLTableRowElement>) => {
+    if (isRowClickIgnored(event)) return
+    void navigate({ to: '/dashboard/courses/$courseId', params: { courseId: course.id } })
+  }
+
   return (
-    <tr className="border-b border-rule last:border-b-0">
+    <tr className={`border-b border-rule last:border-b-0 ${CLICKABLE_ROW_CLASS}`} onClick={handleRowClick}>
       <td className={CELL_CLASS}>
         <span className="grid gap-0.5 leading-tight">
-          <span className="font-semibold">{course.name}</span>
+          <Link to="/dashboard/courses/$courseId" params={{ courseId: course.id }} className={ROW_LINK_CLASS}>
+            {course.name}
+          </Link>
           {course.code ? <span className="text-[0.88rem] text-ink-3">{course.code}</span> : null}
           <span className={`${NARROW_ONLY_CLASS} text-[0.88rem] text-ink-3`}>{getDetails(course)}</span>
         </span>
       </td>
       <td className={`${CELL_CLASS} ${WIDE_ONLY_CLASS}`}>{course.level}</td>
       <td className={`${CELL_CLASS} ${WIDE_ONLY_CLASS}`}>{course.department.name}</td>
-      <td className={`${CELL_CLASS} w-px text-right whitespace-nowrap`}>{actions}</td>
+      <td className={`${CELL_CLASS} w-px text-right whitespace-nowrap`} {...ROW_ACTIONS_ATTRIBUTE}>
+        {actions}
+      </td>
     </tr>
   )
 }

@@ -15,6 +15,7 @@ import { AuthField } from '#/modules/auth/components/auth-field'
 import { useGroupForm } from '../hooks/use-group-form'
 import { useSaveGroup } from '../hooks/use-save-group'
 import { getCourseOptionLabel } from '../utils/course-option-label'
+import { GroupScheduleFields } from './group-schedule-fields'
 import { getGroupLecturerName, getLecturerChoices, getPlannedLecturer } from '../utils/lecturer-label'
 
 export type GroupDialogMode = { kind: 'add'; openCount: number } | { kind: 'edit'; group: Group; openCount: number }
@@ -241,6 +242,8 @@ function GroupForm({ organizationId, group, options, timeZone, onSaved, onCancel
         {isEffectiveFromShown ? (
           <AuthField id={ids.effectiveFrom} label="Effective from" type="date" disabled={isPending} error={fieldError('lecturer_effective_from')} {...form.register('lecturer_effective_from')} />
         ) : null}
+
+        <GroupScheduleFields control={form.control} register={form.register} errors={errors} backendError={saveGroup.error} isDisabled={isPending} />
 
         {saveGroup.isError ? <FormAlert>{getErrorMessage(saveGroup.error)}</FormAlert> : null}
       </div>

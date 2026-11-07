@@ -24,7 +24,16 @@ type GroupBody = {
   capacity: number | null
   lecturer_id: string | null
   lecturer_effective_from: string | null
+  schedule: ScheduleEntry[]
 }
+
+type ScheduleEntry = {
+  weekday: string
+  start_time: string
+  end_time: string
+}
+
+const MONDAY_EVENING: ScheduleEntry = { weekday: 'MONDAY', start_time: '17:00', end_time: '18:30' }
 
 const group = (overrides: Partial<GroupBody> = {}): GroupBody => ({
   course_id: mathematicsId,
@@ -35,6 +44,7 @@ const group = (overrides: Partial<GroupBody> = {}): GroupBody => ({
   capacity: null,
   lecturer_id: null,
   lecturer_effective_from: null,
+  schedule: [MONDAY_EVENING],
   ...overrides,
 })
 
@@ -252,9 +262,43 @@ describe('group access', () => {
 
   it('refuses a school admin without MANAGE_COURSES', async () => {
     const auth = await loginAs('admin@oxford.test')
+    const added = await addGroup(group())
 
     expect((await addGroup(group(), auth)).status).toBe(403)
     expect((await listGroups({}, auth)).status).toBe(403)
+    expect((await readGroup(added.body.data.id, auth)).status).toBe(403)
+  })
+})
+
+const readGroup = async (id: string, auth = ownerAuth) => request(app).get(`${groupsPath}/${id}`).set('Authorization', auth)
+
+describe('reading one group', () => {
+  it('answers the group with its course, year, term, location, capacity and lecturer', async () => {
+    const lecturer = await addLecturer({ firstName: 'Arben', lastName: 'Hoxha' })
+    const added = await addGroup(group({ academic_term_id: autumnId, location_id: mainCampusId, capacity: 20, lecturer_id: lecturer.id }))
+
+    const response = await readGroup(added.body.data.id)
+
+    expect(response.status).toBe(200)
+    expect(response.body.data).toMatchObject({
+      id: added.body.data.id,
+      name: 'Group A',
+      capacity: 20,
+      course: { id: mathematicsId, name: 'Mathematics' },
+      academic_year: { id: yearId, name: '2026–27' },
+      academic_term: { id: autumnId, name: 'Autumn' },
+      location: { id: mainCampusId, name: 'Main campus' },
+      lecturer: { id: lecturer.id, first_name: 'Arben', last_name: 'Hoxha' },
+    })
+  })
+
+  it('answers 404 for an unknown group or one of another organization', async () => {
+    const yllka = await yllkaRecords()
+    const yllkaOrganization = await prisma.organization.findFirstOrThrow({ where: { name: 'Yllka Kindergarten' } })
+    const yllkaGroup = await prisma.group.create({ data: { organization_id: yllkaOrganization.id, course_id: yllka.courseId, name: 'Yllka group', academic_year_id: yllka.yearId } })
+
+    expect((await readGroup('00000000-0000-4000-8000-000000000000')).status).toBe(404)
+    expect((await readGroup(yllkaGroup.id)).status).toBe(404)
   })
 })
 
@@ -511,6 +555,442 @@ describe('archiving a course', () => {
   })
 })
 
+describe('a group’s weekly schedule', () => {
+  const at = (weekday: string, start_time: string, end_time: string): ScheduleEntry => ({ weekday, start_time, end_time })
+
+  /** A group stored before schedules existed, so it has none */
+  const addUnscheduledGroup = () => prisma.group.create({ data: { organization_id: organizationId, course_id: mathematicsId, name: 'Old group', academic_year_id: yearId } })
+
+  it('needs at least one day and time on a new group', async () => {
+    const response = await addGroup(group({ schedule: [] }))
+
+    expect(response.status).toBe(400)
+    expect(response.body.details.fieldErrors.schedule).toEqual(['Add at least one day and time.'])
+  })
+
+  it('refuses an end time that isn’t after the start time', async () => {
+    const response = await addGroup(group({ schedule: [at('MONDAY', '17:00', '17:00')] }))
+
+    expect(response.status).toBe(400)
+    expect(response.body.details.fieldErrors.schedule).toEqual(['The end time must be after the start time.'])
+  })
+
+  it('refuses a time that isn’t a wall-clock time', async () => {
+    const response = await addGroup(group({ schedule: [at('MONDAY', '25:00', '26:00')] }))
+
+    expect(response.status).toBe(400)
+    expect(response.body.details.fieldErrors.schedule).toContain('Enter the start time.')
+  })
+
+  it('refuses two overlapping times on the same day, and takes back-to-back ones and other days', async () => {
+    const overlapping = await addGroup(group({ schedule: [at('MONDAY', '17:00', '18:30'), at('MONDAY', '18:00', '19:00')] }))
+    const fine = await addGroup(group({ schedule: [at('MONDAY', '17:00', '18:30'), at('MONDAY', '18:30', '19:00'), at('TUESDAY', '17:30', '18:00')] }))
+
+    expect(overlapping.status).toBe(400)
+    expect(overlapping.body.details.fieldErrors.schedule).toEqual(['This overlaps another time on the same day.'])
+    expect(fine.status).toBe(201)
+  })
+
+  it('stores the wall-clock times and answers them in the week from Monday, then by time', async () => {
+    const added = await addGroup(group({ schedule: [at('SUNDAY', '09:00', '10:00'), at('WEDNESDAY', '17:00', '18:30'), at('MONDAY', '18:00', '19:00'), at('MONDAY', '07:05', '08:00')] }))
+
+    const expected = [at('MONDAY', '07:05', '08:00'), at('MONDAY', '18:00', '19:00'), at('WEDNESDAY', '17:00', '18:30'), at('SUNDAY', '09:00', '10:00')]
+    expect(added.body.data.schedule).toEqual(expected)
+    expect((await readGroup(added.body.data.id)).body.data.schedule).toEqual(expected)
+    expect((await listGroups()).body.data.groups[0].schedule).toEqual(expected)
+  })
+
+  it('starts the week on Sunday when the organization does', async () => {
+    await prisma.organizationSettings.create({ data: { organization_id: organizationId, time_zone: 'Europe/Belgrade', week_start: 'SUNDAY' } })
+
+    const added = await addGroup(group({ schedule: [at('MONDAY', '17:00', '18:00'), at('SATURDAY', '09:00', '10:00'), at('SUNDAY', '09:00', '10:00')] }))
+
+    expect(added.body.data.schedule.map((entry: ScheduleEntry) => entry.weekday)).toEqual(['SUNDAY', 'MONDAY', 'SATURDAY'])
+  })
+
+  it('replaces the schedule on an edit', async () => {
+    const added = await addGroup(group())
+
+    const response = await updateGroup(added.body.data.id, group({ schedule: [at('FRIDAY', '10:00', '11:00')] }))
+
+    expect(response.status).toBe(200)
+    expect(response.body.data.schedule).toEqual([at('FRIDAY', '10:00', '11:00')])
+  })
+
+  it('answers no schedule for a group that has none, and saves its other edits without one', async () => {
+    const old = await addUnscheduledGroup()
+    expect((await readGroup(old.id)).body.data.schedule).toEqual([])
+
+    const response = await updateGroup(old.id, group({ name: 'Renamed group', schedule: [] }))
+
+    expect(response.status).toBe(200)
+    expect(response.body.data).toMatchObject({ name: 'Renamed group', schedule: [] })
+  })
+
+  it('refuses to empty a schedule that has days and times', async () => {
+    const added = await addGroup(group())
+
+    const response = await updateGroup(added.body.data.id, group({ schedule: [] }))
+
+    expect(response.status).toBe(400)
+    expect(response.body.details.fieldErrors.schedule).toEqual(['Add at least one day and time.'])
+    expect((await readGroup(added.body.data.id)).body.data.schedule).toEqual([MONDAY_EVENING])
+  })
+})
+
+type AddStudentParams = {
+  firstName: string
+  lastName?: string
+  number: string
+  status?: 'ACTIVE' | 'ARCHIVED'
+  /** Another organization's id, when the student isn't Oxford's */
+  organization?: string
+}
+
+const addStudent = ({ firstName, lastName = 'Student', number, status = 'ACTIVE', organization = organizationId }: AddStudentParams) =>
+  prisma.student.create({ data: { organization_id: organization, first_name: firstName, last_name: lastName, student_number: number, status, notes: 'Staff note', date_of_birth: new Date('2012-03-04') } })
+
+const enrol = async (groupId: string, studentId: string, auth = ownerAuth) => request(app).post(`${groupsPath}/${groupId}/enrolments`).set('Authorization', auth).send({ student_id: studentId })
+
+const listEnrolments = async (groupId: string, auth = ownerAuth) => request(app).get(`${groupsPath}/${groupId}/enrolments`).set('Authorization', auth)
+
+describe('student options for enrolling', () => {
+  it('offers the organization’s active students by name, with only their id, name and number', async () => {
+    const arta = await addStudent({ firstName: 'Arta', lastName: 'Gashi', number: 'STU-0002' })
+    const besa = await addStudent({ firstName: 'Besa', lastName: 'Berisha', number: 'STU-0001' })
+    await addStudent({ firstName: 'Old', number: 'STU-0003', status: 'ARCHIVED' })
+    const yllka = await prisma.organization.findFirstOrThrow({ where: { name: 'Yllka Kindergarten' } })
+    await addStudent({ firstName: 'Yllka', number: 'STU-0001', organization: yllka.id })
+
+    const response = await request(app).get(`${groupsPath}/student-options`).set('Authorization', await loginAs('manager@oxford.test'))
+
+    expect(response.status).toBe(200)
+    expect(response.body.data).toEqual([
+      { id: arta.id, first_name: 'Arta', last_name: 'Gashi', student_number: 'STU-0002' },
+      { id: besa.id, first_name: 'Besa', last_name: 'Berisha', student_number: 'STU-0001' },
+    ])
+  })
+
+  it('refuses a school admin without MANAGE_COURSES', async () => {
+    expect((await request(app).get(`${groupsPath}/student-options`).set('Authorization', await loginAs('admin@oxford.test'))).status).toBe(403)
+  })
+})
+
+describe('enrolling students', () => {
+  let groupId: string
+
+  beforeEach(async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    // Already 3 November in Belgrade, the organization's time zone
+    vi.setSystemTime(new Date('2026-11-02T23:30:00.000Z'))
+    groupId = (await addGroup(group({ capacity: 2 }))).body.data.id
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('enrols a student on the organization’s day and lists them', async () => {
+    const arta = await addStudent({ firstName: 'Arta', lastName: 'Gashi', number: 'STU-0007' })
+
+    const response = await enrol(groupId, arta.id, await loginAs('manager@oxford.test'))
+
+    expect(response.status).toBe(201)
+    const enrolment = { id: response.body.data.id, enrolled_on: '2026-11-03', withdrawn_on: null, student: { id: arta.id, first_name: 'Arta', last_name: 'Gashi', student_number: 'STU-0007', status: 'ACTIVE' } }
+    expect(response.body.data).toEqual(enrolment)
+    expect((await listEnrolments(groupId)).body.data).toEqual([enrolment])
+  })
+
+  it('counts the active students on the group', async () => {
+    await enrol(groupId, (await addStudent({ firstName: 'Arta', number: 'STU-0001' })).id)
+
+    expect((await readGroup(groupId)).body.data.enrolled_count).toBe(1)
+    expect((await listGroups()).body.data.groups[0].enrolled_count).toBe(1)
+  })
+
+  it('refuses another organization’s student, or an unknown one', async () => {
+    const yllka = await prisma.organization.findFirstOrThrow({ where: { name: 'Yllka Kindergarten' } })
+    const outsider = await addStudent({ firstName: 'Yllka', number: 'STU-0001', organization: yllka.id })
+
+    const response = await enrol(groupId, outsider.id)
+
+    expect(response.status).toBe(400)
+    expect(response.body.details.fieldErrors.student_id).toEqual(['Choose one of your organization’s students.'])
+    expect((await enrol(groupId, '00000000-0000-4000-8000-000000000000')).status).toBe(400)
+    expect(await prisma.groupEnrolment.count()).toBe(0)
+  })
+
+  it('refuses an archived student', async () => {
+    const archived = await addStudent({ firstName: 'Old', number: 'STU-0001', status: 'ARCHIVED' })
+
+    const response = await enrol(groupId, archived.id)
+
+    expect(response.status).toBe(409)
+    expect(response.body.details.fieldErrors.student_id).toEqual(['This student is archived. Restore them first.'])
+  })
+
+  it('refuses a new student on an archived group', async () => {
+    const arta = await addStudent({ firstName: 'Arta', number: 'STU-0001' })
+    await setStatus(groupId, 'archive')
+
+    const response = await enrol(groupId, arta.id)
+
+    expect(response.status).toBe(409)
+    expect(response.body.error).toBe('This group is archived. Restore it first.')
+  })
+
+  it('refuses a new student once the group’s school year has ended, going by the organization’s day', async () => {
+    const arta = await addStudent({ firstName: 'Arta', number: 'STU-0001' })
+    const ended = await prisma.academicYear.create({ data: { organization_id: organizationId, name: '2025–26', start_date: new Date('2025-09-01'), end_date: new Date('2026-11-02') } })
+    const oldGroup = await prisma.group.create({ data: { organization_id: organizationId, course_id: mathematicsId, name: 'Old group', academic_year_id: ended.id } })
+
+    const response = await enrol(oldGroup.id, arta.id)
+
+    expect(response.status).toBe(409)
+    expect(response.body.details.fieldErrors.student_id).toEqual(['This group’s school year has ended, so it can’t take new students.'])
+    expect(await prisma.groupEnrolment.count()).toBe(0)
+  })
+
+  it('takes a student on the last day of the school year', async () => {
+    const arta = await addStudent({ firstName: 'Arta', number: 'STU-0001' })
+    const ending = await prisma.academicYear.create({ data: { organization_id: organizationId, name: '2025–26', start_date: new Date('2025-09-01'), end_date: new Date('2026-11-03') } })
+    const lastDayGroup = await prisma.group.create({ data: { organization_id: organizationId, course_id: mathematicsId, name: 'Last day group', academic_year_id: ending.id } })
+
+    expect((await enrol(lastDayGroup.id, arta.id)).status).toBe(201)
+  })
+
+  it('refuses a student already active in the group', async () => {
+    const arta = await addStudent({ firstName: 'Arta', number: 'STU-0001' })
+    await enrol(groupId, arta.id)
+
+    const response = await enrol(groupId, arta.id)
+
+    expect(response.status).toBe(409)
+    expect(response.body.details.fieldErrors.student_id).toEqual(['This student is already in this group.'])
+  })
+
+  it('refuses a student once the group is full, and takes any number without a capacity', async () => {
+    const students = await Promise.all(['STU-0001', 'STU-0002', 'STU-0003'].map((number, index) => addStudent({ firstName: `Student ${index}`, number })))
+    await enrol(groupId, students[0].id)
+    await enrol(groupId, students[1].id)
+
+    const full = await enrol(groupId, students[2].id)
+    const unlimited = (await addGroup(group({ name: 'Group B' }))).body.data.id
+
+    expect(full.status).toBe(409)
+    expect(full.body.details.fieldErrors.student_id).toEqual(['This group is full.'])
+    for (const student of students) {
+      expect((await enrol(unlimited, student.id)).status).toBe(201)
+    }
+  })
+
+  it('gives the last seat to only one of two admins adding at once', async () => {
+    const [arta, besa, drita] = await Promise.all(['STU-0001', 'STU-0002', 'STU-0003'].map((number, index) => addStudent({ firstName: `Student ${index}`, number })))
+    await enrol(groupId, arta.id)
+    const managerAuth = await loginAs('manager@oxford.test')
+
+    const responses = await Promise.all([enrol(groupId, besa.id), enrol(groupId, drita.id, managerAuth)])
+
+    expect(responses.map((response) => response.status).sort()).toEqual([201, 409])
+    expect(await prisma.groupEnrolment.count({ where: { group_id: groupId, withdrawn_on: null } })).toBe(2)
+  })
+
+  it('answers 404 for an unknown group', async () => {
+    const arta = await addStudent({ firstName: 'Arta', number: 'STU-0001' })
+
+    expect((await enrol('00000000-0000-4000-8000-000000000000', arta.id)).status).toBe(404)
+    expect((await listEnrolments('00000000-0000-4000-8000-000000000000')).status).toBe(404)
+  })
+
+  it('refuses a school admin without MANAGE_COURSES', async () => {
+    const arta = await addStudent({ firstName: 'Arta', number: 'STU-0001' })
+    const auth = await loginAs('admin@oxford.test')
+
+    expect((await enrol(groupId, arta.id, auth)).status).toBe(403)
+    expect((await listEnrolments(groupId, auth)).status).toBe(403)
+  })
+
+  it('refuses a capacity below the active students, and takes one equal to them', async () => {
+    await enrol(groupId, (await addStudent({ firstName: 'Arta', number: 'STU-0001' })).id)
+    await enrol(groupId, (await addStudent({ firstName: 'Besa', number: 'STU-0002' })).id)
+
+    const lowered = await updateGroup(groupId, group({ capacity: 1 }))
+    const equal = await updateGroup(groupId, group({ capacity: 2 }))
+
+    expect(lowered.status).toBe(409)
+    expect(lowered.body.details.fieldErrors.capacity).toEqual(['This group has 2 students. Keep at least 2 seats, or withdraw students first.'])
+    expect(equal.status).toBe(200)
+  })
+})
+
+const withdraw = async (groupId: string, enrolmentId: string, auth = ownerAuth) => request(app).post(`${groupsPath}/${groupId}/enrolments/${enrolmentId}/withdraw`).set('Authorization', auth)
+
+const move = async (groupId: string, enrolmentId: string, targetId: string, auth = ownerAuth) =>
+  request(app).post(`${groupsPath}/${groupId}/enrolments/${enrolmentId}/move`).set('Authorization', auth).send({ group_id: targetId })
+
+const studentLog = () =>
+  prisma.activityLog.findMany({
+    where: { organization_id: organizationId, action: { in: ['GROUP_STUDENT_ENROLLED', 'GROUP_STUDENT_WITHDRAWN', 'GROUP_STUDENT_MOVED'] } },
+    orderBy: { created_at: 'asc' },
+    select: { action: true, subject_name: true },
+  })
+
+describe('withdrawing and moving students', () => {
+  let groupId: string
+  let otherId: string
+  let artaId: string
+  let enrolmentId: string
+
+  beforeEach(async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-02T23:30:00.000Z'))
+    groupId = (await addGroup(group({ capacity: 1 }))).body.data.id
+    const physics = await createCourse({ organizationId, name: 'Physics' })
+    otherId = (await addGroup(group({ course_id: physics.id, name: 'Group B', capacity: 1 }))).body.data.id
+    artaId = (await addStudent({ firstName: 'Arta', lastName: 'Gashi', number: 'STU-0001' })).id
+    enrolmentId = (await enrol(groupId, artaId)).body.data.id
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('withdraws on the organization’s day, keeps the row and frees the seat', async () => {
+    const response = await withdraw(groupId, enrolmentId)
+
+    expect(response.status).toBe(200)
+    expect(response.body.data).toMatchObject({ id: enrolmentId, enrolled_on: '2026-11-03', withdrawn_on: '2026-11-03' })
+    expect((await listEnrolments(groupId)).body.data).toMatchObject([{ id: enrolmentId, withdrawn_on: '2026-11-03' }])
+    expect((await readGroup(groupId)).body.data.enrolled_count).toBe(0)
+    expect((await enrol(groupId, (await addStudent({ firstName: 'Besa', number: 'STU-0002' })).id)).status).toBe(201)
+  })
+
+  it('adds a new row when a withdrawn student enrols again', async () => {
+    await withdraw(groupId, enrolmentId)
+
+    const again = await enrol(groupId, artaId)
+
+    expect(again.status).toBe(201)
+    expect(again.body.data.id).not.toBe(enrolmentId)
+    expect(await prisma.groupEnrolment.count({ where: { group_id: groupId, student_id: artaId } })).toBe(2)
+  })
+
+  it('refuses withdrawing twice, and answers 404 for an enrolment of another group', async () => {
+    await withdraw(groupId, enrolmentId)
+
+    const twice = await withdraw(groupId, enrolmentId)
+
+    expect(twice.status).toBe(409)
+    expect(twice.body.error).toBe('This student has already left the group.')
+    expect((await withdraw(otherId, enrolmentId)).status).toBe(404)
+    expect((await move(otherId, enrolmentId, groupId)).status).toBe(404)
+  })
+
+  it('leaves an archived group’s students as they are', async () => {
+    await setStatus(groupId, 'archive')
+
+    expect((await withdraw(groupId, enrolmentId)).status).toBe(409)
+    expect((await move(groupId, enrolmentId, otherId)).status).toBe(409)
+    expect(await prisma.groupEnrolment.count({ where: { withdrawn_on: null } })).toBe(1)
+  })
+
+  it('moves a student to a group of another course in one step', async () => {
+    const response = await move(groupId, enrolmentId, otherId)
+
+    expect(response.status).toBe(201)
+    expect(response.body.data).toMatchObject({ enrolled_on: '2026-11-03', withdrawn_on: null, student: { id: artaId } })
+    expect((await listEnrolments(groupId)).body.data).toMatchObject([{ id: enrolmentId, withdrawn_on: '2026-11-03' }])
+    expect((await listEnrolments(otherId)).body.data).toMatchObject([{ id: response.body.data.id, withdrawn_on: null }])
+  })
+
+  it('changes nothing when the target group is full', async () => {
+    await enrol(otherId, (await addStudent({ firstName: 'Besa', number: 'STU-0002' })).id)
+    const logged = await studentLog()
+
+    const response = await move(groupId, enrolmentId, otherId)
+
+    expect(response.status).toBe(409)
+    expect(response.body.details.fieldErrors.group_id).toEqual(['This group is full.'])
+    expect((await listEnrolments(groupId)).body.data).toMatchObject([{ id: enrolmentId, withdrawn_on: null }])
+    expect(await prisma.groupEnrolment.count({ where: { group_id: otherId, student_id: artaId } })).toBe(0)
+    expect(await studentLog()).toEqual(logged)
+  })
+
+  it('holds a move to every enrolment rule of the target group', async () => {
+    const yllka = await yllkaRecords()
+    const yllkaOrganization = await prisma.organization.findFirstOrThrow({ where: { name: 'Yllka Kindergarten' } })
+    const yllkaGroup = await prisma.group.create({ data: { organization_id: yllkaOrganization.id, course_id: yllka.courseId, name: 'Yllka group', academic_year_id: yllka.yearId } })
+    const archivedId = (await addGroup(group({ name: 'Group C' }))).body.data.id
+    await setStatus(archivedId, 'archive')
+    const alreadyId = (await addGroup(group({ name: 'Group D' }))).body.data.id
+    await enrol(alreadyId, artaId)
+
+    const outside = await move(groupId, enrolmentId, yllkaGroup.id)
+    const archived = await move(groupId, enrolmentId, archivedId)
+    const already = await move(groupId, enrolmentId, alreadyId)
+    const same = await move(groupId, enrolmentId, groupId)
+
+    expect(outside.status).toBe(400)
+    expect(outside.body.details.fieldErrors.group_id).toEqual(['Choose one of your organization’s groups.'])
+    expect(archived.status).toBe(409)
+    expect(archived.body.details.fieldErrors.group_id).toEqual(['This group is archived. Restore it first.'])
+    expect(already.status).toBe(409)
+    expect(already.body.details.fieldErrors.group_id).toEqual(['This student is already in this group.'])
+    expect(same.status).toBe(409)
+    expect(same.body.details.fieldErrors.group_id).toEqual(['The student is already in this group.'])
+    expect(await prisma.groupEnrolment.findUniqueOrThrow({ where: { id: enrolmentId }, select: { withdrawn_on: true } })).toEqual({ withdrawn_on: null })
+  })
+
+  it('refuses a move into a group whose school year has ended, and still lets a student leave one', async () => {
+    const ended = await prisma.academicYear.create({ data: { organization_id: organizationId, name: '2025–26', start_date: new Date('2025-09-01'), end_date: new Date('2026-06-30') } })
+    const oldGroup = await prisma.group.create({ data: { organization_id: organizationId, course_id: mathematicsId, name: 'Old group', academic_year_id: ended.id } })
+    const besa = await addStudent({ firstName: 'Besa', number: 'STU-0002' })
+    const oldEnrolment = await prisma.groupEnrolment.create({ data: { group_id: oldGroup.id, student_id: besa.id, enrolled_on: new Date('2025-09-01') } })
+
+    const moved = await move(groupId, enrolmentId, oldGroup.id)
+    const left = await withdraw(oldGroup.id, oldEnrolment.id)
+
+    expect(moved.status).toBe(409)
+    expect(moved.body.details.fieldErrors.group_id).toEqual(['This group’s school year has ended, so it can’t take new students.'])
+    expect(await prisma.groupEnrolment.findUniqueOrThrow({ where: { id: enrolmentId }, select: { withdrawn_on: true } })).toEqual({ withdrawn_on: null })
+    expect(left.status).toBe(200)
+    expect(left.body.data.withdrawn_on).toBe('2026-11-03')
+  })
+
+  it('refuses a move of a student who has left the group', async () => {
+    await withdraw(groupId, enrolmentId)
+
+    expect((await move(groupId, enrolmentId, otherId)).status).toBe(409)
+  })
+
+  it('refuses a school admin without MANAGE_COURSES', async () => {
+    const auth = await loginAs('admin@oxford.test')
+
+    expect((await withdraw(groupId, enrolmentId, auth)).status).toBe(403)
+    expect((await move(groupId, enrolmentId, otherId, auth)).status).toBe(403)
+  })
+
+  it('logs each change with the names as they were, so a later rename leaves it readable', async () => {
+    // A second apart each, so the log reads in order
+    const later = () => vi.setSystemTime(new Date(Date.now() + 1000))
+    later()
+    await withdraw(groupId, enrolmentId)
+    later()
+    const again = await enrol(groupId, artaId)
+    later()
+    await move(groupId, again.body.data.id, otherId)
+    await updateGroup(groupId, group({ name: 'Renamed', capacity: 1 }))
+    await prisma.student.update({ where: { id: artaId }, data: { first_name: 'Renamed' } })
+
+    expect(await studentLog()).toEqual([
+      { action: 'GROUP_STUDENT_ENROLLED', subject_name: 'Arta Gashi in Group A' },
+      { action: 'GROUP_STUDENT_WITHDRAWN', subject_name: 'Arta Gashi from Group A' },
+      { action: 'GROUP_STUDENT_ENROLLED', subject_name: 'Arta Gashi in Group A' },
+      { action: 'GROUP_STUDENT_MOVED', subject_name: 'Arta Gashi from Group A to Group B' },
+    ])
+  })
+})
+
 describe('deleting an organization', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] })
@@ -533,6 +1013,18 @@ describe('deleting an organization', () => {
     expect(await prisma.academicYear.count({ where: { id: yearId } })).toBe(0)
     expect(await prisma.lecturer.count({ where: { id: lecturer.id } })).toBe(0)
     expect(await prisma.groupLecturerAssignment.count()).toBe(0)
+    expect(await prisma.groupMeeting.count()).toBe(0)
+  })
+
+  it('removes its students’ enrolments along with it', async () => {
+    const added = await addGroup(group())
+    const arta = await addStudent({ firstName: 'Arta', number: 'STU-0001' })
+    expect((await enrol(added.body.data.id, arta.id)).status).toBe(201)
+
+    await prisma.organization.delete({ where: { id: organizationId } })
+
+    expect(await prisma.groupEnrolment.count()).toBe(0)
+    expect(await prisma.student.count({ where: { id: arta.id } })).toBe(0)
   })
 })
 

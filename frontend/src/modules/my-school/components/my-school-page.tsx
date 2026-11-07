@@ -1,9 +1,10 @@
 import { School } from 'lucide-react'
-import type { MySchool } from '@shigjetademy/shared/students'
+import type { MySchool, MySchoolGroup } from '@shigjetademy/shared/students'
 import { DashboardPageHeader } from '#/components/DashboardPageHeader'
 import { Detail, HomeSkeleton, SchoolYearCard } from '#/components/HomeDetails'
 import { LoadError } from '#/components/LoadError'
 import { SectionCard } from '#/components/SectionCard'
+import { getScheduleLabel } from '#/modules/groups/utils/schedule-label'
 import { useMySchool } from '../hooks/use-my-school'
 
 interface MySchoolPageProps {
@@ -11,7 +12,7 @@ interface MySchoolPageProps {
   organizationName: string
 }
 
-/** A student's home: their school, their own record and the current school year and term, read-only */
+/** A student's home: their school, their own record, their groups and the current school year and term, read-only */
 export function MySchoolPage({ organizationId, organizationName }: MySchoolPageProps) {
   const mySchool = useMySchool(organizationId)
 
@@ -51,7 +52,34 @@ function MySchoolContent({ status, data, onRetry }: MySchoolContentProps) {
           <p className="px-5 py-4 text-ink-2">Your school hasn’t linked your student record yet.</p>
         )}
       </SectionCard>
+      {data.student ? (
+        <SectionCard title="Your groups">
+          <SchoolGroups groups={data.groups} />
+        </SectionCard>
+      ) : null}
       <SchoolYearCard academicYear={data.academic_year} term={data.term} />
     </>
+  )
+}
+
+/** "Mathematics · 2026–27 · Autumn term · Main campus" */
+const getGroupDetails = (group: MySchoolGroup) => [group.course, group.academic_year, group.academic_term, group.location].filter(Boolean).join(' · ')
+
+interface SchoolGroupsProps {
+  groups: MySchoolGroup[]
+}
+
+function SchoolGroups({ groups }: SchoolGroupsProps) {
+  if (groups.length === 0) return <p className="px-5 py-4 text-ink-2">You aren’t in any group yet.</p>
+  return (
+    <ul className="grid">
+      {groups.map((group) => (
+        <li key={group.id} className="grid gap-0.5 border-b border-rule px-5 py-3 last:border-b-0">
+          <span className="font-semibold">{group.name}</span>
+          <span className="text-[0.93rem] text-ink-2">{getGroupDetails(group)}</span>
+          <span className="tabular text-[0.93rem] text-ink-2">{getScheduleLabel(group.schedule) || 'No schedule'}</span>
+        </li>
+      ))}
+    </ul>
   )
 }

@@ -164,8 +164,8 @@ describe('My teaching: groups and cover', () => {
     const { groups } = (await readMyTeaching('arben@lecturer.test')).body.data
 
     expect(groups).toEqual([
-      { id: groupA.id, name: 'Group A', course: 'Mathematics', academic_year: '2026–27', location: null },
-      { id: groupB.id, name: 'Group B', course: 'Mathematics', academic_year: '2026–27', location: 'North campus' },
+      { id: groupA.id, name: 'Group A', course: 'Mathematics', academic_year: '2026–27', location: null, schedule: [], students: [] },
+      { id: groupB.id, name: 'Group B', course: 'Mathematics', academic_year: '2026–27', location: 'North campus', schedule: [], students: [] },
     ])
   })
 
@@ -203,8 +203,8 @@ describe('My teaching: groups and cover', () => {
 
     expect(groups).toEqual([])
     expect(cover).toEqual([
-      { id: current.id, status: 'CURRENT', start_date: '2026-10-31', end_date: '2026-10-31', group: { id: group.id, name: 'Group A', course: 'Mathematics', academic_year: '2026–27', location: null } },
-      { id: upcoming.id, status: 'UPCOMING', start_date: '2026-11-10', end_date: '2026-11-12', group: { id: group.id, name: 'Group A', course: 'Mathematics', academic_year: '2026–27', location: null } },
+      { id: current.id, status: 'CURRENT', start_date: '2026-10-31', end_date: '2026-10-31', group: { id: group.id, name: 'Group A', course: 'Mathematics', academic_year: '2026–27', location: null, schedule: [] } },
+      { id: upcoming.id, status: 'UPCOMING', start_date: '2026-11-10', end_date: '2026-11-12', group: { id: group.id, name: 'Group A', course: 'Mathematics', academic_year: '2026–27', location: null, schedule: [] } },
     ])
   })
 
@@ -231,6 +231,53 @@ describe('My teaching: groups and cover', () => {
     expect(teuta.cover).toHaveLength(1)
     expect(unlinked).toMatchObject({ groups: [], cover: [] })
     expect(elsewhere).toMatchObject({ groups: [], cover: [] })
+  })
+
+  it('adds each group’s schedule in the organization’s week and its active students by name, with nothing else about them', async () => {
+    await prisma.organizationSettings.create({ data: { organization_id: organizationId, time_zone: 'Europe/Belgrade', week_start: 'SUNDAY' } })
+    const group = await addGroup({ name: 'Group A', lecturerId: arbenId })
+    const other = await addGroup({ name: 'Group B', lecturerId: teutaId })
+    await prisma.groupMeeting.createMany({
+      data: [
+        { group_id: group.id, weekday: 'MONDAY', start_time: new Date('1970-01-01T17:00:00.000Z'), end_time: new Date('1970-01-01T18:30:00.000Z') },
+        { group_id: group.id, weekday: 'SUNDAY', start_time: new Date('1970-01-01T09:00:00.000Z'), end_time: new Date('1970-01-01T10:00:00.000Z') },
+      ],
+    })
+    const student = (firstName: string, number: string) =>
+      prisma.student.create({ data: { organization_id: organizationId, first_name: firstName, last_name: 'Gashi', student_number: number, notes: 'Staff note', date_of_birth: new Date('2012-03-04') } })
+    const besa = await student('Besa', 'STU-0002')
+    const arta = await student('Arta', 'STU-0001')
+    const left = await student('Left', 'STU-0003')
+    const elsewhere = await student('Elsewhere', 'STU-0004')
+    const enrolledOn = new Date('2026-09-01')
+    await prisma.groupEnrolment.createMany({
+      data: [
+        { group_id: group.id, student_id: besa.id, enrolled_on: enrolledOn },
+        { group_id: group.id, student_id: arta.id, enrolled_on: enrolledOn },
+        { group_id: group.id, student_id: left.id, enrolled_on: enrolledOn, withdrawn_on: new Date('2026-10-01') },
+        { group_id: other.id, student_id: elsewhere.id, enrolled_on: enrolledOn },
+      ],
+    })
+
+    const { groups } = (await readMyTeaching('arben@lecturer.test')).body.data
+
+    expect(groups).toEqual([
+      {
+        id: group.id,
+        name: 'Group A',
+        course: 'Mathematics',
+        academic_year: '2026–27',
+        location: null,
+        schedule: [
+          { weekday: 'SUNDAY', start_time: '09:00', end_time: '10:00' },
+          { weekday: 'MONDAY', start_time: '17:00', end_time: '18:30' },
+        ],
+        students: [
+          { id: arta.id, first_name: 'Arta', last_name: 'Gashi' },
+          { id: besa.id, first_name: 'Besa', last_name: 'Gashi' },
+        ],
+      },
+    ])
   })
 
   it('goes by the organization’s day', async () => {

@@ -32,6 +32,15 @@ export const CourseController = {
     }
   },
 
+  getCourse: async (req: CourseRequest, res: Response) => {
+    try {
+      const course = await CourseService.getCourse(req.params)
+      return res.status(200).json({ data: course })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to fetch the course' })
+    }
+  },
+
   createCourse: async (req: CreateCourseRequest, res: Response) => {
     try {
       const actorId = req.user?.id
