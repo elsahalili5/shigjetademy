@@ -33,6 +33,14 @@ export const ACTIVITY_ACTIONS = [
   'LECTURER_UPDATED',
   'LECTURER_ARCHIVED',
   'LECTURER_RESTORED',
+  'COURSE_ADDED',
+  'COURSE_UPDATED',
+  'COURSE_ARCHIVED',
+  'COURSE_RESTORED',
+  'GROUP_ADDED',
+  'GROUP_UPDATED',
+  'GROUP_ARCHIVED',
+  'GROUP_RESTORED',
   'INVITATION_SENT',
   'INVITATION_RESENT',
   'INVITATION_REVOKED',
@@ -60,6 +68,6 @@ export type ActivityEntry = {
   actor: ActivityUser | null
   organization: { id: string; name: string } | null
   target_user: ActivityUser | null
-  /** The location's, department's, academic period's, student's or lecturer's name, or the invited email, for those entries */
+  /** The location's, department's, academic period's, student's, lecturer's, course's or group's name, or the invited email, for those entries */
   subject_name: string | null
 }

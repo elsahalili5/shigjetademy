@@ -9,6 +9,6 @@ setMailTransport(recordEmail)
 beforeEach(async () => {
   clearSentEmails()
   await prisma.$executeRawUnsafe(
-    'TRUNCATE "LecturerLocation", "Lecturer", "Student", "AcademicHoliday", "AcademicTerm", "AcademicYear", "ActivityLog", "OrganizationSettings", "Department", "Location", "Invitation", "Membership", "Organization", "RefreshTokens", "UserTokens", "UserRole", "Role", "User" RESTART IDENTITY CASCADE',
+    'TRUNCATE "Group", "Course", "LecturerLocation", "Lecturer", "Student", "AcademicHoliday", "AcademicTerm", "AcademicYear", "ActivityLog", "OrganizationSettings", "Department", "Location", "Invitation", "Membership", "Organization", "RefreshTokens", "UserTokens", "UserRole", "Role", "User" RESTART IDENTITY CASCADE',
   )
 })

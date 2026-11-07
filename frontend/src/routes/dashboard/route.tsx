@@ -32,6 +32,8 @@ const BUILT_MODULE_PAGES = {
   'academic-periods': '/dashboard/academic-periods',
   students: '/dashboard/students',
   lecturers: '/dashboard/lecturers',
+  courses: '/dashboard/courses',
+  groups: '/dashboard/groups',
 } as const
 
 const isBuiltModule = (slug: string): slug is keyof typeof BUILT_MODULE_PAGES => slug in BUILT_MODULE_PAGES
@@ -40,6 +42,8 @@ const isBuiltModule = (slug: string): slug is keyof typeof BUILT_MODULE_PAGES =>
 const MODULE_PERMISSIONS = {
   students: 'MANAGE_STUDENTS',
   lecturers: 'MANAGE_LECTURERS',
+  courses: 'MANAGE_COURSES',
+  groups: 'MANAGE_COURSES',
 } as const satisfies Partial<Record<ModuleSlug, Permission>>
 
 const isGatedModule = (slug: ModuleSlug): slug is keyof typeof MODULE_PERMISSIONS => slug in MODULE_PERMISSIONS

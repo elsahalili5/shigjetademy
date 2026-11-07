@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Archive, ArchiveRestore, Building2, CalendarCog, CalendarPlus, CalendarRange, CalendarX, CirclePause, CirclePlay, Crown, KeyRound, Lock, Mail, MailCheck, MailX, MapPin, MapPinOff, MapPinPen, Network, Power, PowerOff, Send, Settings, SquarePen, Trash2, TreePalm, UserMinus, UserPen, UserPlus } from 'lucide-react'
+import { Archive, ArchiveRestore, Building2, CalendarCog, CalendarPlus, CalendarRange, CalendarX, CirclePause, CirclePlay, Crown, KeyRound, Layers, Lock, Mail, MailCheck, MailX, MapPin, MapPinOff, MapPinPen, Network, Power, PowerOff, Send, Settings, SquarePen, Trash2, TreePalm, UserMinus, UserPen, UserPlus, UsersRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ActivityAction, ActivityEntry, ActivityUser } from '@shigjetademy/shared/activity'
 import { useFormatDateTime } from '#/lib/use-format-date'
@@ -40,6 +40,14 @@ const ACTION_ICONS = {
   LECTURER_UPDATED: UserPen,
   LECTURER_ARCHIVED: Archive,
   LECTURER_RESTORED: ArchiveRestore,
+  COURSE_ADDED: Layers,
+  COURSE_UPDATED: SquarePen,
+  COURSE_ARCHIVED: Archive,
+  COURSE_RESTORED: ArchiveRestore,
+  GROUP_ADDED: UsersRound,
+  GROUP_UPDATED: SquarePen,
+  GROUP_ARCHIVED: Archive,
+  GROUP_RESTORED: ArchiveRestore,
   INVITATION_SENT: Mail,
   INVITATION_RESENT: Send,
   INVITATION_REVOKED: MailX,
@@ -193,6 +201,22 @@ function ActivitySentence({ entry, shouldLinkOrganization }: ActivityRowProps) {
       return <SubjectSentence entry={entry} verb="archived" noun="lecturer" organization={subjectOrganization} />
     case 'LECTURER_RESTORED':
       return <SubjectSentence entry={entry} verb="restored" noun="lecturer" organization={subjectOrganization} />
+    case 'COURSE_ADDED':
+      return <SubjectSentence entry={entry} verb="added" noun="course" organization={subjectOrganization} />
+    case 'COURSE_UPDATED':
+      return <SubjectSentence entry={entry} verb="changed" noun="course" organization={subjectOrganization} />
+    case 'COURSE_ARCHIVED':
+      return <SubjectSentence entry={entry} verb="archived" noun="course" organization={subjectOrganization} />
+    case 'COURSE_RESTORED':
+      return <SubjectSentence entry={entry} verb="restored" noun="course" organization={subjectOrganization} />
+    case 'GROUP_ADDED':
+      return <SubjectSentence entry={entry} verb="added" noun="group" organization={subjectOrganization} />
+    case 'GROUP_UPDATED':
+      return <SubjectSentence entry={entry} verb="changed" noun="group" organization={subjectOrganization} />
+    case 'GROUP_ARCHIVED':
+      return <SubjectSentence entry={entry} verb="archived" noun="group" organization={subjectOrganization} />
+    case 'GROUP_RESTORED':
+      return <SubjectSentence entry={entry} verb="restored" noun="group" organization={subjectOrganization} />
     case 'INVITATION_SENT':
       return (
         <>
@@ -230,7 +254,7 @@ function ActivitySentence({ entry, shouldLinkOrganization }: ActivityRowProps) {
 interface SubjectSentenceProps {
   entry: ActivityEntry
   verb: 'added' | 'changed' | 'removed' | 'archived' | 'restored'
-  noun: 'location' | 'department' | 'school year' | 'term' | 'holiday' | 'student' | 'lecturer'
+  noun: 'location' | 'department' | 'school year' | 'term' | 'holiday' | 'student' | 'lecturer' | 'course' | 'group'
   organization: ReactNode
 }
 

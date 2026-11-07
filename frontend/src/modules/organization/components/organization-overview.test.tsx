@@ -186,12 +186,13 @@ describe('dashboard sidebar', () => {
     expect(within(sidebar).getByRole('group', { name: 'Finance' })).toHaveTextContent('PaymentsFinancial recordsReports')
   })
 
-  it('keeps the flat module list for a school admin, without members, or students and lecturers unless they may keep them', async () => {
+  it('keeps the flat module list for a school admin, without members, or students, lecturers and courses unless they may keep them', async () => {
     signInAsSchoolAdmin()
     renderRoute('/dashboard/academic-periods')
 
     const sidebar = await screen.findByRole('navigation', { name: 'Modules' })
-    expect(within(sidebar).getByRole('link', { name: 'Courses' })).toBeInTheDocument()
+    expect(within(sidebar).getByRole('link', { name: 'Attendance' })).toBeInTheDocument()
+    expect(within(sidebar).queryByRole('link', { name: 'Courses' })).not.toBeInTheDocument()
     expect(within(sidebar).queryByRole('link', { name: 'Lecturers' })).not.toBeInTheDocument()
     expect(within(sidebar).queryByRole('link', { name: 'Students & enrolment' })).not.toBeInTheDocument()
     expect(within(sidebar).queryByRole('group')).not.toBeInTheDocument()
@@ -201,7 +202,7 @@ describe('dashboard sidebar', () => {
 
 describe('modules that are not built yet', () => {
   it.each([
-    ['courses', 'Courses'],
+    ['attendance', 'Attendance'],
     ['financial-records', 'Financial records'],
   ])('shows /dashboard/%s as not built yet', async (slug, name) => {
     signInAsOwnerWithOverview(EMPTY_OVERVIEW)

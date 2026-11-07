@@ -110,6 +110,14 @@ enum ActivityAction {
   LECTURER_UPDATED
   LECTURER_ARCHIVED
   LECTURER_RESTORED
+  COURSE_ADDED
+  COURSE_UPDATED
+  COURSE_ARCHIVED
+  COURSE_RESTORED
+  GROUP_ADDED
+  GROUP_UPDATED
+  GROUP_ARCHIVED
+  GROUP_RESTORED
   INVITATION_SENT
   INVITATION_RESENT
   INVITATION_REVOKED
@@ -122,6 +130,16 @@ enum StudentStatus {
 }
 
 enum LecturerStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum CourseStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum GroupStatus {
   ACTIVE
   ARCHIVED
 }
@@ -253,6 +271,8 @@ model Organization {
   settings       OrganizationSettings?
   students       Student[]
   lecturers      Lecturer[]
+  courses        Course[]
+  groups         Group[]
 }
 
 /// How one organization runs. An organization without a row reads the defaults; the row is written on its first save.
@@ -285,6 +305,7 @@ model Location {
   organization    Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
   departments     Department[]
   lecturers       LecturerLocation[]
+  groups          Group[]
 
   @@index([organization_id])
 }
@@ -303,6 +324,7 @@ model Department {
   organization    Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
   location        Location?    @relation(fields: [location_id], references: [id], onDelete: SetNull)
   lecturers       Lecturer[]
+  courses         Course[]
 
   @@unique([organization_id, name])
   @@index([location_id])
@@ -328,6 +350,7 @@ model AcademicYear {
   organization Organization      @relation(fields: [organization_id], references: [id], onDelete: Cascade)
   terms        AcademicTerm[]
   holidays     AcademicHoliday[]
+  groups       Group[]
 
   @@index([organization_id])
 }
@@ -344,6 +367,7 @@ model AcademicTerm {
   updated_at DateTime @updatedAt
 
   academic_year AcademicYear @relation(fields: [academic_year_id], references: [id], onDelete: Cascade)
+  groups        Group[]
 
   @@index([academic_year_id])
 }
@@ -448,6 +472,69 @@ model LecturerLocation {
   @@index([location_id])
 }
 
+// ─────────────────────────────────────────
+// COURSES
+// ─────────────────────────────────────────
+
+/// Something the organization teaches. Courses are archived, never deleted; names and codes stay taken while archived.
+model Course {
+  id              String       @id @default(uuid()) @db.Uuid
+  organization_id String       @db.Uuid
+  name            String
+  /// Optional, and unique in the organization when set
+  code            String?
+  description     String?
+  /// Free text like "B2" or "Grade 5"
+  level           String?
+  /// At most one; removing the department keeps the course, without one
+  department_id   String?      @db.Uuid
+  status          CourseStatus @default(ACTIVE)
+
+  created_at      DateTime     @default(now())
+  updated_at      DateTime     @updatedAt
+
+  organization    Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  department      Department?  @relation(fields: [department_id], references: [id], onDelete: SetNull)
+  groups          Group[]
+
+  @@unique([organization_id, name])
+  @@unique([organization_id, code])
+  @@index([organization_id, status])
+  @@index([department_id])
+}
+
+/// A class the organization runs: one course in one school year. Groups are archived, never deleted.
+model Group {
+  id               String        @id @default(uuid()) @db.Uuid
+  organization_id  String        @db.Uuid
+  course_id        String        @db.Uuid
+  name             String
+  academic_year_id String        @db.Uuid
+  /// Removing the term keeps the group, without one
+  academic_term_id String?       @db.Uuid
+  /// Stands in for a room until rooms exist; removing the location keeps the group, without one
+  location_id      String?       @db.Uuid
+  /// Seats; stored but not enforced until enrolment exists
+  capacity         Int?
+  status           GroupStatus   @default(ACTIVE)
+
+  created_at       DateTime      @default(now())
+  updated_at       DateTime      @updatedAt
+
+  organization     Organization  @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  course           Course        @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  /// NoAction: a year with groups can't be deleted (the academic periods service says why), while deleting the organization still removes both
+  academic_year    AcademicYear  @relation(fields: [academic_year_id], references: [id], onDelete: NoAction)
+  academic_term    AcademicTerm? @relation(fields: [academic_term_id], references: [id], onDelete: SetNull)
+  location         Location?     @relation(fields: [location_id], references: [id], onDelete: SetNull)
+
+  @@unique([course_id, academic_year_id, name])
+  @@index([organization_id, status])
+  @@index([academic_year_id])
+  @@index([academic_term_id])
+  @@index([location_id])
+}
+
 /// A user's place in one organization. One user can belong to many organizations, once each.
 model Membership {
   id              String           @id @default(uuid()) @db.Uuid
@@ -512,7 +599,7 @@ model ActivityLog {
   action          ActivityAction
   organization_id String?        @db.Uuid
   target_user_id  String?        @db.Uuid
-  /// The location's, department's, academic period's, student's or lecturer's name, or the invited email, so the entry still reads right after it is removed
+  /// The location's, department's, academic period's, student's, lecturer's, course's or group's name, or the invited email, so the entry still reads right after it is removed
   subject_name    String?
   created_at      DateTime       @default(now())
 

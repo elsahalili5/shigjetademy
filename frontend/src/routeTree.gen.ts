@@ -26,6 +26,8 @@ import { Route as authSignupRouteImport } from './routes/(auth)/signup'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as DashboardModuleRouteImport } from './routes/dashboard/$module'
 import { Route as DashboardAcademicPeriodsRouteImport } from './routes/dashboard/academic-periods'
+import { Route as DashboardCoursesRouteImport } from './routes/dashboard/courses'
+import { Route as DashboardGroupsRouteImport } from './routes/dashboard/groups'
 import { Route as DashboardLecturersRouteImport } from './routes/dashboard/lecturers'
 import { Route as DashboardLocationsRouteImport } from './routes/dashboard/locations'
 import { Route as DashboardMembersRouteImport } from './routes/dashboard/members'
@@ -126,6 +128,16 @@ const DashboardAcademicPeriodsRoute =
     path: '/academic-periods',
     getParentRoute: () => DashboardRouteRoute,
   } as any)
+const DashboardCoursesRoute = DashboardCoursesRouteImport.update({
+  id: '/courses',
+  path: '/courses',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+const DashboardGroupsRoute = DashboardGroupsRouteImport.update({
+  id: '/groups',
+  path: '/groups',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
 const DashboardLecturersRoute = DashboardLecturersRouteImport.update({
   id: '/lecturers',
   path: '/lecturers',
@@ -219,6 +231,8 @@ export interface FileRoutesByFullPath {
   '/signup': typeof authSignupRoute
   '/dashboard/$module': typeof DashboardModuleRoute
   '/dashboard/academic-periods': typeof DashboardAcademicPeriodsRoute
+  '/dashboard/courses': typeof DashboardCoursesRoute
+  '/dashboard/groups': typeof DashboardGroupsRoute
   '/dashboard/lecturers': typeof DashboardLecturersRoute
   '/dashboard/locations': typeof DashboardLocationsRoute
   '/dashboard/members': typeof DashboardMembersRoute
@@ -250,6 +264,8 @@ export interface FileRoutesByTo {
   '/signup': typeof authSignupRoute
   '/dashboard/$module': typeof DashboardModuleRoute
   '/dashboard/academic-periods': typeof DashboardAcademicPeriodsRoute
+  '/dashboard/courses': typeof DashboardCoursesRoute
+  '/dashboard/groups': typeof DashboardGroupsRoute
   '/dashboard/lecturers': typeof DashboardLecturersRoute
   '/dashboard/locations': typeof DashboardLocationsRoute
   '/dashboard/members': typeof DashboardMembersRoute
@@ -285,6 +301,8 @@ export interface FileRoutesById {
   '/(auth)/signup': typeof authSignupRoute
   '/dashboard/$module': typeof DashboardModuleRoute
   '/dashboard/academic-periods': typeof DashboardAcademicPeriodsRoute
+  '/dashboard/courses': typeof DashboardCoursesRoute
+  '/dashboard/groups': typeof DashboardGroupsRoute
   '/dashboard/lecturers': typeof DashboardLecturersRoute
   '/dashboard/locations': typeof DashboardLocationsRoute
   '/dashboard/members': typeof DashboardMembersRoute
@@ -319,6 +337,8 @@ export interface FileRouteTypes {
     | '/signup'
     | '/dashboard/$module'
     | '/dashboard/academic-periods'
+    | '/dashboard/courses'
+    | '/dashboard/groups'
     | '/dashboard/lecturers'
     | '/dashboard/locations'
     | '/dashboard/members'
@@ -350,6 +370,8 @@ export interface FileRouteTypes {
     | '/signup'
     | '/dashboard/$module'
     | '/dashboard/academic-periods'
+    | '/dashboard/courses'
+    | '/dashboard/groups'
     | '/dashboard/lecturers'
     | '/dashboard/locations'
     | '/dashboard/members'
@@ -384,6 +406,8 @@ export interface FileRouteTypes {
     | '/(auth)/signup'
     | '/dashboard/$module'
     | '/dashboard/academic-periods'
+    | '/dashboard/courses'
+    | '/dashboard/groups'
     | '/dashboard/lecturers'
     | '/dashboard/locations'
     | '/dashboard/members'
@@ -531,6 +555,20 @@ declare module '@tanstack/react-router' {
       path: '/academic-periods'
       fullPath: '/dashboard/academic-periods'
       preLoaderRoute: typeof DashboardAcademicPeriodsRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
+    '/dashboard/courses': {
+      id: '/dashboard/courses'
+      path: '/courses'
+      fullPath: '/dashboard/courses'
+      preLoaderRoute: typeof DashboardCoursesRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
+    '/dashboard/groups': {
+      id: '/dashboard/groups'
+      path: '/groups'
+      fullPath: '/dashboard/groups'
+      preLoaderRoute: typeof DashboardGroupsRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
     '/dashboard/lecturers': {
@@ -688,6 +726,8 @@ const authRouteRouteWithChildren = authRouteRoute._addFileChildren(
 interface DashboardRouteRouteChildren {
   DashboardModuleRoute: typeof DashboardModuleRoute
   DashboardAcademicPeriodsRoute: typeof DashboardAcademicPeriodsRoute
+  DashboardCoursesRoute: typeof DashboardCoursesRoute
+  DashboardGroupsRoute: typeof DashboardGroupsRoute
   DashboardLecturersRoute: typeof DashboardLecturersRoute
   DashboardLocationsRoute: typeof DashboardLocationsRoute
   DashboardMembersRoute: typeof DashboardMembersRoute
@@ -705,6 +745,8 @@ interface DashboardRouteRouteChildren {
 const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardModuleRoute: DashboardModuleRoute,
   DashboardAcademicPeriodsRoute: DashboardAcademicPeriodsRoute,
+  DashboardCoursesRoute: DashboardCoursesRoute,
+  DashboardGroupsRoute: DashboardGroupsRoute,
   DashboardLecturersRoute: DashboardLecturersRoute,
   DashboardLocationsRoute: DashboardLocationsRoute,
   DashboardMembersRoute: DashboardMembersRoute,

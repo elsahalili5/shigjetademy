@@ -194,6 +194,56 @@ describe('ActivityModule', () => {
     sentences.forEach((sentence, index) => expect(rows[index]).toHaveTextContent(sentence))
   })
 
+  it('shows course changes as sentences that name the client', async () => {
+    signInAs(buildUser({ user_roles: PLATFORM_ADMIN_ROLES }))
+    const oxford = { id: 'org-1', name: 'Oxford Academy' }
+    const actions: ActivityAction[] = ['COURSE_ADDED', 'COURSE_UPDATED', 'COURSE_ARCHIVED', 'COURSE_RESTORED']
+    server.use(
+      http.get('*/api/organizations', () => HttpResponse.json({ data: CLIENTS })),
+      http.get('*/api/activity', () =>
+        HttpResponse.json({
+          data: actions.map((action) => ({ id: action, action, created_at: '2026-10-04T09:00:00.000Z', actor: ELSA, organization: oxford, target_user: null, subject_name: 'Mathematics' })),
+        }),
+      ),
+    )
+    renderRoute('/dashboard/activity')
+
+    const rows = await within(await screen.findByRole('list', { name: 'Activity' })).findAllByRole('listitem')
+    const sentences = [
+      'Elsa Halili added the course Mathematics at Oxford Academy',
+      'Elsa Halili changed the course Mathematics at Oxford Academy',
+      'Elsa Halili archived the course Mathematics at Oxford Academy',
+      'Elsa Halili restored the course Mathematics at Oxford Academy',
+    ]
+    expect(rows).toHaveLength(sentences.length)
+    sentences.forEach((sentence, index) => expect(rows[index]).toHaveTextContent(sentence))
+  })
+
+  it('shows group changes as sentences that name the client', async () => {
+    signInAs(buildUser({ user_roles: PLATFORM_ADMIN_ROLES }))
+    const oxford = { id: 'org-1', name: 'Oxford Academy' }
+    const actions: ActivityAction[] = ['GROUP_ADDED', 'GROUP_UPDATED', 'GROUP_ARCHIVED', 'GROUP_RESTORED']
+    server.use(
+      http.get('*/api/organizations', () => HttpResponse.json({ data: CLIENTS })),
+      http.get('*/api/activity', () =>
+        HttpResponse.json({
+          data: actions.map((action) => ({ id: action, action, created_at: '2026-10-04T09:00:00.000Z', actor: ELSA, organization: oxford, target_user: null, subject_name: 'Group A' })),
+        }),
+      ),
+    )
+    renderRoute('/dashboard/activity')
+
+    const rows = await within(await screen.findByRole('list', { name: 'Activity' })).findAllByRole('listitem')
+    const sentences = [
+      'Elsa Halili added the group Group A at Oxford Academy',
+      'Elsa Halili changed the group Group A at Oxford Academy',
+      'Elsa Halili archived the group Group A at Oxford Academy',
+      'Elsa Halili restored the group Group A at Oxford Academy',
+    ]
+    expect(rows).toHaveLength(sentences.length)
+    sentences.forEach((sentence, index) => expect(rows[index]).toHaveTextContent(sentence))
+  })
+
   it('shows invitations as sentences with the invited email', async () => {
     signInAs(buildUser({ user_roles: PLATFORM_ADMIN_ROLES }))
     const oxford = { id: 'org-1', name: 'Oxford Academy' }
