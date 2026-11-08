@@ -9,6 +9,7 @@ import { lockOrganization } from '@lib/organization-lock.ts'
 import { prisma } from '@lib/prisma.ts'
 import { canEditRegister, getPermanentLecturerId, getRegisterWindow, getSession, getSessions, getSubstitution, getTeachingLecturerId } from './lesson-calendar.ts'
 import type { LessonGroup, RegisterAccess } from './lesson-calendar.ts'
+import { findLecturerId } from './lecturer-lookup.ts'
 import { lessonGroupSelectOn, toLessonGroup } from './lesson-group.ts'
 
 /** Who is asking; the route only lets through attendance managers and lecturers */
@@ -19,16 +20,6 @@ export type AttendanceViewer = {
 }
 
 type Db = Prisma.TransactionClient
-
-type FindLecturerIdParams = {
-  db: Db
-  organizationId: string
-  userId: string
-}
-
-/** The lecturer record linked to the login in this organization, if any */
-const findLecturerId = async ({ db, organizationId, userId }: FindLecturerIdParams) =>
-  (await db.lecturer.findFirst({ where: { organization_id: organizationId, user_id: userId }, select: { id: true } }))?.id ?? null
 
 /** One session's register: the group, the day and the start time */
 type RegisterScope = {

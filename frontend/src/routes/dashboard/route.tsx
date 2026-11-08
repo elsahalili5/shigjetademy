@@ -1,4 +1,4 @@
-import { ClipboardCheck, GraduationCap, LogOut, School } from 'lucide-react'
+import { ClipboardCheck, GraduationCap, LogOut, Presentation, School } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { hasOrganizationPermission } from '@shigjetademy/shared/auth'
 import type { Permission } from '@shigjetademy/shared/auth'
@@ -35,6 +35,7 @@ const BUILT_MODULE_PAGES = {
   courses: '/dashboard/courses',
   groups: '/dashboard/groups',
   attendance: '/dashboard/attendance',
+  lessons: '/dashboard/lessons',
 } as const
 
 const isBuiltModule = (slug: string): slug is keyof typeof BUILT_MODULE_PAGES => slug in BUILT_MODULE_PAGES
@@ -47,6 +48,7 @@ const MODULE_PERMISSIONS = {
   // Timetable admins read groups to move their lessons
   groups: ['MANAGE_COURSES', 'MANAGE_SCHEDULES'],
   attendance: ['MANAGE_ATTENDANCE'],
+  lessons: ['MANAGE_COURSES'],
 } as const satisfies Partial<Record<ModuleSlug, readonly Permission[]>>
 
 const isGatedModule = (slug: ModuleSlug): slug is keyof typeof MODULE_PERMISSIONS => slug in MODULE_PERMISSIONS
@@ -204,7 +206,7 @@ function StudentNavigation() {
   )
 }
 
-/** Lecturers have My teaching and Attendance; their profile is at the bottom of the sidebar like everyone's */
+/** Lecturers have My teaching, Attendance and Lessons; their profile is at the bottom of the sidebar like everyone's */
 function LecturerNavigation() {
   return (
     <>
@@ -216,6 +218,9 @@ function LecturerNavigation() {
       </Link>
       <Link to="/dashboard/attendance" className={SIDEBAR_LINK_CLASS}>
         <SidebarLinkContent icon={ClipboardCheck} label="Attendance" />
+      </Link>
+      <Link to="/dashboard/lessons" className={SIDEBAR_LINK_CLASS}>
+        <SidebarLinkContent icon={Presentation} label="Lessons" />
       </Link>
     </>
   )
