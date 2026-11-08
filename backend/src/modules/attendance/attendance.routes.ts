@@ -8,11 +8,11 @@ import { AttendanceController } from './attendance.controller.ts'
 import { attendanceGroupsQuerySchema, attendanceMarkSchema, registerParamSchema, registerStudentParamSchema } from './attendance.schema.ts'
 
 // Mounted at /api/organizations. The owner and school admins with MANAGE_ATTENDANCE take or correct any register;
-// a lecturer only the registers of groups they teach on that day, which the service checks.
+// a lecturer only the registers of groups they teach on that day, which the service checks. A register is one session, addressed by its start time ('HH:MM').
 const router = Router()
 
 const GROUPS = '/:organizationId/attendance/groups'
-const REGISTER = `${GROUPS}/:groupId/:date`
+const REGISTER = `${GROUPS}/:groupId/:date/:startTime`
 
 const canTakeAttendance = requireOrganizationAccess({ isAllowed: (membership) => membership.role === 'LECTURER' || hasOrganizationPermission({ membership, permission: 'MANAGE_ATTENDANCE' }) })
 

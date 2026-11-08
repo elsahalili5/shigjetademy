@@ -14,6 +14,8 @@ import { StatusTabs } from '#/components/StatusTabs'
 import { showErrorToast } from '#/lib/error-toast'
 import { useAcademicYears } from '#/modules/academic-periods/hooks/use-academic-years'
 import { useCourseOptions } from '#/modules/courses/hooks/use-course-options'
+import { useActiveMembership } from '#/modules/auth/hooks/use-active-membership'
+import { isCoursesManager } from '#/modules/courses/utils/permissions'
 import { useLocations } from '#/modules/locations/hooks/use-locations'
 import { useGroupLecturerOptions } from '../hooks/use-group-lecturer-options'
 import { useGroups } from '../hooks/use-groups'
@@ -45,8 +47,10 @@ interface GroupsPageProps {
   timeZone: string
 }
 
-/** The organization's groups: filters, active and archived tabs, and adding, editing and archiving, once it has a school year and a course */
+/** The organization's groups: filters, active and archived tabs, and adding, editing and archiving, once it has a school year and a course; read-only for timetable admins */
 export function GroupsPage({ organizationId, organizationName, timeZone }: GroupsPageProps) {
+  const membership = useActiveMembership()
+  const canManage = isCoursesManager(membership)
   const dialogRef = useRef<HTMLDialogElement>(null)
   const lecturersDialogRef = useRef<HTMLDialogElement>(null)
   const [status, setStatus] = useState<GroupStatus>('ACTIVE')
@@ -55,7 +59,7 @@ export function GroupsPage({ organizationId, organizationName, timeZone }: Group
   const courses = useCourseOptions(organizationId)
   const years = useAcademicYears(organizationId)
   const locations = useLocations(organizationId)
-  const lecturers = useGroupLecturerOptions(organizationId)
+  const lecturers = useGroupLecturerOptions({ organizationId, isEnabled: canManage })
   const setGroupStatus = useSetGroupStatus(organizationId)
   const [dialogMode, setDialogMode] = useState<GroupDialogMode>({ kind: 'add', openCount: 0 })
   const [lecturersDialogMode, setLecturersDialogMode] = useState<GroupLecturersDialogMode>({ group: null, openCount: 0 })
@@ -104,7 +108,7 @@ export function GroupsPage({ organizationId, organizationName, timeZone }: Group
   return (
     <div className="flex h-full min-w-0 flex-col overflow-y-auto">
       <DashboardPageHeader icon={UsersRound} title="Groups" subtitle={`${organizationName} · the classes you run`}>
-        {setup === 'READY' ? (
+        {canManage && setup === 'READY' ? (
           <button type="button" className="button button--primary min-h-11 px-4 text-base" onClick={handleAdd}>
             <Plus size={17} strokeWidth={2.2} aria-hidden="true" />
             Add group
@@ -130,14 +134,18 @@ export function GroupsPage({ organizationId, organizationName, timeZone }: Group
             isLoadingMore={groups.isFetchingNextPage}
             onRetry={handleRetry}
             onLoadMore={() => void groups.fetchNextPage()}
-            onAdd={handleAdd}
-            renderActions={(group) => <GroupActions group={group} onEdit={handleEdit} onOpenLecturers={handleOpenLecturers} onSetStatus={handleSetStatus} />}
+            onAdd={canManage ? handleAdd : undefined}
+            renderActions={canManage ? (group) => <GroupActions group={group} onEdit={handleEdit} onOpenLecturers={handleOpenLecturers} onSetStatus={handleSetStatus} /> : undefined}
           />
         </section>
       </div>
 
-      <GroupDialog dialogRef={dialogRef} organizationId={organizationId} mode={dialogMode} options={formOptions} timeZone={timeZone} onSaved={handleSaved} />
-      <GroupLecturersDialog dialogRef={lecturersDialogRef} organizationId={organizationId} mode={lecturersDialogMode} lecturers={formOptions.lecturers} timeZone={timeZone} />
+      {canManage ? (
+        <>
+          <GroupDialog dialogRef={dialogRef} organizationId={organizationId} mode={dialogMode} options={formOptions} timeZone={timeZone} onSaved={handleSaved} />
+          <GroupLecturersDialog dialogRef={lecturersDialogRef} organizationId={organizationId} mode={lecturersDialogMode} lecturers={formOptions.lecturers} timeZone={timeZone} />
+        </>
+      ) : null}
     </div>
   )
 }
@@ -152,8 +160,10 @@ interface GroupListProps {
   isLoadingMore: boolean
   onRetry: () => void
   onLoadMore: () => void
-  onAdd: () => void
-  renderActions: (group: Group) => ReactNode
+  /** Left out for a reader, who adds nothing */
+  onAdd?: () => void
+  /** Left out for a reader, whose table has no actions */
+  renderActions?: (group: Group) => ReactNode
 }
 
 function GroupList({ isFailed, data, setup, listStatus, isFiltered, hasNextPage, isLoadingMore, onRetry, onLoadMore, onAdd, renderActions }: GroupListProps) {
@@ -177,7 +187,7 @@ interface EmptyGroupsProps {
   setup: Exclude<GroupSetup, 'LOADING'>
   listStatus: GroupStatus
   isFiltered: boolean
-  onAdd: () => void
+  onAdd?: () => void
 }
 
 function EmptyGroups({ setup, listStatus, isFiltered, onAdd }: EmptyGroupsProps) {
@@ -189,6 +199,7 @@ function EmptyGroups({ setup, listStatus, isFiltered, onAdd }: EmptyGroupsProps)
   }
   switch (setup) {
     case 'NEEDS_YEAR':
+      if (!onAdd) return <EmptyMessage icon={UsersRound} title="No groups yet." text="Groups show here once the school sets them up." />
       return (
         <EmptyMessage icon={UsersRound} title="Add a school year first." text="Every group runs in a school year.">
           <Link className="button button--primary min-h-11 px-4 text-base" to="/dashboard/academic-periods">
@@ -197,6 +208,7 @@ function EmptyGroups({ setup, listStatus, isFiltered, onAdd }: EmptyGroupsProps)
         </EmptyMessage>
       )
     case 'NEEDS_COURSE':
+      if (!onAdd) return <EmptyMessage icon={UsersRound} title="No groups yet." text="Groups show here once the school sets them up." />
       return (
         <EmptyMessage icon={UsersRound} title="Add a course first." text="Every group belongs to an active course.">
           <Link className="button button--primary min-h-11 px-4 text-base" to="/dashboard/courses">
@@ -205,6 +217,7 @@ function EmptyGroups({ setup, listStatus, isFiltered, onAdd }: EmptyGroupsProps)
         </EmptyMessage>
       )
     case 'READY':
+      if (!onAdd) return <EmptyMessage icon={UsersRound} title="No groups yet." text="Groups show here once the school sets them up." />
       return (
         <EmptyMessage icon={UsersRound} title="No groups yet." text="Add your first group to a course for a school year.">
           <button type="button" className="button button--primary min-h-11 px-4 text-base" onClick={onAdd}>

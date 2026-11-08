@@ -2,7 +2,7 @@ import { fireEvent, screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { attendanceMarkSchema } from '@shigjetademy/shared/attendance'
-import type { AttendanceGroup, AttendanceRegister } from '@shigjetademy/shared/attendance'
+import type { AttendanceRegister, AttendanceSession } from '@shigjetademy/shared/attendance'
 import type { AuthUser } from '@shigjetademy/shared/auth'
 import { buildUser, DEFAULT_SETTINGS, OWNER_MEMBERSHIPS, signInAs, YLLKA_ADMIN_MEMBERSHIP } from '#/test/fixtures'
 import { renderRoute } from '#/test/render-route'
@@ -18,16 +18,16 @@ const LECTURER_MEMBERSHIPS: AuthUser['memberships'] = [
 
 const LECTURER = buildUser({ first_name: 'Arben', last_name: 'Hoxha', email: 'arben@lecturer.test', memberships: LECTURER_MEMBERSHIPS })
 
-const GROUP_A: AttendanceGroup = { id: 'group-a', name: 'Group A', course: 'Mathematics', location: 'Main campus', opens_at: '17:00', locks_at: '18:30' }
+const GROUP_A: AttendanceSession = { group_id: 'group-a', name: 'Group A', course: 'Mathematics', location: 'Main campus', start_time: '17:00', end_time: '18:30', rescheduled_from: null }
 
-const GROUP_B: AttendanceGroup = { id: 'group-b', name: 'Group B', course: 'English', location: null, opens_at: '19:00', locks_at: '20:00' }
+const GROUP_B: AttendanceSession = { group_id: 'group-b', name: 'Group B', course: 'English', location: null, start_time: '19:00', end_time: '20:00', rescheduled_from: null }
 
 type ServeGroupsParams = {
   organizationId?: string
-  groupsByDate?: Record<string, AttendanceGroup[]>
+  groupsByDate?: Record<string, AttendanceSession[]>
 }
 
-/** Answers the day's groups and records which days were asked for */
+/** Answers the day's sessions and records which days were asked for */
 const serveGroups = ({ organizationId = 'org-1', groupsByDate = { [MONDAY]: [GROUP_A, GROUP_B] } }: ServeGroupsParams = {}) => {
   const dates: string[] = []
   server.use(
@@ -43,8 +43,9 @@ const serveGroups = ({ organizationId = 'org-1', groupsByDate = { [MONDAY]: [GRO
 const REGISTER: AttendanceRegister = {
   group: { id: 'group-a', name: 'Group A', course: 'Mathematics', status: 'ACTIVE' },
   date: MONDAY,
-  opens_at: '17:00',
-  locks_at: '18:30',
+  start_time: '17:00',
+  end_time: '18:30',
+  rescheduled_from: null,
   window: 'OPEN',
   can_edit: true,
   substitute: null,
@@ -55,7 +56,7 @@ const REGISTER: AttendanceRegister = {
   ],
 }
 
-const REGISTER_PATH = `*/api/organizations/org-1/attendance/groups/group-a/${MONDAY}`
+const REGISTER_PATH = `*/api/organizations/org-1/attendance/groups/group-a/${MONDAY}/17\\:00`
 
 /** Answers Group A's register on Monday and saves marks into it the way the server does, recording every request */
 const serveRegister = (initial: AttendanceRegister = REGISTER) => {
@@ -94,13 +95,13 @@ type OpenRegisterParams = {
   register?: AttendanceRegister
 }
 
-/** Signs in as the lecturer and opens Group A's register on Monday */
+/** Signs in as the lecturer and opens the register of Group A's 17:00 session on Monday */
 const openRegister = async ({ register = REGISTER }: OpenRegisterParams = {}) => {
   signInAs(LECTURER)
   serveGroups()
   const fake = serveRegister(register)
   const rendered = renderRoute('/dashboard/attendance')
-  await rendered.user.selectOptions(await screen.findByRole('combobox', { name: 'Group' }), 'group-a')
+  await rendered.user.selectOptions(await screen.findByRole('combobox', { name: 'Group' }), 'Group A · Mathematics · 17:00–18:30')
   return { ...rendered, fake, section: await screen.findByRole('region', { name: 'Group A' }) }
 }
 
@@ -114,7 +115,7 @@ afterEach(() => {
 })
 
 describe('AttendancePage: picking a date and a group', () => {
-  it('opens on the organization’s today with the groups that have a lesson, earliest first', async () => {
+  it('opens on the organization’s today with the day’s lesson sessions, earliest first', async () => {
     vi.setSystemTime(new Date('2026-11-08T23:30:00.000Z'))
     signInAs(LECTURER)
     const dates = serveGroups()
@@ -140,6 +141,45 @@ describe('AttendancePage: picking a date and a group', () => {
     expect(await screen.findByText('No lessons on this day')).toBeInTheDocument()
     expect(screen.queryByRole('combobox', { name: 'Group' })).not.toBeInTheDocument()
     expect(dates).toEqual([MONDAY, '2026-11-10', '2026-11-11'])
+  })
+
+  it('lists a group meeting twice that day once per session, and opens the chosen session’s register', async () => {
+    signInAs(LECTURER)
+    serveGroups({ groupsByDate: { [MONDAY]: [{ ...GROUP_A, start_time: '09:00', end_time: '10:30' }, { ...GROUP_A, start_time: '14:00', end_time: '15:30' }] } })
+    const startTimes: string[] = []
+    server.use(
+      http.get(`*/api/organizations/org-1/attendance/groups/group-a/${MONDAY}/:startTime`, ({ params }) => {
+        const startTime = String(params.startTime)
+        startTimes.push(startTime)
+        return HttpResponse.json({ data: { ...REGISTER, start_time: startTime, end_time: '15:30' } })
+      }),
+    )
+    const { user } = renderRoute('/dashboard/attendance')
+    const picker = await screen.findByRole('combobox', { name: 'Group' })
+
+    expect(within(picker).getAllByRole('option').map((option) => option.textContent)).toEqual(['Choose a group', 'Group A · Mathematics · 09:00–10:30', 'Group A · Mathematics · 14:00–15:30'])
+    await user.selectOptions(picker, 'Group A · Mathematics · 14:00–15:30')
+
+    expect(await within(await screen.findByRole('region', { name: 'Group A' })).findByText('Mathematics · 9 Nov 2026 · 14:00–15:30')).toBeInTheDocument()
+    expect(startTimes).toEqual(['14:00'])
+  })
+
+  it('marks a session moved to this day with where it came from, and opens its register at its new start', async () => {
+    signInAs(LECTURER)
+    const moved: AttendanceSession = { ...GROUP_A, start_time: '15:00', end_time: '16:00', rescheduled_from: { date: '2026-11-06', start_time: '17:00' } }
+    serveGroups({ groupsByDate: { [MONDAY]: [moved] } })
+    server.use(
+      http.get(`*/api/organizations/org-1/attendance/groups/group-a/${MONDAY}/15\\:00`, () =>
+        HttpResponse.json({ data: { ...REGISTER, start_time: '15:00', end_time: '16:00', rescheduled_from: moved.rescheduled_from } }),
+      ),
+    )
+    const { user } = renderRoute('/dashboard/attendance')
+
+    await user.selectOptions(await screen.findByRole('combobox', { name: 'Group' }), 'Group A · Mathematics · 15:00–16:00 · Rescheduled from Fri 6 Nov, 17:00')
+
+    const section = await screen.findByRole('region', { name: 'Group A' })
+    expect(await within(section).findByText('Mathematics · 9 Nov 2026 · 15:00–16:00')).toBeInTheDocument()
+    expect(within(section).getByText('Rescheduled from Fri 6 Nov, 17:00')).toBeInTheDocument()
   })
 
   it('offers to try again when the groups fail to load', async () => {
@@ -197,10 +237,10 @@ describe('AttendancePage: the register', () => {
   it('offers to try again when the register fails to load', async () => {
     signInAs(LECTURER)
     serveGroups()
-    server.use(http.get(`*/api/organizations/org-1/attendance/groups/group-a/${MONDAY}`, () => HttpResponse.json({ error: 'Down' }, { status: 500 })))
+    server.use(http.get(REGISTER_PATH, () => HttpResponse.json({ error: 'Down' }, { status: 500 })))
     const { user } = renderRoute('/dashboard/attendance')
 
-    await user.selectOptions(await screen.findByRole('combobox', { name: 'Group' }), 'group-a')
+    await user.selectOptions(await screen.findByRole('combobox', { name: 'Group' }), 'Group A · Mathematics · 17:00–18:30')
 
     expect(await screen.findByText('We couldn’t load the register.')).toBeInTheDocument()
   })
@@ -346,7 +386,7 @@ describe('AttendancePage: corrections', () => {
     serveGroups()
     serveRegister({ ...REGISTER, window: 'LOCKED', can_edit: true })
     const { user } = renderRoute('/dashboard/attendance')
-    await user.selectOptions(await screen.findByRole('combobox', { name: 'Group' }), 'group-a')
+    await user.selectOptions(await screen.findByRole('combobox', { name: 'Group' }), 'Group A · Mathematics · 17:00–18:30')
     const section = await screen.findByRole('region', { name: 'Group A' })
 
     expect(within(section).getByText('Locked at 18:30. Changes now are logged as corrections.')).toBeInTheDocument()

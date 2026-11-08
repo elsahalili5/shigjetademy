@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { nameSchema } from './auth.ts'
 import { todayDay } from './calendar-day.ts'
 import type { CurrentPeriod } from './academic-periods.ts'
-import type { GroupScheduleEntry } from './groups.ts'
+import type { GroupScheduleEntry, RescheduledLesson } from './groups.ts'
 import { optionalText } from './organization.ts'
 
 export const STUDENT_STATUSES = ['ACTIVE', 'ARCHIVED'] as const
@@ -116,4 +116,6 @@ export type MySchool = {
   term: CurrentPeriod | null
   /** The active groups they are in now, in a school year that includes today, by name */
   groups: MySchoolGroup[]
+  /** Lessons of those groups moved to today or later, by the day and time they moved to */
+  rescheduled_lessons: RescheduledLesson[]
 }

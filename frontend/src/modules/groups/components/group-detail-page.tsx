@@ -8,11 +8,14 @@ import { Detail } from '#/components/HomeDetails'
 import { LoadError } from '#/components/LoadError'
 import { SectionCard } from '#/components/SectionCard'
 import { SkeletonRows } from '#/components/SkeletonRows'
+import { useActiveMembership } from '#/modules/auth/hooks/use-active-membership'
+import { isCoursesManager } from '#/modules/courses/utils/permissions'
 import { useGroup } from '../hooks/use-group'
 import { useGroupLecturerOptions } from '../hooks/use-group-lecturer-options'
 import { getEnrolmentCountLabel } from '../utils/enrolment-count'
 import { getScheduleEntryKey, getScheduleEntryLabel } from '../utils/schedule-label'
 import { GroupLecturersContent } from './group-lecturers-content'
+import { GroupReschedulesSection } from './group-reschedules-section'
 import { GroupStudentsSection } from './group-students-section'
 
 // A malformed id is refused as invalid; to the person it is a group that doesn't exist
@@ -27,7 +30,7 @@ interface GroupDetailPageProps {
   timeZone: string
 }
 
-/** Everything about one group: its details, its weekly schedule and who teaches and covers it */
+/** Everything about one group: its details, its weekly schedule, its moved lessons and who teaches and covers it */
 export function GroupDetailPage({ organizationId, groupId, timeZone }: GroupDetailPageProps) {
   const group = useGroup({ organizationId, groupId })
   const isNotFound = isApiError(group.error) && NOT_FOUND_STATUSES.includes(group.error.response?.status ?? 0)
@@ -57,6 +60,10 @@ interface GroupDetailContentProps {
 }
 
 function GroupDetailContent({ organizationId, group, status, isNotFound, timeZone, onRetry }: GroupDetailContentProps) {
+  const membership = useActiveMembership()
+  // Timetable admins read the group and move its lessons; its students and lecturers stay with course managers
+  const canManage = isCoursesManager(membership)
+
   // A failed refetch, like the one after enrolling, keeps the page that's already loaded
   if (!group) {
     if (isNotFound) return <EmptyMessage icon={UsersRound} title="Group not found." text="It may belong to another organization, or the link is old." />
@@ -81,12 +88,17 @@ function GroupDetailContent({ organizationId, group, status, isNotFound, timeZon
       <SectionCard title="Schedule">
         <GroupSchedule group={group} />
       </SectionCard>
-      <SectionCard title="Students">
-        <GroupStudentsSection organizationId={organizationId} group={group} />
-      </SectionCard>
-      <SectionCard title="Lecturers">
-        <GroupLecturersSection organizationId={organizationId} group={group} timeZone={timeZone} />
-      </SectionCard>
+      <GroupReschedulesSection organizationId={organizationId} group={group} timeZone={timeZone} />
+      {canManage ? (
+        <>
+          <SectionCard title="Students">
+            <GroupStudentsSection organizationId={organizationId} group={group} />
+          </SectionCard>
+          <SectionCard title="Lecturers">
+            <GroupLecturersSection organizationId={organizationId} group={group} timeZone={timeZone} />
+          </SectionCard>
+        </>
+      ) : null}
     </>
   )
 }
@@ -116,7 +128,7 @@ interface GroupLecturersSectionProps {
 }
 
 function GroupLecturersSection({ organizationId, group, timeZone }: GroupLecturersSectionProps) {
-  const lecturers = useGroupLecturerOptions(organizationId)
+  const lecturers = useGroupLecturerOptions({ organizationId })
   return <GroupLecturersContent organizationId={organizationId} group={group} lecturers={lecturers.data ?? []} timeZone={timeZone} />
 }
 

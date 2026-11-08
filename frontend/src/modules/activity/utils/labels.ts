@@ -50,6 +50,8 @@ export const ACTIVITY_ACTION_LABELS = {
   GROUP_STUDENT_WITHDRAWN: 'Student withdrawn',
   GROUP_STUDENT_MOVED: 'Student moved',
   ATTENDANCE_CORRECTED: 'Attendance corrected',
+  LESSON_RESCHEDULED: 'Lesson rescheduled',
+  LESSON_RESCHEDULE_CANCELLED: 'Reschedule cancelled',
   INVITATION_SENT: 'Invitation sent',
   INVITATION_RESENT: 'Invitation resent',
   INVITATION_REVOKED: 'Invitation withdrawn',

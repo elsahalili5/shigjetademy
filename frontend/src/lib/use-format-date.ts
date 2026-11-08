@@ -1,4 +1,4 @@
-import { formatDate, formatDateTime, formatDay, formatOrganizationDate, formatOrganizationDateTime, formatOrganizationDay } from '#/lib/format'
+import { formatDate, formatDateTime, formatDay, formatOrganizationDate, formatOrganizationDateTime, formatOrganizationDay, formatOrganizationLessonDay, formatLessonDay } from '#/lib/format'
 import { useActiveMembership } from '#/modules/auth/hooks/use-active-membership'
 
 /** Formats dates the way the active organization writes them; without one, like for the platform admin, in the user's locale */
@@ -23,4 +23,19 @@ export function useFormatDay() {
   if (!membership) return formatDay
   const { date_format: dateFormat } = membership.organization
   return (day: string) => formatOrganizationDay({ day, dateFormat })
+}
+
+type LessonSlot = {
+  /** 'YYYY-MM-DD' */
+  day: string
+  /** 'HH:MM', the school's wall clock, shown as stored */
+  time: string
+}
+
+/** A lesson at its day and start, like "Mon 9 Nov, 09:00", the way the active organization writes days; without one, in the user's locale */
+export function useFormatLessonSlot() {
+  const membership = useActiveMembership()
+  if (!membership) return ({ day, time }: LessonSlot) => `${formatLessonDay(day)}, ${time}`
+  const { date_format: dateFormat } = membership.organization
+  return ({ day, time }: LessonSlot) => `${formatOrganizationLessonDay({ day, dateFormat })}, ${time}`
 }

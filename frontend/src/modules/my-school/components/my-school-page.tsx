@@ -3,6 +3,7 @@ import type { MySchool, MySchoolGroup } from '@shigjetademy/shared/students'
 import { DashboardPageHeader } from '#/components/DashboardPageHeader'
 import { Detail, HomeSkeleton, SchoolYearCard } from '#/components/HomeDetails'
 import { LoadError } from '#/components/LoadError'
+import { RescheduledLessons } from '#/components/RescheduledLessons'
 import { SectionCard } from '#/components/SectionCard'
 import { getScheduleLabel } from '#/modules/groups/utils/schedule-label'
 import { useMySchool } from '../hooks/use-my-school'
@@ -12,7 +13,7 @@ interface MySchoolPageProps {
   organizationName: string
 }
 
-/** A student's home: their school, their own record, their groups and the current school year and term, read-only */
+/** A student's home: their school, their own record, their groups, their moved lessons and the current school year and term, read-only */
 export function MySchoolPage({ organizationId, organizationName }: MySchoolPageProps) {
   const mySchool = useMySchool(organizationId)
 
@@ -53,9 +54,14 @@ function MySchoolContent({ status, data, onRetry }: MySchoolContentProps) {
         )}
       </SectionCard>
       {data.student ? (
-        <SectionCard title="Your groups">
-          <SchoolGroups groups={data.groups} />
-        </SectionCard>
+        <>
+          <SectionCard title="Your groups">
+            <SchoolGroups groups={data.groups} />
+          </SectionCard>
+          <SectionCard title="Rescheduled lessons">
+            <RescheduledLessons lessons={data.rescheduled_lessons} />
+          </SectionCard>
+        </>
       ) : null}
       <SchoolYearCard academicYear={data.academic_year} term={data.term} />
     </>

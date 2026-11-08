@@ -5,8 +5,9 @@ import type { OrganizationIdParam } from '@modules/organization/organization.typ
 import { GroupEnrolmentService } from './group-enrolments.service.ts'
 import { GroupLecturerService } from './group-lecturers.service.ts'
 import { GroupService } from './groups.service.ts'
+import { LessonRescheduleService } from './lesson-reschedules.service.ts'
 import { listGroupsQuerySchema } from './groups.schema.ts'
-import type { EnrolmentParam, GroupEnrolmentInput, GroupInput, GroupMoveInput, GroupParam, GroupSubstitutionInput, SubstitutionParam } from './groups.types.ts'
+import type { EnrolmentParam, GroupEnrolmentInput, GroupInput, GroupMoveInput, GroupParam, GroupSubstitutionInput, LessonRescheduleInput, RescheduleParam, SubstitutionParam } from './groups.types.ts'
 
 type CreateGroupRequest = AuthRequest & TypedRequest<GroupInput, OrganizationIdParam>
 
@@ -25,6 +26,10 @@ type EnrolStudentRequest = AuthRequest & TypedRequest<GroupEnrolmentInput, Group
 type EnrolmentRequest = AuthRequest & TypedRequest<unknown, EnrolmentParam>
 
 type MoveStudentRequest = AuthRequest & TypedRequest<GroupMoveInput, EnrolmentParam>
+
+type RescheduleRequest = AuthRequest & TypedRequest<LessonRescheduleInput, GroupParam>
+
+type CancelRescheduleRequest = AuthRequest & TypedRequest<unknown, RescheduleParam>
 
 export const GroupController = {
   listGroups: async (req: TypedRequest<unknown, OrganizationIdParam>, res: Response) => {
@@ -183,6 +188,41 @@ export const GroupController = {
       return res.status(200).json({ data: substitution })
     } catch (error) {
       return sendError({ res, error, fallback: 'Failed to cancel the substitution' })
+    }
+  },
+
+  listReschedules: async (req: GroupRequest, res: Response) => {
+    try {
+      const reschedules = await LessonRescheduleService.listReschedules(req.params)
+      return res.status(200).json({ data: reschedules })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to fetch the rescheduled lessons' })
+    }
+  },
+
+  rescheduleLesson: async (req: RescheduleRequest, res: Response) => {
+    try {
+      const actorId = req.user?.id
+      if (!actorId) {
+        return res.status(401).json({ error: 'Unauthorized' })
+      }
+      const reschedule = await LessonRescheduleService.reschedule({ ...req.params, actorId, data: req.body })
+      return res.status(201).json({ data: reschedule })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to reschedule the lesson' })
+    }
+  },
+
+  cancelReschedule: async (req: CancelRescheduleRequest, res: Response) => {
+    try {
+      const actorId = req.user?.id
+      if (!actorId) {
+        return res.status(401).json({ error: 'Unauthorized' })
+      }
+      const reschedule = await LessonRescheduleService.cancelReschedule({ ...req.params, actorId })
+      return res.status(200).json({ data: reschedule })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to cancel the reschedule' })
     }
   },
 

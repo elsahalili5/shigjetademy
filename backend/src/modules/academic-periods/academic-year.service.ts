@@ -7,6 +7,7 @@ import { getOrganizationToday } from '@lib/current-period.ts'
 import { lockOrganization } from '@lib/organization-lock.ts'
 import type { OrganizationScope } from '@lib/organization-lock.ts'
 import { countOutsideYear } from '@modules/groups/group-lecturers.service.ts'
+import { upcomingMovesOutside } from '@modules/groups/rescheduled-lessons.ts'
 import { findYear, outside, overlapping, periodSelect, toPeriodJson } from './academic-periods.utils.ts'
 
 const byDate = { start_date: 'asc' } as const
@@ -107,8 +108,13 @@ export const AcademicYearService = {
         throw new HttpError(409, 'Some terms or holidays fall outside these dates')
       }
       const isShortened = range.start > current.start_date || range.end < current.end_date
-      if (isShortened && (await countOutsideYear({ tx, groups: { academic_year_id: yearId }, range, today: await getOrganizationToday({ db: tx, organizationId }) })) > 0) {
+      const today = await getOrganizationToday({ db: tx, organizationId })
+      if (isShortened && (await countOutsideYear({ tx, groups: { academic_year_id: yearId }, range, today })) > 0) {
         throw new HttpError(409, 'Some substitutions or planned lecturer changes fall outside these dates')
+      }
+      // Moves to earlier days are history
+      if (isShortened && (await tx.lessonReschedule.count({ where: { group: { academic_year_id: yearId }, ...upcomingMovesOutside({ today: toDate(today), range }) } })) > 0) {
+        throw new HttpError(409, 'Some rescheduled lessons fall outside these dates. Cancel or change them first.')
       }
       if (data.is_current && !current.is_current) {
         await unsetCurrent({ tx, organizationId })

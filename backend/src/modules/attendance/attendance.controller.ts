@@ -30,10 +30,10 @@ export const AttendanceController = {
       }
       // The route already answered 400 for a bad query; parsing again types it
       const { date } = attendanceGroupsQuerySchema.parse(req.query)
-      const groups = await AttendanceService.listGroups({ organizationId: req.params.organizationId, viewer, date })
+      const groups = await AttendanceService.listSessions({ organizationId: req.params.organizationId, viewer, date })
       return res.status(200).json({ data: groups })
     } catch (error) {
-      return sendError({ res, error, fallback: 'Failed to fetch the day’s groups' })
+      return sendError({ res, error, fallback: 'Failed to fetch the day’s lessons' })
     }
   },
 

@@ -17,6 +17,7 @@ const MY_SCHOOL: MySchool = {
   academic_year: { name: '2026–27', start_date: '2026-09-01', end_date: '2027-06-30' },
   term: { name: 'Autumn term', start_date: '2026-09-01', end_date: '2026-12-20' },
   groups: [],
+  rescheduled_lessons: [],
 }
 
 const GROUP_A: MySchoolGroup = {
@@ -96,6 +97,32 @@ describe('My school', () => {
 
     const groups = await screen.findByRole('region', { name: 'Your groups' })
     expect(within(groups).getByText('You aren’t in any group yet.')).toBeInTheDocument()
+  })
+
+  it('lists the student’s upcoming rescheduled lessons with the original and new date and time', async () => {
+    signInAs(STUDENT)
+    serveMySchool({
+      ...MY_SCHOOL,
+      groups: [GROUP_A],
+      rescheduled_lessons: [
+        { id: 'r1', group: { id: 'group-a', name: 'Group A', course: 'Mathematics' }, original_date: '2026-11-16', original_start_time: '17:00', new_date: '2026-11-20', new_start_time: '16:00', new_end_time: '17:30' },
+      ],
+    })
+    renderRoute('/dashboard/my-school')
+
+    const section = await screen.findByRole('region', { name: 'Rescheduled lessons' })
+    const [lesson] = within(section).getAllByRole('listitem')
+    expect(lesson).toHaveTextContent('Group A · Mathematics')
+    expect(lesson).toHaveTextContent('Moved from Mon 16 Nov, 17:00 to Fri 20 Nov, 16:00–17:30')
+  })
+
+  it('says when no lesson is moved', async () => {
+    signInAs(STUDENT)
+    serveMySchool()
+    renderRoute('/dashboard/my-school')
+
+    const section = await screen.findByRole('region', { name: 'Rescheduled lessons' })
+    expect(within(section).getByText('No lessons moved.')).toBeInTheDocument()
   })
 
   it('offers to try again when it fails to load', async () => {

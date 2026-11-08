@@ -4,6 +4,7 @@ import type { MyTeaching, MyTeachingCover, MyTeachingCoverGroup, MyTeachingGroup
 import { DashboardPageHeader } from '#/components/DashboardPageHeader'
 import { Detail, HomeSkeleton, SchoolYearCard } from '#/components/HomeDetails'
 import { LoadError } from '#/components/LoadError'
+import { RescheduledLessons } from '#/components/RescheduledLessons'
 import { SectionCard } from '#/components/SectionCard'
 import { useFormatDay } from '#/lib/use-format-date'
 import { getScheduleLabel } from '#/modules/groups/utils/schedule-label'
@@ -24,7 +25,7 @@ const COVER_STATUS_LABELS = {
   UPCOMING: 'Upcoming',
 } as const satisfies Record<MyTeachingCover['status'], string>
 
-/** A lecturer's home: their organization, their own details, what they teach and the current school year and term, read-only */
+/** A lecturer's home: their organization, their own details, what they teach, their moved lessons and the current school year and term, read-only */
 export function MyTeachingPage({ organizationId, organizationName, firstName, timeZone }: MyTeachingPageProps) {
   const myTeaching = useMyTeaching(organizationId)
 
@@ -64,6 +65,9 @@ function MyTeachingContent({ status, data, onRetry }: MyTeachingContentProps) {
           </SectionCard>
           <SectionCard title="Cover">
             <TeachingCover cover={data.cover} />
+          </SectionCard>
+          <SectionCard title="Rescheduled lessons">
+            <RescheduledLessons lessons={data.rescheduled_lessons} />
           </SectionCard>
         </>
       ) : null}

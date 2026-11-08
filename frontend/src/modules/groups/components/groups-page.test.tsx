@@ -548,6 +548,27 @@ describe('GroupsPage: access', () => {
     expect(within(screen.getByRole('navigation', { name: 'Modules' })).getByRole('link', { name: 'Groups' })).toHaveAttribute('href', '/dashboard/groups')
   })
 
+  it('lets a school admin with only Timetable read the groups, with Groups in the sidebar and nothing to add, edit or archive', async () => {
+    signInAs(buildUser({ memberships: [{ ...YLLKA_ADMIN_MEMBERSHIP, permissions: ['MANAGE_SCHEDULES'] }] }))
+    serveOptions({ organizationId: 'org-2' })
+    let lecturerOptionReads = 0
+    server.use(
+      http.get('*/api/organizations/org-2/groups', () => HttpResponse.json({ data: { groups: [GROUP_A], total: 1, counts: { ACTIVE: 1, ARCHIVED: 0 } } })),
+      http.get('*/api/organizations/org-2/groups/lecturer-options', () => {
+        lecturerOptionReads += 1
+        return HttpResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }),
+    )
+    renderRoute('/dashboard/groups')
+
+    expect(await screen.findByText('Group A')).toBeInTheDocument()
+    expect(within(screen.getByRole('navigation', { name: 'Modules' })).getByRole('link', { name: 'Groups' })).toHaveAttribute('href', '/dashboard/groups')
+    expect(screen.queryByRole('button', { name: 'Add group' })).not.toBeInTheDocument()
+    expect(within(screen.getByRole('table', { name: 'Groups' })).queryByRole('button')).not.toBeInTheDocument()
+    expect(within(screen.getByRole('table', { name: 'Groups' })).queryByRole('columnheader', { name: 'Actions' })).not.toBeInTheDocument()
+    expect(lecturerOptionReads).toBe(0)
+  })
+
   it('sends a school admin without Courses and groups back to the dashboard, and hides it from the sidebar', async () => {
     signInAs(buildUser({ memberships: [YLLKA_ADMIN_MEMBERSHIP] }))
     server.use(http.get('*/api/organizations/org-2/*', () => HttpResponse.json({ data: [] })))

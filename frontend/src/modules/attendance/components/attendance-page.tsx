@@ -1,6 +1,7 @@
 import { useId, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { CalendarX, ClipboardCheck } from 'lucide-react'
+import type { AttendanceSession } from '@shigjetademy/shared/attendance'
 import { todayIn } from '@shigjetademy/shared/calendar-day'
 import { DashboardPageHeader } from '#/components/DashboardPageHeader'
 import { EmptyMessage } from '#/components/EmptyMessage'
@@ -8,9 +9,10 @@ import { LoadError } from '#/components/LoadError'
 import { SectionCard } from '#/components/SectionCard'
 import { SelectField } from '#/components/SelectField'
 import { SkeletonRows } from '#/components/SkeletonRows'
+import { useFormatLessonSlot } from '#/lib/use-format-date'
 import { AuthField } from '#/modules/auth/components/auth-field'
-import { useAttendanceGroups } from '../hooks/use-attendance-groups'
-import { getAttendanceGroupLabel } from '../utils/group-label'
+import { useAttendanceSessions } from '../hooks/use-attendance-sessions'
+import { getAttendanceSessionKey, getAttendanceSessionLabel } from '../utils/session-label'
 import { AttendanceRegister } from './attendance-register'
 
 interface AttendancePageProps {
@@ -19,16 +21,16 @@ interface AttendancePageProps {
   timeZone: string
 }
 
-/** Pick a day, then one of its groups, then take that group's register */
+/** Pick a day, then one of its lesson sessions, then take that session's register */
 export function AttendancePage({ organizationId, timeZone }: AttendancePageProps) {
   const dateId = useId()
   const [date, setDate] = useState(() => todayIn(timeZone))
-  const [groupId, setGroupId] = useState('')
+  const [session, setSession] = useState<AttendanceSession | null>(null)
 
-  // Another day has other groups, so the choice starts over
+  // Another day has other sessions, so the choice starts over
   const handleDateChange = (event: ChangeEvent<HTMLInputElement>) => {
     setDate(event.target.value)
-    setGroupId('')
+    setSession(null)
   }
 
   return (
@@ -41,38 +43,42 @@ export function AttendancePage({ organizationId, timeZone }: AttendancePageProps
             <div className="max-w-xs">
               <AuthField id={dateId} label="Date" type="date" value={date} onChange={handleDateChange} />
             </div>
-            <AttendanceGroupPicker organizationId={organizationId} date={date} groupId={groupId} onChange={setGroupId} />
+            <AttendanceSessionPicker organizationId={organizationId} date={date} session={session} onChange={setSession} />
           </div>
         </SectionCard>
-        {date && groupId ? <AttendanceRegister organizationId={organizationId} groupId={groupId} date={date} timeZone={timeZone} /> : null}
+        {date && session ? <AttendanceRegister organizationId={organizationId} groupId={session.group_id} date={date} startTime={session.start_time} timeZone={timeZone} /> : null}
       </div>
     </div>
   )
 }
 
-interface AttendanceGroupPickerProps {
+interface AttendanceSessionPickerProps {
   organizationId: string
   date: string
-  groupId: string
-  onChange: (groupId: string) => void
+  session: AttendanceSession | null
+  onChange: (session: AttendanceSession | null) => void
 }
 
-/** The day's groups to choose from, or why there are none */
-function AttendanceGroupPicker({ organizationId, date, groupId, onChange }: AttendanceGroupPickerProps) {
+/** The day's sessions to choose from, one per group and start time, or why there are none */
+function AttendanceSessionPicker({ organizationId, date, session, onChange }: AttendanceSessionPickerProps) {
   const pickerId = useId()
-  const groups = useAttendanceGroups({ organizationId, date })
+  const sessions = useAttendanceSessions({ organizationId, date })
+  const formatLessonSlot = useFormatLessonSlot()
+
+  const handleChange = (event: ChangeEvent<HTMLSelectElement>) => onChange(sessions.data?.find((item) => getAttendanceSessionKey(item) === event.target.value) ?? null)
 
   if (!date) return null
-  if (groups.status === 'error') return <LoadError what="groups" onRetry={() => void groups.refetch()} />
-  if (!groups.data) return <SkeletonRows />
-  if (groups.data.length === 0) return <EmptyMessage icon={CalendarX} title="No lessons on this day" text="Pick another date to take a register." />
+  if (sessions.status === 'error') return <LoadError what="groups" onRetry={() => void sessions.refetch()} />
+  if (!sessions.data) return <SkeletonRows />
+  if (sessions.data.length === 0) return <EmptyMessage icon={CalendarX} title="No lessons on this day" text="Pick another date to take a register." />
 
   return (
-    <SelectField id={pickerId} label="Group" value={groupId} onChange={(event) => onChange(event.target.value)}>
+    <SelectField id={pickerId} label="Group" value={session ? getAttendanceSessionKey(session) : ''} onChange={handleChange}>
       <option value="">Choose a group</option>
-      {groups.data.map((group) => (
-        <option key={group.id} value={group.id}>
-          {getAttendanceGroupLabel(group)}
+      {sessions.data.map((item) => (
+        <option key={getAttendanceSessionKey(item)} value={getAttendanceSessionKey(item)}>
+          {getAttendanceSessionLabel(item)}
+          {item.rescheduled_from ? ` · Rescheduled from ${formatLessonSlot({ day: item.rescheduled_from.date, time: item.rescheduled_from.start_time })}` : null}
         </option>
       ))}
     </SelectField>

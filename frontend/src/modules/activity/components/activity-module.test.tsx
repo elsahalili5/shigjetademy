@@ -281,7 +281,7 @@ describe('ActivityModule', () => {
     signInAs(buildUser({ user_roles: PLATFORM_ADMIN_ROLES }))
     const oxford = { id: 'org-1', name: 'Oxford Academy' }
     const entries = [
-      { action: 'ATTENDANCE_CORRECTED', subject_name: 'Arta Gashi in Group A on 2026-11-07' },
+      { action: 'ATTENDANCE_CORRECTED', subject_name: 'Arta Gashi in Group A on 2026-11-07, 17:00' },
       { action: 'ATTENDANCE_CORRECTED', subject_name: null },
     ] as const
     server.use(
@@ -295,7 +295,35 @@ describe('ActivityModule', () => {
     renderRoute('/dashboard/activity')
 
     const rows = await within(await screen.findByRole('list', { name: 'Activity' })).findAllByRole('listitem')
-    const sentences = ['Elsa Halili corrected the attendance of Arta Gashi in Group A on 2026-11-07 at Oxford Academy', 'Elsa Halili corrected the attendance of a student at Oxford Academy']
+    const sentences = ['Elsa Halili corrected the attendance of Arta Gashi in Group A on 2026-11-07, 17:00 at Oxford Academy', 'Elsa Halili corrected the attendance of a student at Oxford Academy']
+    expect(rows).toHaveLength(sentences.length)
+    sentences.forEach((sentence, index) => expect(rows[index]).toHaveTextContent(sentence))
+  })
+
+  it('shows lessons rescheduled and reschedules cancelled with the group and both sessions as they were', async () => {
+    signInAs(buildUser({ user_roles: PLATFORM_ADMIN_ROLES }))
+    const oxford = { id: 'org-1', name: 'Oxford Academy' }
+    const entries = [
+      { action: 'LESSON_RESCHEDULED', subject_name: 'Group A from 2026-11-16 09:00 to 2026-11-20 16:00' },
+      { action: 'LESSON_RESCHEDULE_CANCELLED', subject_name: 'Group A from 2026-11-16 09:00 to 2026-11-20 16:00' },
+      { action: 'LESSON_RESCHEDULED', subject_name: null },
+    ] as const
+    server.use(
+      http.get('*/api/organizations', () => HttpResponse.json({ data: CLIENTS })),
+      http.get('*/api/activity', () =>
+        HttpResponse.json({
+          data: entries.map(({ action, subject_name }, index) => ({ id: `${action}-${index}`, action, created_at: '2026-11-08T09:00:00.000Z', actor: ELSA, organization: oxford, target_user: null, subject_name })),
+        }),
+      ),
+    )
+    renderRoute('/dashboard/activity')
+
+    const rows = await within(await screen.findByRole('list', { name: 'Activity' })).findAllByRole('listitem')
+    const sentences = [
+      'Elsa Halili rescheduled Group A from 2026-11-16 09:00 to 2026-11-20 16:00 at Oxford Academy',
+      'Elsa Halili cancelled the reschedule of Group A from 2026-11-16 09:00 to 2026-11-20 16:00 at Oxford Academy',
+      'Elsa Halili rescheduled a lesson at Oxford Academy',
+    ]
     expect(rows).toHaveLength(sentences.length)
     sentences.forEach((sentence, index) => expect(rows[index]).toHaveTextContent(sentence))
   })

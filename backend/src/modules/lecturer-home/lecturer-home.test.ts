@@ -77,6 +77,7 @@ describe('My teaching', () => {
       next_term: null,
       groups: [],
       cover: [],
+      rescheduled_lessons: [],
     })
   })
 
@@ -288,5 +289,67 @@ describe('My teaching: groups and cover', () => {
     vi.setSystemTime(new Date('2026-10-31T23:30:00.000Z'))
 
     expect((await readMyTeaching('arben@lecturer.test')).body.data.groups).toHaveLength(1)
+  })
+
+  type AddRescheduleParams = {
+    groupId: string
+    originalDate: string
+    newDate: string
+    cancelledAt?: Date
+  }
+
+  /** The group's 17:00 lesson on originalDate moved to 16:00–17:30 on newDate */
+  const addReschedule = ({ groupId, originalDate, newDate, cancelledAt }: AddRescheduleParams) =>
+    prisma.lessonReschedule.create({
+      data: {
+        group_id: groupId,
+        original_date: new Date(originalDate),
+        original_start_time: new Date('1970-01-01T17:00:00.000Z'),
+        new_date: new Date(newDate),
+        new_start_time: new Date('1970-01-01T16:00:00.000Z'),
+        new_end_time: new Date('1970-01-01T17:30:00.000Z'),
+        reason: 'Private reason',
+        cancelled_at: cancelledAt,
+      },
+    })
+
+  it('lists upcoming moves to the lecturer teaching the new date as theirs to take, and to the original date’s permanent lecturer as moved away, without the reason', async () => {
+    const group = await addGroup({ name: 'Group A', lecturerId: arbenId })
+    await addCover({ groupId: group.id, lecturerId: teutaId, startDate: '2026-11-04', endDate: '2026-11-04' })
+    const covered = await addReschedule({ groupId: group.id, originalDate: '2026-11-02', newDate: '2026-11-04' })
+    const own = await addReschedule({ groupId: group.id, originalDate: '2026-11-09', newDate: '2026-11-10' })
+    await addReschedule({ groupId: group.id, originalDate: '2026-10-26', newDate: '2026-10-28' })
+    await addReschedule({ groupId: group.id, originalDate: '2026-11-16', newDate: '2026-11-17', cancelledAt: new Date('2026-10-30T10:00:00.000Z') })
+    const lesson = ({ id, originalDate, newDate, isTeaching }: { id: string; originalDate: string; newDate: string; isTeaching: boolean }) => ({
+      id,
+      group: { id: group.id, name: 'Group A', course: 'Mathematics' },
+      original_date: originalDate,
+      original_start_time: '17:00',
+      new_date: newDate,
+      new_start_time: '16:00',
+      new_end_time: '17:30',
+      is_teaching: isTeaching,
+    })
+
+    const arben = await readMyTeaching('arben@lecturer.test')
+    const teuta = await readMyTeaching('teuta@lecturer.test')
+
+    expect(arben.body.data.rescheduled_lessons).toEqual([
+      lesson({ id: covered.id, originalDate: '2026-11-02', newDate: '2026-11-04', isTeaching: false }),
+      lesson({ id: own.id, originalDate: '2026-11-09', newDate: '2026-11-10', isTeaching: true }),
+    ])
+    expect(teuta.body.data.rescheduled_lessons).toEqual([lesson({ id: covered.id, originalDate: '2026-11-02', newDate: '2026-11-04', isTeaching: true })])
+  })
+
+  it('follows a change of permanent lecturer between the two dates, and leaves out archived groups', async () => {
+    const group = await addGroup({ name: 'Group A', lecturerId: arbenId, endDate: '2026-11-05' })
+    await prisma.groupLecturerAssignment.create({ data: { group_id: group.id, lecturer_id: teutaId, start_date: new Date('2026-11-06') } })
+    const archived = await addGroup({ name: 'Archived', lecturerId: arbenId, status: 'ARCHIVED' })
+    await addReschedule({ groupId: group.id, originalDate: '2026-11-02', newDate: '2026-11-09' })
+    await addReschedule({ groupId: archived.id, originalDate: '2026-11-02', newDate: '2026-11-04' })
+
+    expect((await readMyTeaching('arben@lecturer.test')).body.data.rescheduled_lessons).toMatchObject([{ new_date: '2026-11-09', is_teaching: false }])
+    expect((await readMyTeaching('teuta@lecturer.test')).body.data.rescheduled_lessons).toMatchObject([{ new_date: '2026-11-09', is_teaching: true }])
+    expect((await readMyTeaching('unlinked@lecturer.test')).body.data.rescheduled_lessons).toEqual([])
   })
 })

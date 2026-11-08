@@ -3,7 +3,7 @@
 import { z } from 'zod'
 import type { CurrentPeriod } from './academic-periods.ts'
 import { emailSchema, nameSchema } from './auth.ts'
-import type { GroupScheduleEntry } from './groups.ts'
+import type { GroupScheduleEntry, RescheduledLesson } from './groups.ts'
 import { optionalText } from './organization.ts'
 
 export const LECTURER_STATUSES = ['ACTIVE', 'ARCHIVED'] as const
@@ -150,6 +150,12 @@ export type MyTeachingCover = {
   group: MyTeachingCoverGroup
 }
 
+/** A moved lesson on My teaching: the lecturer either teaches it on its new date, or permanently taught its original slot and someone else takes it now */
+export type MyTeachingRescheduledLesson = RescheduledLesson & {
+  /** Whether they take it on its new date; false when it only moved away from their own slot */
+  is_teaching: boolean
+}
+
 /** What a lecturer sees of their organization: their own record only, the current school year and term, and what they teach */
 export type MyTeaching = {
   organization: { id: string; name: string }
@@ -173,4 +179,6 @@ export type MyTeaching = {
   groups: MyTeachingGroup[]
   /** Soonest first */
   cover: MyTeachingCover[]
+  /** Lessons moved to today or later that they teach on the new date or permanently taught at the original slot, by the day and time they moved to */
+  rescheduled_lessons: MyTeachingRescheduledLesson[]
 }

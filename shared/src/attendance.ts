@@ -1,5 +1,5 @@
 // The attendance page and the endpoints that take registers share these schemas and shapes.
-// A register is one group on one lesson day, never a lesson topic.
+// A register belongs to one lesson session: a group on a day at a start time, never a lesson topic. A group meeting twice a day has two.
 import { z } from 'zod'
 import type { GroupStatus } from './groups.ts'
 
@@ -23,20 +23,25 @@ export const attendanceMarkSchema = z.object({
 
 export type AttendanceMarkInput = z.infer<typeof attendanceMarkSchema>
 
-/** A group with a lesson on the chosen day, with its first start and last end that day as 'HH:MM' */
-export type AttendanceGroup = {
-  id: string
+/** The regular session a lesson was moved from: its day and start */
+export type RescheduledFrom = {
+  date: string
+  start_time: string
+}
+
+/** One lesson session on the chosen day, with its start and end as 'HH:MM'; a group meeting twice that day has two */
+export type AttendanceSession = {
+  group_id: string
   name: string
   course: string
   location: string | null
-  opens_at: string
-  locks_at: string
+  start_time: string
+  end_time: string
+  /** Set for a session moved here from another date or time */
+  rescheduled_from: RescheduledFrom | null
 }
 
-/**
- * Where the register stands in the organization's time zone: before the lesson's first start, from its first start until its last end,
- * or from its last end on
- */
+/** Where the register stands in the organization's time zone: before the session starts, from its start until its end, or from its end on */
 export type AttendanceWindow = 'UPCOMING' | 'OPEN' | 'LOCKED'
 
 /** A student on the register, with their mark or null while unmarked; only names, never notes or dates of birth */
@@ -48,12 +53,14 @@ export type AttendanceStudent = {
   status: AttendanceStatus | null
 }
 
-/** One group's register on one lesson day */
+/** The register of one lesson session */
 export type AttendanceRegister = {
   group: { id: string; name: string; course: string; status: GroupStatus }
   date: string
-  opens_at: string
-  locks_at: string
+  start_time: string
+  end_time: string
+  /** Set for a session moved here from another date or time */
+  rescheduled_from: RescheduledFrom | null
   window: AttendanceWindow
   /** Whether this user may mark it now */
   can_edit: boolean

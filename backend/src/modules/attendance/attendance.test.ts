@@ -63,7 +63,7 @@ const groupsPath = () => `/api/organizations/${organizationId}/attendance/groups
 
 const listGroups = async (email: string, date: string) => request(app).get(groupsPath()).query({ date }).set('Authorization', await loginAs(email))
 
-const groupNames = (response: { body: { data: { name: string }[] } }) => response.body.data.map((group) => group.name)
+const groupNames = (response: { body: { data: { name: string }[] } }) => response.body.data.map((session) => session.name)
 
 beforeEach(async () => {
   vi.useFakeTimers({ toFake: ['Date'] })
@@ -104,8 +104,8 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe('groups with a lesson on a day', () => {
-  it('shows a lecturer the groups they teach that day, with the first start and last end, earliest first', async () => {
+describe('lesson sessions on a day', () => {
+  it('shows a lecturer each session they teach that day, so a group meeting twice shows twice, earliest first', async () => {
     const north = await prisma.location.create({ data: { organization_id: organizationId, name: 'North campus' } })
     const late = await addGroup({ name: 'Group B', lecturerId: arbenId, schedule: [{ weekday: 'MONDAY', start_time: '19:00', end_time: '20:00' }] })
     const twice = await addGroup({ name: 'Group A', lecturerId: arbenId, schedule: [{ weekday: 'MONDAY', start_time: '17:00', end_time: '18:00' }, { weekday: 'MONDAY', start_time: '18:15', end_time: '18:45' }, { weekday: 'TUESDAY', start_time: '09:00', end_time: '10:00' }] })
@@ -117,8 +117,9 @@ describe('groups with a lesson on a day', () => {
 
     expect(response.status).toBe(200)
     expect(response.body.data).toEqual([
-      { id: twice.id, name: 'Group A', course: 'Mathematics', location: null, opens_at: '17:00', locks_at: '18:45' },
-      { id: late.id, name: 'Group B', course: 'Mathematics', location: 'North campus', opens_at: '19:00', locks_at: '20:00' },
+      { group_id: twice.id, name: 'Group A', course: 'Mathematics', location: null, start_time: '17:00', end_time: '18:00', rescheduled_from: null },
+      { group_id: twice.id, name: 'Group A', course: 'Mathematics', location: null, start_time: '18:15', end_time: '18:45', rescheduled_from: null },
+      { group_id: late.id, name: 'Group B', course: 'Mathematics', location: 'North campus', start_time: '19:00', end_time: '20:00', rescheduled_from: null },
     ])
     expect(groupNames(await listGroups('arben@lecturer.test', TUESDAY))).toEqual(['Group A', 'Tuesdays'])
   })
@@ -212,9 +213,21 @@ const addStudent = async (groupId: string, { firstName, lastName, enrolledOn = '
   return student
 }
 
-const registerPath = (groupId: string, date: string) => `${groupsPath()}/${groupId}/${date}`
+const registerPath = (groupId: string, date: string, startTime = MONDAY_EVENING.start_time) => `${groupsPath()}/${groupId}/${date}/${startTime}`
 
-const readRegister = async (email: string, groupId: string, date: string) => request(app).get(registerPath(groupId, date)).set('Authorization', await loginAs(email))
+const readRegister = async (email: string, groupId: string, date: string, startTime?: string) => request(app).get(registerPath(groupId, date, startTime)).set('Authorization', await loginAs(email))
+
+type AddMarkParams = {
+  groupId: string
+  studentId: string
+  date: string
+  startTime?: string
+  status: 'PRESENT' | 'TARDY' | 'ABSENT'
+}
+
+/** A mark already on a session's register */
+const addMark = ({ groupId, studentId, date, startTime = MONDAY_EVENING.start_time, status }: AddMarkParams) =>
+  prisma.attendanceRecord.create({ data: { group_id: groupId, student_id: studentId, date: new Date(date), start_time: new Date(`1970-01-01T${startTime}:00.000Z`), status } })
 
 describe('a group’s register', () => {
   it('lists the students in the group on that day by name, with their status or none, and no staff notes or dates of birth', async () => {
@@ -225,8 +238,8 @@ describe('a group’s register', () => {
     const archived = await addStudent(group.id, { firstName: 'Genta', lastName: 'Rama', status: 'ARCHIVED' })
     await addStudent(group.id, { firstName: 'Dren', lastName: 'Krasniqi', enrolledOn: TUESDAY })
     await addStudent(group.id, { firstName: 'Erza', lastName: 'Shala', enrolledOn: '2026-09-01', withdrawnOn: SUNDAY })
-    await prisma.attendanceRecord.create({ data: { group_id: group.id, student_id: arta.id, date: new Date(MONDAY), status: 'TARDY' } })
-    await prisma.attendanceRecord.create({ data: { group_id: group.id, student_id: besa.id, date: new Date('2026-11-02'), status: 'ABSENT' } })
+    await addMark({ groupId: group.id, studentId: arta.id, date: MONDAY, status: 'TARDY' })
+    await addMark({ groupId: group.id, studentId: besa.id, date: '2026-11-02', status: 'ABSENT' })
 
     const response = await readRegister('arben@lecturer.test', group.id, MONDAY)
 
@@ -239,7 +252,7 @@ describe('a group’s register', () => {
     ])
   })
 
-  it('says when the lesson opens and locks, and that a lecturer can’t mark it before it starts', async () => {
+  it('says when the session opens and locks, and that a lecturer can’t mark it before it starts', async () => {
     const group = await addGroup({ name: 'Group A', lecturerId: arbenId, schedule: [MONDAY_EVENING, { weekday: 'MONDAY', start_time: '19:00', end_time: '19:45' }] })
 
     const response = await readRegister('arben@lecturer.test', group.id, MONDAY)
@@ -247,13 +260,15 @@ describe('a group’s register', () => {
     expect(response.body.data).toEqual({
       group: { id: group.id, name: 'Group A', course: 'Mathematics', status: 'ACTIVE' },
       date: MONDAY,
-      opens_at: '17:00',
-      locks_at: '19:45',
+      start_time: '17:00',
+      end_time: '18:30',
+      rescheduled_from: null,
       window: 'UPCOMING',
       can_edit: false,
       substitute: null,
       students: [],
     })
+    expect((await readRegister('arben@lecturer.test', group.id, MONDAY, '19:00')).body.data).toMatchObject({ start_time: '19:00', end_time: '19:45' })
   })
 
   it('lets the owner and admins with attendance read any group’s register', async () => {
@@ -288,8 +303,19 @@ describe('a group’s register', () => {
     for (const date of [TUESDAY, WEDNESDAY_HOLIDAY, MONDAY_AFTER_TERM]) {
       const response = await readRegister('owner@oxford.test', group.id, date)
       expect(response.status, date).toBe(409)
-      expect(response.body.error, date).toBe('This group has no lesson on this day.')
+      expect(response.body.error, date).toBe('This group has no lesson on this day at 17:00.')
     }
+  })
+
+  it('refuses a start time the group has no session at that day, and one that isn’t a time', async () => {
+    const group = await addGroup({ name: 'Group A', lecturerId: arbenId })
+
+    const unknown = await readRegister('owner@oxford.test', group.id, MONDAY, '17:30')
+
+    expect(unknown.status).toBe(409)
+    expect(unknown.body.error).toBe('This group has no lesson on this day at 17:30.')
+    expect((await readRegister('owner@oxford.test', group.id, MONDAY, '25:00')).status).toBe(400)
+    expect((await readRegister('owner@oxford.test', group.id, MONDAY, '1700')).status).toBe(400)
   })
 
   it('answers 404 for an unknown group, and refuses admins without attendance and students', async () => {
@@ -320,12 +346,14 @@ type MarkParams = {
   studentId: string
   status: string
   date?: string
+  startTime?: string
 }
 
-const mark = async ({ email, groupId, studentId, status, date = MONDAY }: MarkParams) =>
-  request(app).put(`${registerPath(groupId, date)}/students/${studentId}`).set('Authorization', await loginAs(email)).send({ status })
+const mark = async ({ email, groupId, studentId, status, date = MONDAY, startTime }: MarkParams) =>
+  request(app).put(`${registerPath(groupId, date, startTime)}/students/${studentId}`).set('Authorization', await loginAs(email)).send({ status })
 
-const markAllPresent = async (email: string, groupId: string, date = MONDAY) => request(app).put(`${registerPath(groupId, date)}/mark-all-present`).set('Authorization', await loginAs(email))
+const markAllPresent = async (email: string, groupId: string, date = MONDAY, startTime?: string) =>
+  request(app).put(`${registerPath(groupId, date, startTime)}/mark-all-present`).set('Authorization', await loginAs(email))
 
 /** The organization's wall clock on Monday; Belgrade is an hour ahead of UTC in November */
 const atBelgrade = (clock: string) => vi.setSystemTime(new Date(`${MONDAY}T${clock}:00.000+01:00`))
@@ -373,8 +401,8 @@ describe('marking students', () => {
     const changed = await mark({ email: 'arben@lecturer.test', groupId, studentId: artaId, status: 'TARDY' })
 
     expect(changed.body.data.status).toBe('TARDY')
-    const records = await prisma.attendanceRecord.findMany({ where: { student_id: artaId }, select: { status: true, date: true, marked_by: { select: { email: true } } } })
-    expect(records).toEqual([{ status: 'TARDY', date: new Date(MONDAY), marked_by: { email: 'arben@lecturer.test' } }])
+    const records = await prisma.attendanceRecord.findMany({ where: { student_id: artaId }, select: { status: true, date: true, start_time: true, marked_by: { select: { email: true } } } })
+    expect(records).toEqual([{ status: 'TARDY', date: new Date(MONDAY), start_time: new Date('1970-01-01T17:00:00.000Z'), marked_by: { email: 'arben@lecturer.test' } }])
   })
 
   it('refuses a student who isn’t in the group that day, and one that doesn’t exist', async () => {
@@ -498,11 +526,11 @@ describe('corrections after the lock', () => {
     expect(register.body.data).toMatchObject({ window: 'LOCKED', can_edit: true, students: [{ first_name: 'Arta', status: 'TARDY' }, { first_name: 'Besa', status: null }] })
   })
 
-  it('logs a change after the lock, naming the student, group and day', async () => {
+  it('logs a change after the lock, naming the student, group, day and session', async () => {
     atBelgrade('18:31')
     await mark({ email: 'owner@oxford.test', groupId, studentId: artaId, status: 'ABSENT' })
 
-    expect(await corrections()).toEqual([{ subject_name: 'Arta Gashi in Group A on 2026-11-09', organization_id: organizationId, actor: { email: 'owner@oxford.test' } }])
+    expect(await corrections()).toEqual([{ subject_name: 'Arta Gashi in Group A on 2026-11-09, 17:00', organization_id: organizationId, actor: { email: 'owner@oxford.test' } }])
   })
 
   it('logs nothing for marks inside the lesson window, by a lecturer or the owner, or for a correction that changes nothing', async () => {
@@ -524,7 +552,7 @@ describe('corrections after the lock', () => {
     const response = await markAllPresent('attendance@oxford.test', groupId)
 
     expect(response.status).toBe(200)
-    expect((await corrections()).map((entry) => entry.subject_name)).toEqual(['Besa Berisha in Group A on 2026-11-09'])
+    expect((await corrections()).map((entry) => entry.subject_name)).toEqual(['Besa Berisha in Group A on 2026-11-09, 17:00'])
   })
 
   it('keeps an archived group’s registers read-only for everyone', async () => {
@@ -556,7 +584,7 @@ describe('students who leave or move', () => {
 
   it('keeps a student withdrawn today on today’s register with their mark, and lets them be marked', async () => {
     const arta = await addStudent(groupId, { firstName: 'Arta', lastName: 'Gashi', withdrawnOn: MONDAY })
-    await prisma.attendanceRecord.create({ data: { group_id: groupId, student_id: arta.id, date: new Date(MONDAY), status: 'TARDY' } })
+    await addMark({ groupId, studentId: arta.id, date: MONDAY, status: 'TARDY' })
 
     expect((await readRegister('arben@lecturer.test', groupId, MONDAY)).body.data.students).toMatchObject([{ id: arta.id, status: 'TARDY' }])
     const marked = await mark({ email: 'arben@lecturer.test', groupId, studentId: arta.id, status: 'PRESENT' })
@@ -598,5 +626,159 @@ describe('students who leave or move', () => {
     const response = await markAllPresent('arben@lecturer.test', groupId)
     expect(response.status).toBe(200)
     expect(response.body.data.students).toMatchObject([{ id: arta.id, status: 'PRESENT' }])
+  })
+})
+
+describe('a group meeting twice in a day', () => {
+  const MORNING: Meeting = { weekday: 'MONDAY', start_time: '09:00', end_time: '10:30' }
+  const AFTERNOON: Meeting = { weekday: 'MONDAY', start_time: '14:00', end_time: '15:30' }
+  let groupId: string
+  let artaId: string
+  let besaId: string
+
+  const statuses = async (startTime: string) =>
+    (await readRegister('owner@oxford.test', groupId, MONDAY, startTime)).body.data.students.map((student: { first_name: string; status: string | null }) => [student.first_name, student.status])
+
+  beforeEach(async () => {
+    groupId = (await addGroup({ name: 'Group A', lecturerId: arbenId, schedule: [MORNING, AFTERNOON] })).id
+    artaId = (await addStudent(groupId, { firstName: 'Arta', lastName: 'Gashi' })).id
+    besaId = (await addStudent(groupId, { firstName: 'Besa', lastName: 'Berisha' })).id
+  })
+
+  it('keeps marks on the 09:00 session off the 14:00 session', async () => {
+    atBelgrade('09:10')
+    expect((await mark({ email: 'arben@lecturer.test', groupId, studentId: artaId, status: 'ABSENT', startTime: '09:00' })).status).toBe(200)
+
+    expect(await statuses('09:00')).toEqual([
+      ['Arta', 'ABSENT'],
+      ['Besa', null],
+    ])
+    expect(await statuses('14:00')).toEqual([
+      ['Arta', null],
+      ['Besa', null],
+    ])
+  })
+
+  it('gives each session its own open and lock times', async () => {
+    atBelgrade('10:31')
+
+    expect((await readRegister('arben@lecturer.test', groupId, MONDAY, '09:00')).body.data).toMatchObject({ start_time: '09:00', end_time: '10:30', window: 'LOCKED', can_edit: false })
+    expect((await readRegister('arben@lecturer.test', groupId, MONDAY, '14:00')).body.data).toMatchObject({ start_time: '14:00', end_time: '15:30', window: 'UPCOMING', can_edit: false })
+    atBelgrade('14:05')
+    expect((await mark({ email: 'arben@lecturer.test', groupId, studentId: artaId, status: 'PRESENT', startTime: '14:00' })).status).toBe(200)
+    expect((await mark({ email: 'arben@lecturer.test', groupId, studentId: artaId, status: 'PRESENT', startTime: '09:00' })).body.error).toBe('This register locked at 10:30.')
+  })
+
+  it('marks everyone present on that session only', async () => {
+    atBelgrade('14:05')
+    await addMark({ groupId, studentId: besaId, date: MONDAY, startTime: '09:00', status: 'TARDY' })
+
+    expect((await markAllPresent('arben@lecturer.test', groupId, MONDAY, '14:00')).status).toBe(200)
+
+    expect(await statuses('14:00')).toEqual([
+      ['Arta', 'PRESENT'],
+      ['Besa', 'PRESENT'],
+    ])
+    expect(await statuses('09:00')).toEqual([
+      ['Arta', null],
+      ['Besa', 'TARDY'],
+    ])
+  })
+
+  it('keeps a past register on its own start time after the weekly schedule changes', async () => {
+    await addMark({ groupId, studentId: artaId, date: '2026-11-02', startTime: '09:00', status: 'ABSENT' })
+    await prisma.groupMeeting.updateMany({ where: { group_id: groupId, start_time: new Date('1970-01-01T09:00:00.000Z') }, data: { start_time: new Date('1970-01-01T08:00:00.000Z') } })
+
+    const past = await readRegister('owner@oxford.test', groupId, '2026-11-02', '09:00')
+
+    expect(past.status).toBe(200)
+    expect(past.body.data).toMatchObject({ start_time: '09:00', window: 'LOCKED', students: [{ first_name: 'Arta', status: 'ABSENT' }, { first_name: 'Besa', status: null }] })
+    expect((await listGroups('owner@oxford.test', '2026-11-02')).body.data.map((session: { start_time: string }) => session.start_time)).toEqual(['08:00', '09:00', '14:00'])
+    expect((await readRegister('owner@oxford.test', groupId, NEXT_MONDAY, '09:00')).status).toBe(409)
+  })
+})
+
+describe('a rescheduled session', () => {
+  let groupId: string
+
+  type MoveParams = {
+    originalDate?: string
+    newDate?: string
+    newStart?: string
+    newEnd?: string
+  }
+
+  /** Moves the group's 17:00 session through the API, as the owner */
+  const move = async ({ originalDate = MONDAY, newDate = TUESDAY, newStart = '15:00', newEnd = '16:00' }: MoveParams = {}) => {
+    const response = await request(app)
+      .post(`/api/organizations/${organizationId}/groups/${groupId}/reschedules`)
+      .set('Authorization', await loginAs('owner@oxford.test'))
+      .send({ original_date: originalDate, original_start_time: '17:00', new_date: newDate, new_start_time: newStart, new_end_time: newEnd, reason: 'Room taken' })
+    expect(response.status).toBe(201)
+    return response.body.data
+  }
+
+  /** The organization's wall clock on Tuesday */
+  const atBelgradeOnTuesday = (clock: string) => vi.setSystemTime(new Date(`${TUESDAY}T${clock}:00.000+01:00`))
+
+  beforeEach(async () => {
+    groupId = (await addGroup({ name: 'Group A', lecturerId: arbenId })).id
+    await addStudent(groupId, { firstName: 'Arta', lastName: 'Gashi' })
+  })
+
+  it('shows on its new date with its new times, saying where it came from, and no longer on the original date', async () => {
+    await move()
+
+    expect((await listGroups('arben@lecturer.test', TUESDAY)).body.data).toEqual([
+      { group_id: groupId, name: 'Group A', course: 'Mathematics', location: null, start_time: '15:00', end_time: '16:00', rescheduled_from: { date: MONDAY, start_time: '17:00' } },
+    ])
+    expect(groupNames(await listGroups('arben@lecturer.test', MONDAY))).toEqual([])
+    expect((await readRegister('owner@oxford.test', groupId, MONDAY, '17:00')).status).toBe(409)
+  })
+
+  it('keeps its register on the new date and start, open from its new start until its new end', async () => {
+    await move()
+    const register = () => readRegister('arben@lecturer.test', groupId, TUESDAY, '15:00')
+
+    atBelgradeOnTuesday('14:59')
+    expect((await register()).body.data).toMatchObject({ date: TUESDAY, start_time: '15:00', end_time: '16:00', rescheduled_from: { date: MONDAY, start_time: '17:00' }, window: 'UPCOMING' })
+    atBelgradeOnTuesday('15:10')
+    expect((await register()).body.data).toMatchObject({ window: 'OPEN', can_edit: true })
+    expect((await markAllPresent('arben@lecturer.test', groupId, TUESDAY, '15:00')).status).toBe(200)
+    atBelgradeOnTuesday('16:00')
+    expect((await register()).body.data).toMatchObject({ window: 'LOCKED', can_edit: false, students: [{ first_name: 'Arta', status: 'PRESENT' }] })
+
+    const records = await prisma.attendanceRecord.findMany({ select: { date: true, start_time: true } })
+    expect(records).toEqual([{ date: new Date(TUESDAY), start_time: new Date('1970-01-01T15:00:00.000Z') }])
+  })
+
+  it('goes to the substitute covering the new date, not the one covering the original date', async () => {
+    await addCover({ groupId, lecturerId: teutaId, startDate: TUESDAY, endDate: TUESDAY })
+    await move()
+    atBelgradeOnTuesday('15:10')
+
+    expect(groupNames(await listGroups('teuta@lecturer.test', TUESDAY))).toEqual(['Group A'])
+    expect(groupNames(await listGroups('arben@lecturer.test', TUESDAY))).toEqual([])
+    expect((await readRegister('teuta@lecturer.test', groupId, TUESDAY, '15:00')).body.data).toMatchObject({ can_edit: true, substitute: { first_name: 'Teuta' } })
+    expect((await markAllPresent('arben@lecturer.test', groupId, TUESDAY, '15:00')).status).toBe(403)
+  })
+
+  it('goes to the permanent lecturer on the new date when the lecturer changes in between', async () => {
+    await prisma.groupLecturerAssignment.updateMany({ where: { group_id: groupId }, data: { end_date: new Date(MONDAY) } })
+    await prisma.groupLecturerAssignment.create({ data: { group_id: groupId, lecturer_id: teutaId, start_date: new Date(TUESDAY) } })
+    await move()
+
+    expect(groupNames(await listGroups('teuta@lecturer.test', TUESDAY))).toEqual(['Group A'])
+    expect(groupNames(await listGroups('arben@lecturer.test', TUESDAY))).toEqual([])
+    expect((await readRegister('arben@lecturer.test', groupId, TUESDAY, '15:00')).status).toBe(403)
+  })
+
+  it('brings the original back to Attendance once the move is cancelled', async () => {
+    const reschedule = await move()
+
+    await request(app).post(`/api/organizations/${organizationId}/groups/${groupId}/reschedules/${reschedule.id}/cancel`).set('Authorization', await loginAs('owner@oxford.test'))
+
+    expect((await listGroups('arben@lecturer.test', MONDAY)).body.data).toMatchObject([{ start_time: '17:00', rescheduled_from: null }])
+    expect(groupNames(await listGroups('arben@lecturer.test', TUESDAY))).toEqual([])
   })
 })
