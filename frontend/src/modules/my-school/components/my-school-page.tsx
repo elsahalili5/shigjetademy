@@ -1,10 +1,13 @@
-import { School } from 'lucide-react'
+import { NotebookPen, School } from 'lucide-react'
 import type { MySchool, MySchoolGroup } from '@shigjetademy/shared/students'
+import type { StudentNoteEntry } from '@shigjetademy/shared/student-notes'
 import { DashboardPageHeader } from '#/components/DashboardPageHeader'
+import { EmptyMessage } from '#/components/EmptyMessage'
 import { Detail, HomeSkeleton, SchoolYearCard } from '#/components/HomeDetails'
 import { LoadError } from '#/components/LoadError'
 import { RescheduledLessons } from '#/components/RescheduledLessons'
 import { SectionCard } from '#/components/SectionCard'
+import { useFormatDateTime } from '#/lib/use-format-date'
 import { getScheduleLabel } from '#/modules/groups/utils/schedule-label'
 import { useMySchool } from '../hooks/use-my-school'
 
@@ -61,6 +64,9 @@ function MySchoolContent({ status, data, onRetry }: MySchoolContentProps) {
           <SectionCard title="Rescheduled lessons">
             <RescheduledLessons lessons={data.rescheduled_lessons} />
           </SectionCard>
+          <SectionCard title="Notes">
+            <SchoolNotes notes={data.notes} />
+          </SectionCard>
         </>
       ) : null}
       <SchoolYearCard academicYear={data.academic_year} term={data.term} />
@@ -84,6 +90,30 @@ function SchoolGroups({ groups }: SchoolGroupsProps) {
           <span className="font-semibold">{group.name}</span>
           <span className="text-[0.93rem] text-ink-2">{getGroupDetails(group)}</span>
           <span className="tabular text-[0.93rem] text-ink-2">{getScheduleLabel(group.schedule) || 'No schedule'}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+interface SchoolNotesProps {
+  notes: StudentNoteEntry[]
+}
+
+/** Read-only: body, group, the lecturer's name and when, newest first */
+function SchoolNotes({ notes }: SchoolNotesProps) {
+  const formatDateTime = useFormatDateTime()
+  if (notes.length === 0) {
+    return <EmptyMessage icon={NotebookPen} title="No notes yet" text="Notes your lecturers write about you will show up here." />
+  }
+  return (
+    <ul aria-label="Notes">
+      {notes.map((note) => (
+        <li key={note.id} className="grid gap-1.5 border-b border-rule px-5 py-3.5 last:border-b-0">
+          <p>{note.body}</p>
+          <p className="text-[0.88rem] text-ink-3">
+            {note.group.name} · {note.lecturer ? `${note.lecturer.first_name} ${note.lecturer.last_name}` : 'A deleted user'} · {formatDateTime(note.created_at)}
+          </p>
         </li>
       ))}
     </ul>

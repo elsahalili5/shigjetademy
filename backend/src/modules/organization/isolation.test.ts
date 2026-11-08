@@ -77,6 +77,9 @@ const TOPIC = { topic: 'Taken over' } as const
 
 const COVERED = { covered: 'Taken over' } as const
 
+// Well-formed, so the sweep reaches the organization checks; the group doesn't need to exist for the cross-member sweep to answer 403 first
+const NOTE = { group_id: '00000000-0000-4000-8000-000000000008', body: 'Taken over' } as const
+
 // A Wednesday session of the seeded group, moved to the Friday; well-formed, so the sweep reaches the organization checks
 const RESCHEDULE = { original_date: '2027-11-24', original_start_time: '17:00', new_date: '2027-11-26', new_start_time: '17:00', new_end_time: '18:30', reason: '' } as const
 
@@ -178,6 +181,8 @@ const SCOPED_ENDPOINTS: ScopedEndpoint[] = [
   { method: 'put', route: '/:organizationId/groups/:groupId/lesson-plans/:date/:startTime/covered', body: COVERED },
   { method: 'get', route: '/:organizationId/my-students' },
   { method: 'get', route: '/:organizationId/my-students/:studentId' },
+  { method: 'get', route: '/:organizationId/my-students/:studentId/notes' },
+  { method: 'post', route: '/:organizationId/my-students/:studentId/notes', body: NOTE },
 ]
 
 type ToPathParams = {
@@ -339,6 +344,7 @@ const yllkaAsItsOwnerSeesIt = async () => {
     lessonPlan: await read('/:organizationId/groups/:groupId/lesson-plans/:date/:startTime'),
     myStudents: await read('/:organizationId/my-students'),
     myStudent: await read('/:organizationId/my-students/:studentId'),
+    myStudentNotes: await read('/:organizationId/my-students/:studentId/notes'),
   }
 }
 
@@ -420,6 +426,7 @@ describe('organization isolation', () => {
     const markedYllkaStudent = await send({ method: 'put', route: '/:organizationId/attendance/groups/:groupId/:date/:startTime/students/:studentId', body: MARK, ids: { ...oxford, studentId: yllka.studentId }, auth: oxfordOwnerAuth })
     const cancelledYllkaReschedule = await send({ method: 'post', route: '/:organizationId/groups/:groupId/reschedules/:rescheduleId/cancel', ids: { ...oxford, rescheduleId: yllka.rescheduleId }, auth: oxfordOwnerAuth })
     const substitutionWithYllkaLecturer = await send({ method: 'post', route: '/:organizationId/groups/:groupId/substitutions', body: { ...SUBSTITUTION, lecturer_id: yllka.lecturerId }, ids: oxford, auth: oxfordOwnerAuth })
+    const noteWithYllkaGroup = await send({ method: 'post', route: '/:organizationId/my-students/:studentId/notes', body: { ...NOTE, group_id: yllka.groupId }, ids: oxford, auth: oxfordOwnerAuth })
     const transferred = await send({
       method: 'post',
       route: '/:organizationId/settings/transfer-ownership',
@@ -460,6 +467,8 @@ describe('organization isolation', () => {
     expect(await prisma.lessonReschedule.findUniqueOrThrow({ where: { id: yllka.rescheduleId }, select: { cancelled_at: true } })).toEqual({ cancelled_at: null })
     expect(substitutionWithYllkaLecturer.status).toBe(400)
     expect(await prisma.groupSubstitution.count({ where: { lecturer_id: yllka.lecturerId } })).toBe(0)
+    expect(noteWithYllkaGroup.status).toBe(400)
+    expect(await prisma.studentNote.count({ where: { group_id: yllka.groupId } })).toBe(0)
     expect(transferred.status).toBe(404)
     expect(await prisma.membership.findUniqueOrThrow({ where: { id: yllka.membershipId }, select: { role: true } })).toEqual({ role: 'ADMIN' })
     expect((await request(app).get(toPath({ route: '/:organizationId/settings', ids: oxford })).set('Authorization', oxfordOwnerAuth)).status).toBe(200)

@@ -15,6 +15,7 @@ import locationRoutes from '@modules/location/location.routes.ts'
 import organizationRoutes from '@modules/organization/organization.routes.ts'
 import organizationSettingsRoutes from '@modules/organization-settings/organization-settings.routes.ts'
 import studentHomeRoutes from '@modules/student-home/student-home.routes.ts'
+import studentNoteRoutes from '@modules/student-notes/student-notes.routes.ts'
 import studentRoutes from '@modules/students/students.routes.ts'
 import studentRosterRoutes from '@modules/student-roster/student-roster.routes.ts'
 import userRoutes from '@modules/users/user.routes.ts'
@@ -41,6 +42,7 @@ app.use('/api/organizations', organizationInvitationRoutes)
 app.use('/api/organizations', studentHomeRoutes)
 app.use('/api/organizations', lecturerHomeRoutes)
 app.use('/api/organizations', studentRosterRoutes)
+app.use('/api/organizations', studentNoteRoutes)
 app.use('/api/users', userRoutes)
 
 app.get('/api/health', (_req, res) => {

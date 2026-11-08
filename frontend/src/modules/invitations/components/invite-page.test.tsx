@@ -28,7 +28,7 @@ const STUDENT_MEMBERSHIP: AuthUser['memberships'][number] = {
 const serveMySchool = () =>
   server.use(
     http.get('*/api/organizations/org-1/me/student', () =>
-      HttpResponse.json({ data: { organization: { id: 'org-1', name: 'Oxford Academy' }, student: { first_name: 'Arta', last_name: 'Gashi', student_number: 'STU-0007' }, academic_year: null, term: null, groups: [], rescheduled_lessons: [] } }),
+      HttpResponse.json({ data: { organization: { id: 'org-1', name: 'Oxford Academy' }, student: { first_name: 'Arta', last_name: 'Gashi', student_number: 'STU-0007' }, academic_year: null, term: null, groups: [], rescheduled_lessons: [], notes: [] } }),
     ),
   )
 

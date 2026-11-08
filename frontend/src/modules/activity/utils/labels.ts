@@ -56,4 +56,5 @@ export const ACTIVITY_ACTION_LABELS = {
   INVITATION_RESENT: 'Invitation resent',
   INVITATION_REVOKED: 'Invitation withdrawn',
   INVITATION_ACCEPTED: 'Invitation accepted',
+  STUDENT_NOTE_ADDED: 'Note added',
 } as const satisfies Record<ActivityAction, string>

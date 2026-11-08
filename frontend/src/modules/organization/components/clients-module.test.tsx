@@ -43,6 +43,17 @@ describe('platform admin dashboard', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/clients'))
   })
 
+  it('opens their own account from Settings, the same page everyone reaches from the sidebar avatar', async () => {
+    signInAs(buildUser({ first_name: 'Dafina', last_name: 'Berisha', email: 'admin@shigjetademy.com', user_roles: PLATFORM_ADMIN_ROLES }))
+    const { user } = renderRoute('/dashboard')
+
+    const sidebar = await screen.findByRole('navigation', { name: 'Modules' })
+    await user.click(within(sidebar).getByRole('link', { name: 'Settings' }))
+
+    expect(await screen.findByRole('heading', { name: 'Your profile' })).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Dafina')).toBeInTheDocument()
+  })
+
   it('lists every client and filters by status and search', async () => {
     signInAs(buildUser({ user_roles: PLATFORM_ADMIN_ROLES }))
     server.use(http.get('*/api/organizations', () => HttpResponse.json({ data: CLIENTS })))

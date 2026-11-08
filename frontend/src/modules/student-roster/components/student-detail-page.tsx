@@ -13,6 +13,7 @@ import { SkeletonRows } from '#/components/SkeletonRows'
 import { ATTENDANCE_STATUS_CHIPS, ATTENDANCE_STATUS_LABELS } from '#/modules/attendance/utils/status-labels'
 import { useFormatDay } from '#/lib/use-format-date'
 import { useStudentRosterDetail } from '../hooks/use-student-roster-detail'
+import { StudentNotesSection } from './student-notes-section'
 
 // A malformed id is refused as invalid; to the person it is a student that doesn't exist or isn't theirs
 const NOT_FOUND_STATUSES = [400, 404, 403]
@@ -36,18 +37,20 @@ export function StudentDetailPage({ organizationId, studentId }: StudentDetailPa
         </Link>
       </DashboardPageHeader>
       <div className="grid max-w-[880px] min-w-0 gap-5 px-[clamp(20px,3.4vw,44px)] pb-10">
-        <StudentDetailContent detail={detail} isNotFound={isNotFound} />
+        <StudentDetailContent organizationId={organizationId} studentId={studentId} detail={detail} isNotFound={isNotFound} />
       </div>
     </div>
   )
 }
 
 interface StudentDetailContentProps {
+  organizationId: string
+  studentId: string
   detail: UseQueryResult<StudentRosterDetail>
   isNotFound: boolean
 }
 
-function StudentDetailContent({ detail, isNotFound }: StudentDetailContentProps) {
+function StudentDetailContent({ organizationId, studentId, detail, isNotFound }: StudentDetailContentProps) {
   if (!detail.data) {
     if (isNotFound) return <EmptyMessage icon={UserRound} title="Student not found." text="They may not be in one of your groups, or the link is old." />
     if (detail.status === 'error') return <LoadError what="student" onRetry={() => void detail.refetch()} />
@@ -65,6 +68,7 @@ function StudentDetailContent({ detail, isNotFound }: StudentDetailContentProps)
       <SectionCard title="Attendance history">
         <AttendanceHistory detail={detail.data} />
       </SectionCard>
+      <StudentNotesSection organizationId={organizationId} studentId={studentId} groups={detail.data.groups} />
     </>
   )
 }

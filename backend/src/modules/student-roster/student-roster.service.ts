@@ -18,7 +18,10 @@ export type StudentRosterViewer = {
   isManager: boolean
 }
 
+type Db = Prisma.TransactionClient
+
 type CurrentGroupsParams = {
+  db: Db
   organizationId: string
   viewer: StudentRosterViewer
 }
@@ -28,12 +31,38 @@ type CurrentGroupsParams = {
  * permanent lecturer today, the same "on this day" rule as getRowOn/getLecturerIdOn and the teaching-groups query of lecturer-home;
  * a row scheduled to start later, or one whose lecturer has already changed, doesn't count. Null when a lecturer isn't linked to a record.
  */
-const currentGroupsFilter = async ({ organizationId, viewer }: CurrentGroupsParams): Promise<Prisma.GroupWhereInput | null> => {
+export const currentGroupsFilter = async ({ db, organizationId, viewer }: CurrentGroupsParams): Promise<Prisma.GroupWhereInput | null> => {
   if (viewer.isManager) return { organization_id: organizationId, status: 'ACTIVE' }
-  const lecturerId = await findLecturerId({ db: prisma, organizationId, userId: viewer.userId })
+  const lecturerId = await findLecturerId({ db, organizationId, userId: viewer.userId })
   if (!lecturerId) return null
-  const today = toDate(await getOrganizationToday({ db: prisma, organizationId }))
+  const today = toDate(await getOrganizationToday({ db, organizationId }))
   return { organization_id: organizationId, status: 'ACTIVE', lecturer_assignments: { some: { lecturer_id: lecturerId, start_date: { lte: today }, OR: [{ end_date: null }, { end_date: { gte: today } }] } } }
+}
+
+type LoadSharedGroupsParams = {
+  db: Db
+  organizationId: string
+  viewer: StudentRosterViewer
+  studentId: string
+}
+
+/**
+ * The organization's student and the groups this viewer currently shares with them. 404 when the student isn't the organization's
+ * own; 403 when a lecturer doesn't currently teach any group the student is in. Shared by the roster's detail endpoint and student notes.
+ */
+export const loadSharedGroups = async ({ db, organizationId, viewer, studentId }: LoadSharedGroupsParams) => {
+  const student = await db.student.findFirst({ where: { id: studentId, organization_id: organizationId }, select: { id: true, first_name: true, last_name: true } })
+  if (!student) {
+    throw new HttpError(404, 'Student not found')
+  }
+  const groups = await currentGroupsFilter({ db, organizationId, viewer })
+  const sharedGroups = groups
+    ? await db.group.findMany({ where: { ...groups, enrolments: { some: { student_id: studentId, ...activeEnrolments } } }, select: { id: true, name: true }, orderBy: { name: 'asc' } })
+    : []
+  if (!viewer.isManager && sharedGroups.length === 0) {
+    throw new HttpError(403, 'You don’t teach this student.')
+  }
+  return { student, sharedGroups }
 }
 
 type ListRosterParams = {
@@ -60,7 +89,7 @@ const toSummary = (records: StoredAttendanceRecord[]): StudentAttendanceSummary 
 export const StudentRosterService = {
   // One row per student per group, so a student in two of the viewer's groups appears twice
   listRoster: async ({ organizationId, viewer }: ListRosterParams): Promise<RosterEntry[]> => {
-    const groups = await currentGroupsFilter({ organizationId, viewer })
+    const groups = await currentGroupsFilter({ db: prisma, organizationId, viewer })
     if (!groups) return []
     const enrolments = await prisma.groupEnrolment.findMany({
       where: { ...activeEnrolments, group: groups },
@@ -72,17 +101,7 @@ export const StudentRosterService = {
 
   // 404 when the student isn't the organization's own; 403 when a lecturer doesn't currently teach any group the student is in
   getStudentDetail: async ({ organizationId, viewer, studentId }: ListRosterParams & { studentId: string }): Promise<StudentRosterDetail> => {
-    const student = await prisma.student.findFirst({ where: { id: studentId, organization_id: organizationId }, select: { id: true, first_name: true, last_name: true } })
-    if (!student) {
-      throw new HttpError(404, 'Student not found')
-    }
-    const groups = await currentGroupsFilter({ organizationId, viewer })
-    const sharedGroups = groups
-      ? await prisma.group.findMany({ where: { ...groups, enrolments: { some: { student_id: studentId, ...activeEnrolments } } }, select: { id: true, name: true }, orderBy: { name: 'asc' } })
-      : []
-    if (!viewer.isManager && sharedGroups.length === 0) {
-      throw new HttpError(403, 'You don’t teach this student.')
-    }
+    const { student, sharedGroups } = await loadSharedGroups({ db: prisma, organizationId, viewer, studentId })
     const records = await prisma.attendanceRecord.findMany({
       where: { student_id: studentId, group_id: { in: sharedGroups.map((group) => group.id) } },
       orderBy: [{ date: 'desc' }, { start_time: 'desc' }],

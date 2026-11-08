@@ -6,6 +6,7 @@ import { todayDay } from './calendar-day.ts'
 import type { CurrentPeriod } from './academic-periods.ts'
 import type { GroupScheduleEntry, RescheduledLesson } from './groups.ts'
 import { optionalText } from './organization.ts'
+import type { StudentNoteEntry } from './student-notes.ts'
 
 export const STUDENT_STATUSES = ['ACTIVE', 'ARCHIVED'] as const
 
@@ -118,4 +119,6 @@ export type MySchool = {
   groups: MySchoolGroup[]
   /** Lessons of those groups moved to today or later, by the day and time they moved to */
   rescheduled_lessons: RescheduledLesson[]
+  /** Every note written about them, newest first; no staff-only data beyond the note and its author's name */
+  notes: StudentNoteEntry[]
 }

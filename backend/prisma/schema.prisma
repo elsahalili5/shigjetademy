@@ -131,6 +131,7 @@ enum ActivityAction {
   INVITATION_RESENT
   INVITATION_REVOKED
   INVITATION_ACCEPTED
+  STUDENT_NOTE_ADDED
 }
 
 enum StudentStatus {
@@ -216,6 +217,7 @@ model User {
   attendance_marked   AttendanceRecord[]
   lesson_reschedules  LessonReschedule[]
   lesson_plans_written LessonPlan[]
+  student_notes_written StudentNote[]
   student_records     Student[]
   lecturer_records    Lecturer[]
 }
@@ -445,6 +447,7 @@ model Student {
   invitations     Invitation[]
   group_enrolments GroupEnrolment[]
   attendance       AttendanceRecord[]
+  student_notes    StudentNote[]
 
   @@unique([organization_id, student_number])
   @@unique([organization_id, user_id])
@@ -568,6 +571,7 @@ model Group {
   attendance       AttendanceRecord[]
   reschedules      LessonReschedule[]
   lesson_plans     LessonPlan[]
+  student_notes    StudentNote[]
 
   @@unique([course_id, academic_year_id, name])
   @@index([organization_id, status])
@@ -698,6 +702,29 @@ model LessonPlan {
   @@unique([group_id, date, start_time])
   @@index([group_id, date, start_time])
   @@index([updated_by_id])
+}
+
+/// One note a lecturer writes about a student, in the context of one shared group. Append-only: no edit or delete in this slice.
+/// A separate concept from Student.notes, which stays the admin-only record field.
+model StudentNote {
+  id           String   @id @default(uuid()) @db.Uuid
+  student_id   String   @db.Uuid
+  group_id     String   @db.Uuid
+  /// Who wrote it; null once that user is deleted, and the note stays
+  lecturer_id  String?  @db.Uuid
+  body         String
+
+  created_at   DateTime @default(now())
+
+  /// Cascade, not NoAction: a row sits under the organization through the student, same reasoning as AttendanceRecord
+  student      Student  @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  /// Cascade, not NoAction: a row sits under the organization through the group, same reasoning as AttendanceRecord
+  group        Group    @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  lecturer     User?    @relation(fields: [lecturer_id], references: [id], onDelete: SetNull)
+
+  @@index([student_id, created_at])
+  @@index([group_id])
+  @@index([lecturer_id])
 }
 
 /// Who permanently teaches a group, and since when. A change closes the row and adds a new one, so the history stays; the current lecturer is the row covering the organization's today.
