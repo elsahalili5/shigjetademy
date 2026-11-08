@@ -47,6 +47,7 @@ export const ACTIVITY_ACTIONS = [
   'GROUP_STUDENT_ENROLLED',
   'GROUP_STUDENT_WITHDRAWN',
   'GROUP_STUDENT_MOVED',
+  'ATTENDANCE_CORRECTED',
   'INVITATION_SENT',
   'INVITATION_RESENT',
   'INVITATION_REVOKED',
@@ -74,6 +75,6 @@ export type ActivityEntry = {
   actor: ActivityUser | null
   organization: { id: string; name: string } | null
   target_user: ActivityUser | null
-  /** The location's, department's, academic period's, student's, lecturer's, course's or group's name, or the invited email, for those entries; for a student's group change, like "Arta Gashi from Group A to Group B" */
+  /** The location's, department's, academic period's, student's, lecturer's, course's or group's name, or the invited email, for those entries; for a student's group change, like "Arta Gashi from Group A to Group B"; for an attendance correction, like "Arta Gashi in Group A on 2026-11-07" */
   subject_name: string | null
 }

@@ -2,6 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import academicPeriodsRoutes from '@modules/academic-periods/academic-periods.routes.ts'
 import activityRoutes from '@modules/activity/activity.routes.ts'
+import attendanceRoutes from '@modules/attendance/attendance.routes.ts'
 import authRoutes from '@modules/auth/auth.routes.ts'
 import courseRoutes from '@modules/courses/courses.routes.ts'
 import groupRoutes from '@modules/groups/groups.routes.ts'
@@ -32,6 +33,7 @@ app.use('/api/organizations', studentRoutes)
 app.use('/api/organizations', lecturerRoutes)
 app.use('/api/organizations', courseRoutes)
 app.use('/api/organizations', groupRoutes)
+app.use('/api/organizations', attendanceRoutes)
 app.use('/api/organizations', organizationInvitationRoutes)
 app.use('/api/organizations', studentHomeRoutes)
 app.use('/api/organizations', lecturerHomeRoutes)

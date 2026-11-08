@@ -124,6 +124,7 @@ enum ActivityAction {
   GROUP_STUDENT_ENROLLED
   GROUP_STUDENT_WITHDRAWN
   GROUP_STUDENT_MOVED
+  ATTENDANCE_CORRECTED
   INVITATION_SENT
   INVITATION_RESENT
   INVITATION_REVOKED
@@ -148,6 +149,13 @@ enum CourseStatus {
 enum GroupStatus {
   ACTIVE
   ARCHIVED
+}
+
+/// How a student was marked on a lesson day; a student nobody has marked has no row
+enum AttendanceStatus {
+  PRESENT
+  TARDY
+  ABSENT
 }
 
 enum Weekday {
@@ -203,6 +211,7 @@ model User {
   sent_invitations    Invitation[] @relation("InvitedBy")
   activity_as_actor   ActivityLog[] @relation("ActivityActor")
   activity_as_target  ActivityLog[] @relation("ActivityTarget")
+  attendance_marked   AttendanceRecord[]
   student_records     Student[]
   lecturer_records    Lecturer[]
 }
@@ -431,6 +440,7 @@ model Student {
   user            User?         @relation(fields: [user_id], references: [id], onDelete: SetNull)
   invitations     Invitation[]
   group_enrolments GroupEnrolment[]
+  attendance       AttendanceRecord[]
 
   @@unique([organization_id, student_number])
   @@unique([organization_id, user_id])
@@ -551,6 +561,7 @@ model Group {
   substitutions    GroupSubstitution[]
   meetings         GroupMeeting[]
   enrolments       GroupEnrolment[]
+  attendance       AttendanceRecord[]
 
   @@unique([course_id, academic_year_id, name])
   @@index([organization_id, status])
@@ -595,6 +606,31 @@ model GroupEnrolment {
 
   @@index([group_id, withdrawn_on])
   @@index([student_id, withdrawn_on])
+}
+
+/// One student's mark in a group's register on one lesson day. A group has one register per day, however often it meets that day.
+model AttendanceRecord {
+  id           String           @id @default(uuid()) @db.Uuid
+  group_id     String           @db.Uuid
+  student_id   String           @db.Uuid
+  /// The lesson's calendar day in the organization's time zone
+  date         DateTime         @db.Date
+  status       AttendanceStatus
+  /// Who set the current status; null once that user is deleted, and the mark stays
+  marked_by_id String?          @db.Uuid
+
+  created_at   DateTime         @default(now())
+  updated_at   DateTime         @updatedAt
+
+  group        Group            @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  /// Cascade, not NoAction: a row sits under the organization through the group, so a NoAction check would run before that cascade reaches it and block deleting the organization. Students are archived, never deleted on their own.
+  student      Student          @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  marked_by    User?            @relation(fields: [marked_by_id], references: [id], onDelete: SetNull)
+
+  @@unique([group_id, student_id, date])
+  @@index([group_id, date])
+  @@index([student_id])
+  @@index([marked_by_id])
 }
 
 /// Who permanently teaches a group, and since when. A change closes the row and adds a new one, so the history stays; the current lecturer is the row covering the organization's today.
@@ -707,6 +743,7 @@ model ActivityLog {
   target_user_id  String?        @db.Uuid
   /// The location's, department's, academic period's, student's, lecturer's, course's or group's name, or the invited email, so the entry still reads right after it is removed.
   /// For a student joining, leaving or moving between groups, the student and the groups as they were named then, like "Arta Gashi from Group A to Group B".
+  /// For an attendance correction, the student, group and lesson day, like "Arta Gashi in Group A on 2026-11-07".
   subject_name    String?
   created_at      DateTime       @default(now())
 

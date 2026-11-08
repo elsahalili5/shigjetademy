@@ -1,7 +1,7 @@
 import type { Prisma } from '@generated/prisma/client.ts'
 import type { GroupEnrolment, GroupEnrolmentInput, GroupMoveInput, GroupStudentOption } from '@shigjetademy/shared/groups'
 import { getStudentName } from '@shigjetademy/shared/students'
-import { toDate, toDay } from '@lib/calendar-day.ts'
+import { addDays, toDate, toDay } from '@lib/calendar-day.ts'
 import { getOrganizationToday } from '@lib/current-period.ts'
 import { HttpError, refuseField } from '@lib/httpError.ts'
 import { lockOrganization } from '@lib/organization-lock.ts'
@@ -67,12 +67,14 @@ type EnrolParams = OrganizationScope & {
   group: Awaited<ReturnType<typeof findGroup>>
   studentId: string
   today: string
+  /** The seat's first day: today for an enrolment; tomorrow for a move, since the student is still on the old group's register today */
+  startsOn: string
   /** The form field a refusal shows under: the student picker, or the target group of a move */
   field: 'student_id' | 'group_id'
 }
 
 /** Every rule a new enrolment keeps: an active group in a school year that hasn't ended, with a free seat, and an active student of the organization who isn't in it yet. The caller holds the organization lock. */
-const enrol = async ({ tx, organizationId, group, studentId, today, field }: EnrolParams) => {
+const enrol = async ({ tx, organizationId, group, studentId, today, startsOn, field }: EnrolParams) => {
   if (group.status === 'ARCHIVED') {
     throw field === 'group_id' ? refuseField({ field, status: 409, message: ARCHIVED_GROUP }) : new HttpError(409, ARCHIVED_GROUP)
   }
@@ -94,7 +96,7 @@ const enrol = async ({ tx, organizationId, group, studentId, today, field }: Enr
   if (group.capacity !== null && (await countActive({ tx, groupId: group.id })) >= group.capacity) {
     throw refuseField({ field, status: 409, message: 'This group is full.' })
   }
-  return tx.groupEnrolment.create({ data: { group_id: group.id, student_id: studentId, enrolled_on: toDate(today) }, select: enrolmentSelect })
+  return tx.groupEnrolment.create({ data: { group_id: group.id, student_id: studentId, enrolled_on: toDate(startsOn) }, select: enrolmentSelect })
 }
 
 type FindActiveEnrolmentParams = Pick<OrganizationScope, 'tx'> & {
@@ -160,7 +162,8 @@ export const GroupEnrolmentService = {
     prisma.$transaction(async (tx) => {
       await lockOrganization({ tx, organizationId })
       const group = await findGroup({ tx, organizationId, groupId })
-      const enrolment = await enrol({ tx, organizationId, group, studentId: data.student_id, today: await getOrganizationToday({ db: tx, organizationId }), field: 'student_id' })
+      const today = await getOrganizationToday({ db: tx, organizationId })
+      const enrolment = await enrol({ tx, organizationId, group, studentId: data.student_id, today, startsOn: today, field: 'student_id' })
       await tx.activityLog.create({ data: { actor_id: actorId, action: 'GROUP_STUDENT_ENROLLED', organization_id: organizationId, subject_name: `${getStudentName(enrolment.student)} in ${group.name}` } })
       return toEnrolmentJson(enrolment)
     }),
@@ -178,6 +181,7 @@ export const GroupEnrolmentService = {
     }),
 
   // Withdraws and enrols in one transaction, so a refused target leaves the student where they were. Any active group of the organization can be the target.
+  // The new seat is taken at once but starts tomorrow, so today the student is on the old group's register only.
   moveStudent: ({ organizationId, groupId, enrolmentId, actorId, data }: MoveStudentParams) =>
     prisma.$transaction(async (tx) => {
       await lockOrganization({ tx, organizationId })
@@ -192,7 +196,7 @@ export const GroupEnrolmentService = {
       }
       const today = await getOrganizationToday({ db: tx, organizationId })
       await tx.groupEnrolment.update({ where: { id: enrolmentId }, data: { withdrawn_on: toDate(today) } })
-      const enrolment = await enrol({ tx, organizationId, group: target, studentId, today, field: 'group_id' })
+      const enrolment = await enrol({ tx, organizationId, group: target, studentId, today, startsOn: addDays({ day: today, days: 1 }), field: 'group_id' })
       await tx.activityLog.create({ data: { actor_id: actorId, action: 'GROUP_STUDENT_MOVED', organization_id: organizationId, subject_name: `${studentName} from ${group.name} to ${target.name}` } })
       return toEnrolmentJson(enrolment)
     }),
