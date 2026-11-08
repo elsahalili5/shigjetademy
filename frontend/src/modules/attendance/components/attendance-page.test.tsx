@@ -398,13 +398,13 @@ describe('AttendancePage: corrections', () => {
 })
 
 describe('AttendancePage: access', () => {
-  it('gives a lecturer Attendance beside My teaching in the sidebar', async () => {
+  it('gives a lecturer Attendance beside My teaching and Lessons in the sidebar', async () => {
     signInAs(LECTURER)
     serveGroups()
     renderRoute('/dashboard/attendance')
 
     const modules = await screen.findByRole('navigation', { name: 'Modules' })
-    expect(within(modules).getAllByRole('link').map((link) => link.textContent)).toEqual(['My teaching', 'Attendance'])
+    expect(within(modules).getAllByRole('link').map((link) => link.textContent)).toEqual(['My teaching', 'Attendance', 'Lessons'])
     expect(within(modules).getByRole('link', { name: 'Attendance' })).toHaveAttribute('href', '/dashboard/attendance')
   })
 

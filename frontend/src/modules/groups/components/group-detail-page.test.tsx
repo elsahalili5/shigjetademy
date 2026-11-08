@@ -3,6 +3,7 @@ import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { groupEnrolmentSchema, groupMoveSchema, lessonRescheduleSchema } from '@shigjetademy/shared/groups'
 import type { Group, GroupEnrolment, GroupLecturer, GroupLecturerHistory, GroupPage, GroupStudentOption, LessonReschedule } from '@shigjetademy/shared/groups'
+import type { LessonPlan } from '@shigjetademy/shared/lesson-plans'
 import { buildUser, OWNER_MEMBERSHIPS, signInAs, YLLKA_ADMIN_MEMBERSHIP } from '#/test/fixtures'
 import { renderRoute } from '#/test/render-route'
 import { server } from '#/test/server'
@@ -53,9 +54,10 @@ type ServeGroupParams = {
   history?: GroupLecturerHistory
   enrolments?: GroupEnrolment[]
   reschedules?: LessonReschedule[]
+  lessonPlans?: LessonPlan[]
 }
 
-const serveGroup = ({ group = GROUP_A, history = HISTORY, enrolments = [ARTA_IN_A], reschedules = [] }: ServeGroupParams = {}) =>
+const serveGroup = ({ group = GROUP_A, history = HISTORY, enrolments = [ARTA_IN_A], reschedules = [], lessonPlans = [] }: ServeGroupParams = {}) =>
   server.use(
     http.get(`${GROUPS_PATH}/${group.id}/reschedules`, () => HttpResponse.json({ data: reschedules })),
     http.get(`${GROUPS_PATH}/${group.id}`, () => HttpResponse.json({ data: group })),
@@ -63,6 +65,7 @@ const serveGroup = ({ group = GROUP_A, history = HISTORY, enrolments = [ARTA_IN_
     http.get(`${GROUPS_PATH}/${group.id}/enrolments`, () => HttpResponse.json({ data: enrolments })),
     http.get(`${GROUPS_PATH}/lecturer-options`, () => HttpResponse.json({ data: [] })),
     http.get(`${GROUPS_PATH}/student-options`, () => HttpResponse.json({ data: [ARTA, BESA] })),
+    http.get(`${GROUPS_PATH}/${group.id}/lesson-plans`, () => HttpResponse.json({ data: lessonPlans })),
   )
 
 const studentsSection = () => screen.findByRole('region', { name: 'Students' })
@@ -671,5 +674,75 @@ describe('GroupDetailPage: rescheduled lessons', () => {
     await user.click(within(within(section).getByRole('group', { name: 'Cancel the move of Mon 16 Nov, 17:00–18:30' })).getByRole('button', { name: 'Cancel move' }))
 
     expect(await within(section).findByRole('alert')).toHaveTextContent(message)
+  })
+})
+
+const lessonsSection = () => screen.findByRole('region', { name: 'Lessons' })
+
+const PLANNED: LessonPlan = { group_id: GROUP_A.id, date: '2026-11-16', start_time: '17:00', end_time: '18:30', rescheduled_from: null, topic: 'Fractions', covered: null, can_edit_covered: false }
+
+const COVERED: LessonPlan = { group_id: GROUP_A.id, date: '2026-11-02', start_time: '17:00', end_time: '18:30', rescheduled_from: null, topic: null, covered: 'Covered addition', can_edit_covered: true }
+
+describe('GroupDetailPage: lessons', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(MONDAY_MORNING))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('lists upcoming and past sessions with their topic or covered note, read-only', async () => {
+    signInAsOwner()
+    serveGroup({ lessonPlans: [COVERED, PLANNED] })
+    renderRoute(GROUP_PAGE_PATH)
+
+    const section = await lessonsSection()
+    const upcoming = await within(section).findByRole('list', { name: 'Upcoming' })
+    const past = within(section).getByRole('list', { name: 'Past' })
+    expect(within(upcoming).getByRole('listitem')).toHaveTextContent('Fractions')
+    expect(within(past).getByRole('listitem')).toHaveTextContent('Covered addition')
+    expect(within(section).queryByRole('button')).not.toBeInTheDocument()
+    expect(within(section).queryByRole('textbox')).not.toBeInTheDocument()
+  })
+
+  it('says No topic yet and Nothing recorded yet when a session has neither', async () => {
+    signInAsOwner()
+    const blank: LessonPlan = { ...PLANNED, topic: null, covered: null }
+    serveGroup({ lessonPlans: [blank] })
+    renderRoute(GROUP_PAGE_PATH)
+
+    const section = await lessonsSection()
+    expect(await within(section).findByText('No topic yet')).toBeInTheDocument()
+    expect(within(section).getByText('Nothing recorded yet')).toBeInTheDocument()
+  })
+
+  it('says when there are no lesson plans yet', async () => {
+    signInAsOwner()
+    serveGroup()
+    renderRoute(GROUP_PAGE_PATH)
+
+    expect(await within(await lessonsSection()).findByText('No lesson plans yet')).toBeInTheDocument()
+  })
+
+  it('shows a moved session under its new date, not its original slot', async () => {
+    signInAsOwner()
+    const moved: LessonPlan = { ...PLANNED, date: '2026-11-20', start_time: '16:00', end_time: '17:30', rescheduled_from: { date: '2026-11-16', start_time: '17:00' } }
+    serveGroup({ lessonPlans: [moved] })
+    renderRoute(GROUP_PAGE_PATH)
+
+    const section = await lessonsSection()
+    const upcoming = await within(section).findByRole('list', { name: 'Upcoming' })
+    expect(within(upcoming).getByRole('listitem')).toHaveTextContent('Rescheduled from Mon 16 Nov, 17:00')
+  })
+
+  it('offers a retry when the lesson plans fail to load', async () => {
+    signInAsOwner()
+    serveGroup()
+    server.use(http.get(`${GROUPS_PATH}/${GROUP_A.id}/lesson-plans`, () => HttpResponse.json({ error: 'Down' }, { status: 500 })))
+    renderRoute(GROUP_PAGE_PATH)
+
+    expect(await within(await lessonsSection()).findByText('We couldn’t load the lesson plans.')).toBeInTheDocument()
   })
 })

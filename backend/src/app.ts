@@ -10,6 +10,7 @@ import invitationRoutes from '@modules/invitations/invitations.routes.ts'
 import organizationInvitationRoutes from '@modules/invitations/organization-invitations.routes.ts'
 import lecturerHomeRoutes from '@modules/lecturer-home/lecturer-home.routes.ts'
 import lecturerRoutes from '@modules/lecturers/lecturers.routes.ts'
+import lessonPlanRoutes from '@modules/attendance/lesson-plans.routes.ts'
 import locationRoutes from '@modules/location/location.routes.ts'
 import organizationRoutes from '@modules/organization/organization.routes.ts'
 import organizationSettingsRoutes from '@modules/organization-settings/organization-settings.routes.ts'
@@ -34,6 +35,7 @@ app.use('/api/organizations', lecturerRoutes)
 app.use('/api/organizations', courseRoutes)
 app.use('/api/organizations', groupRoutes)
 app.use('/api/organizations', attendanceRoutes)
+app.use('/api/organizations', lessonPlanRoutes)
 app.use('/api/organizations', organizationInvitationRoutes)
 app.use('/api/organizations', studentHomeRoutes)
 app.use('/api/organizations', lecturerHomeRoutes)

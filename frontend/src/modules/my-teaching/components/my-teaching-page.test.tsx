@@ -91,13 +91,13 @@ describe('My teaching', () => {
     expect(movedAway).toHaveTextContent('Another lecturer takes it on the new date.')
   })
 
-  it('shows a lecturer only My teaching and Attendance in the sidebar', async () => {
+  it('shows a lecturer My teaching, Attendance and Lessons in the sidebar', async () => {
     signInAs(LECTURER)
     serveMyTeaching()
     renderRoute('/dashboard/my-teaching')
 
     const modules = await screen.findByRole('navigation', { name: 'Modules' })
-    expect(within(modules).getAllByRole('link').map((link) => link.textContent)).toEqual(['My teaching', 'Attendance'])
+    expect(within(modules).getAllByRole('link').map((link) => link.textContent)).toEqual(['My teaching', 'Attendance', 'Lessons'])
   })
 
   it('says when no record is linked yet, or no term is running', async () => {

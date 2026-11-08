@@ -215,6 +215,7 @@ model User {
   activity_as_target  ActivityLog[] @relation("ActivityTarget")
   attendance_marked   AttendanceRecord[]
   lesson_reschedules  LessonReschedule[]
+  lesson_plans_written LessonPlan[]
   student_records     Student[]
   lecturer_records    Lecturer[]
 }
@@ -566,6 +567,7 @@ model Group {
   enrolments       GroupEnrolment[]
   attendance       AttendanceRecord[]
   reschedules      LessonReschedule[]
+  lesson_plans     LessonPlan[]
 
   @@unique([course_id, academic_year_id, name])
   @@index([organization_id, status])
@@ -668,6 +670,34 @@ model LessonReschedule {
   @@index([group_id, original_date])
   @@index([group_id, new_date])
   @@index([created_by_id])
+}
+
+/// One lesson session's plan: a group on a day at a start time. The topic may be set ahead of the session; what was covered only from its start time on.
+/// Both are free text and optional; a session with neither doesn't need a row.
+model LessonPlan {
+  id            String    @id @default(uuid()) @db.Uuid
+  group_id      String    @db.Uuid
+  /// The lesson's calendar day in the organization's time zone
+  date          DateTime  @db.Date
+  /// The session's wall-clock start, stored rather than read from the schedule, for the same reason as on AttendanceRecord
+  start_time    DateTime  @db.Time(0)
+  /// Planned ahead of the session; editable at any time
+  topic         String?
+  /// What was actually covered; editable only from the session's start time on
+  covered       String?
+  /// Who last wrote to this row; null once that user is deleted, and the row stays
+  updated_by_id String?   @db.Uuid
+
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  /// Cascade, not NoAction: a row sits under the organization through the group, same reasoning as AttendanceRecord
+  group         Group     @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  updated_by    User?     @relation(fields: [updated_by_id], references: [id], onDelete: SetNull)
+
+  @@unique([group_id, date, start_time])
+  @@index([group_id, date, start_time])
+  @@index([updated_by_id])
 }
 
 /// Who permanently teaches a group, and since when. A change closes the row and adds a new one, so the history stays; the current lecturer is the row covering the organization's today.

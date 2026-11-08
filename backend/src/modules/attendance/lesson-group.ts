@@ -25,6 +25,24 @@ export const lessonGroupSelectOn = (days: string[]) =>
 
 export type StoredLessonGroup = Prisma.GroupGetPayload<{ select: ReturnType<typeof lessonGroupSelectOn> }>
 
+/** The same shape as lessonGroupSelectOn, but every reschedule on record regardless of day; for a listing that isn't scoped to one day, like the group's lesson plans */
+export const lessonGroupSelectAll = () =>
+  ({
+    id: true,
+    name: true,
+    status: true,
+    course: { select: { name: true } },
+    location: { select: { name: true } },
+    academic_year: { select: { ...daysSelect, holidays: { select: daysSelect } } },
+    academic_term: { select: daysSelect },
+    meetings: meetingsSelect,
+    lecturer_assignments: { select: { id: true, lecturer_id: true, ...daysSelect } },
+    substitutions: { where: { cancelled_at: null }, select: { lecturer_id: true, ...daysSelect, lecturer: { select: { first_name: true, last_name: true } } } },
+    // Not used for lesson plans; kept empty so toLessonGroup still has a registers field to read
+    attendance: { where: { date: { in: [] } }, select: { date: true, start_time: true } },
+    reschedules: { where: { cancelled_at: null }, select: { original_date: true, original_start_time: true, new_date: true, new_start_time: true, new_end_time: true } },
+  }) as const satisfies Prisma.GroupSelect
+
 type StoredDays = {
   start_date: Date
   end_date: Date

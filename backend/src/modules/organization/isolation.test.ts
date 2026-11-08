@@ -73,6 +73,10 @@ const LESSON_START = '17:00'
 
 const MARK = { status: 'PRESENT' } as const
 
+const TOPIC = { topic: 'Taken over' } as const
+
+const COVERED = { covered: 'Taken over' } as const
+
 // A Wednesday session of the seeded group, moved to the Friday; well-formed, so the sweep reaches the organization checks
 const RESCHEDULE = { original_date: '2027-11-24', original_start_time: '17:00', new_date: '2027-11-26', new_start_time: '17:00', new_end_time: '18:30', reason: '' } as const
 
@@ -167,6 +171,11 @@ const SCOPED_ENDPOINTS: ScopedEndpoint[] = [
   { method: 'get', route: '/:organizationId/attendance/groups/:groupId/:date/:startTime' },
   { method: 'put', route: '/:organizationId/attendance/groups/:groupId/:date/:startTime/students/:studentId', body: MARK },
   { method: 'put', route: '/:organizationId/attendance/groups/:groupId/:date/:startTime/mark-all-present' },
+  { method: 'get', route: '/:organizationId/lesson-plans/sessions' },
+  { method: 'get', route: '/:organizationId/groups/:groupId/lesson-plans' },
+  { method: 'get', route: '/:organizationId/groups/:groupId/lesson-plans/:date/:startTime' },
+  { method: 'put', route: '/:organizationId/groups/:groupId/lesson-plans/:date/:startTime/topic', body: TOPIC },
+  { method: 'put', route: '/:organizationId/groups/:groupId/lesson-plans/:date/:startTime/covered', body: COVERED },
 ]
 
 type ToPathParams = {
@@ -323,6 +332,9 @@ const yllkaAsItsOwnerSeesIt = async () => {
     archivedGroups: (await send({ method: 'get', route: '/:organizationId/groups?status=ARCHIVED', ids: yllka, auth })).body.data,
     attendanceGroups: await read(`/:organizationId/attendance/groups?date=${LESSON_DATE}`),
     attendanceRegister: await read('/:organizationId/attendance/groups/:groupId/:date/:startTime'),
+    lessonPlanSessions: await read(`/:organizationId/lesson-plans/sessions?date=${LESSON_DATE}`),
+    groupLessonPlans: await read('/:organizationId/groups/:groupId/lesson-plans'),
+    lessonPlan: await read('/:organizationId/groups/:groupId/lesson-plans/:date/:startTime'),
   }
 }
 

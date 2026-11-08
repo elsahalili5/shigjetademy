@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { ArrowLeft, UsersRound } from 'lucide-react'
+import { todayIn } from '@shigjetademy/shared/calendar-day'
 import type { Group } from '@shigjetademy/shared/groups'
 import { isApiError } from '#/api/client'
 import { DashboardPageHeader } from '#/components/DashboardPageHeader'
@@ -15,6 +16,7 @@ import { useGroupLecturerOptions } from '../hooks/use-group-lecturer-options'
 import { getEnrolmentCountLabel } from '../utils/enrolment-count'
 import { getScheduleEntryKey, getScheduleEntryLabel } from '../utils/schedule-label'
 import { GroupLecturersContent } from './group-lecturers-content'
+import { GroupLessonPlansSection } from './group-lesson-plans-section'
 import { GroupReschedulesSection } from './group-reschedules-section'
 import { GroupStudentsSection } from './group-students-section'
 
@@ -91,6 +93,7 @@ function GroupDetailContent({ organizationId, group, status, isNotFound, timeZon
       <GroupReschedulesSection organizationId={organizationId} group={group} timeZone={timeZone} />
       {canManage ? (
         <>
+          <GroupLessonPlansSection organizationId={organizationId} groupId={group.id} today={todayIn(timeZone)} />
           <SectionCard title="Students">
             <GroupStudentsSection organizationId={organizationId} group={group} />
           </SectionCard>
