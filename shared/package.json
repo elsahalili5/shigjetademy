@@ -18,7 +18,8 @@
     "./invitations": "./src/invitations.ts",
     "./calendar-day": "./src/calendar-day.ts",
     "./attendance": "./src/attendance.ts",
-    "./lesson-plans": "./src/lesson-plans.ts"
+    "./lesson-plans": "./src/lesson-plans.ts",
+    "./student-roster": "./src/student-roster.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

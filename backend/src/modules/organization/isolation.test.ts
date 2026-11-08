@@ -176,6 +176,8 @@ const SCOPED_ENDPOINTS: ScopedEndpoint[] = [
   { method: 'get', route: '/:organizationId/groups/:groupId/lesson-plans/:date/:startTime' },
   { method: 'put', route: '/:organizationId/groups/:groupId/lesson-plans/:date/:startTime/topic', body: TOPIC },
   { method: 'put', route: '/:organizationId/groups/:groupId/lesson-plans/:date/:startTime/covered', body: COVERED },
+  { method: 'get', route: '/:organizationId/my-students' },
+  { method: 'get', route: '/:organizationId/my-students/:studentId' },
 ]
 
 type ToPathParams = {
@@ -335,6 +337,8 @@ const yllkaAsItsOwnerSeesIt = async () => {
     lessonPlanSessions: await read(`/:organizationId/lesson-plans/sessions?date=${LESSON_DATE}`),
     groupLessonPlans: await read('/:organizationId/groups/:groupId/lesson-plans'),
     lessonPlan: await read('/:organizationId/groups/:groupId/lesson-plans/:date/:startTime'),
+    myStudents: await read('/:organizationId/my-students'),
+    myStudent: await read('/:organizationId/my-students/:studentId'),
   }
 }
 

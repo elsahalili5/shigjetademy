@@ -1,4 +1,4 @@
-import { ClipboardCheck, GraduationCap, LogOut, Presentation, School } from 'lucide-react'
+import { ClipboardCheck, GraduationCap, LogOut, Presentation, School, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { hasOrganizationPermission } from '@shigjetademy/shared/auth'
 import type { Permission } from '@shigjetademy/shared/auth'
@@ -206,7 +206,7 @@ function StudentNavigation() {
   )
 }
 
-/** Lecturers have My teaching, Attendance and Lessons; their profile is at the bottom of the sidebar like everyone's */
+/** Lecturers have My teaching, Students, Attendance and Lessons; their profile is at the bottom of the sidebar like everyone's */
 function LecturerNavigation() {
   return (
     <>
@@ -215,6 +215,9 @@ function LecturerNavigation() {
       </span>
       <Link to="/dashboard/my-teaching" className={SIDEBAR_LINK_CLASS}>
         <SidebarLinkContent icon={GraduationCap} label="My teaching" />
+      </Link>
+      <Link to="/dashboard/my-students" className={SIDEBAR_LINK_CLASS}>
+        <SidebarLinkContent icon={Users} label="Students" />
       </Link>
       <Link to="/dashboard/attendance" className={SIDEBAR_LINK_CLASS}>
         <SidebarLinkContent icon={ClipboardCheck} label="Attendance" />
