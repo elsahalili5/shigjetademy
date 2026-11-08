@@ -865,12 +865,13 @@ describe('withdrawing and moving students', () => {
     expect((await enrol(groupId, (await addStudent({ firstName: 'Besa', number: 'STU-0002' })).id)).status).toBe(201)
   })
 
-  it('adds a new row when a withdrawn student enrols again', async () => {
+  it('adds a new row, starting today, when a withdrawn student enrols again', async () => {
     await withdraw(groupId, enrolmentId)
 
     const again = await enrol(groupId, artaId)
 
     expect(again.status).toBe(201)
+    expect(again.body.data.enrolled_on).toBe('2026-11-03')
     expect(again.body.data.id).not.toBe(enrolmentId)
     expect(await prisma.groupEnrolment.count({ where: { group_id: groupId, student_id: artaId } })).toBe(2)
   })
@@ -894,11 +895,13 @@ describe('withdrawing and moving students', () => {
     expect(await prisma.groupEnrolment.count({ where: { withdrawn_on: null } })).toBe(1)
   })
 
-  it('moves a student to a group of another course in one step', async () => {
+  it('moves a student to a group of another course in one step, starting in the new group the next day and taking its seat at once', async () => {
     const response = await move(groupId, enrolmentId, otherId)
 
     expect(response.status).toBe(201)
-    expect(response.body.data).toMatchObject({ enrolled_on: '2026-11-03', withdrawn_on: null, student: { id: artaId } })
+    expect(response.body.data).toMatchObject({ enrolled_on: '2026-11-04', withdrawn_on: null, student: { id: artaId } })
+    expect((await readGroup(otherId)).body.data.enrolled_count).toBe(1)
+    expect((await readGroup(groupId)).body.data.enrolled_count).toBe(0)
     expect((await listEnrolments(groupId)).body.data).toMatchObject([{ id: enrolmentId, withdrawn_on: '2026-11-03' }])
     expect((await listEnrolments(otherId)).body.data).toMatchObject([{ id: response.body.data.id, withdrawn_on: null }])
   })

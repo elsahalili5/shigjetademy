@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Archive, ArchiveRestore, ArrowRightLeft, Building2, CalendarCog, CalendarPlus, CalendarRange, CalendarX, CirclePause, CirclePlay, Crown, KeyRound, Layers, Lock, Mail, MailCheck, MailX, MapPin, MapPinOff, MapPinPen, Network, Power, PowerOff, Send, Settings, SquarePen, Trash2, TreePalm, UserMinus, UserPen, UserPlus, UserRoundCheck, UserRoundMinus, UserRoundPen, UserRoundPlus, UserRoundX, UsersRound } from 'lucide-react'
+import { Archive, ArchiveRestore, ArrowRightLeft, Building2, CalendarCog, ClipboardPen, CalendarPlus, CalendarRange, CalendarX, CirclePause, CirclePlay, Crown, KeyRound, Layers, Lock, Mail, MailCheck, MailX, MapPin, MapPinOff, MapPinPen, Network, Power, PowerOff, Send, Settings, SquarePen, Trash2, TreePalm, UserMinus, UserPen, UserPlus, UserRoundCheck, UserRoundMinus, UserRoundPen, UserRoundPlus, UserRoundX, UsersRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ActivityAction, ActivityEntry, ActivityUser } from '@shigjetademy/shared/activity'
 import { useFormatDateTime } from '#/lib/use-format-date'
@@ -54,6 +54,7 @@ const ACTION_ICONS = {
   GROUP_STUDENT_ENROLLED: UserRoundPlus,
   GROUP_STUDENT_WITHDRAWN: UserRoundMinus,
   GROUP_STUDENT_MOVED: ArrowRightLeft,
+  ATTENDANCE_CORRECTED: ClipboardPen,
   INVITATION_SENT: Mail,
   INVITATION_RESENT: Send,
   INVITATION_REVOKED: MailX,
@@ -72,6 +73,7 @@ const DELETED_TARGET = 'a deleted user'
 // The service always stores the name for these actions; this only covers a null column
 const UNNAMED_SUBJECT = 'with no name'
 const UNNAMED_EMAIL = 'someone'
+const UNNAMED_ATTENDANCE_STUDENT = 'a student'
 
 interface ActivityRowProps {
   entry: ActivityEntry
@@ -235,6 +237,13 @@ function ActivitySentence({ entry, shouldLinkOrganization }: ActivityRowProps) {
       return <GroupStudentSentence entry={entry} verb="withdrew" organization={subjectOrganization} />
     case 'GROUP_STUDENT_MOVED':
       return <GroupStudentSentence entry={entry} verb="moved" organization={subjectOrganization} />
+    case 'ATTENDANCE_CORRECTED':
+      return (
+        <>
+          {fullName({ user: entry.actor, fallback: DELETED_ACTOR })} corrected the attendance of {entry.subject_name ?? UNNAMED_ATTENDANCE_STUDENT}
+          {subjectOrganization ? <> at {subjectOrganization}</> : null}
+        </>
+      )
     case 'INVITATION_SENT':
       return (
         <>

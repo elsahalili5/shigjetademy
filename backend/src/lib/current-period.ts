@@ -1,4 +1,4 @@
-import { todayIn } from '@shigjetademy/shared/calendar-day'
+import { nowIn, todayIn } from '@shigjetademy/shared/calendar-day'
 import { resolveOrganizationSettings } from '@shigjetademy/shared/organization-settings'
 import type { Prisma } from '@generated/prisma/client.ts'
 import { toDay } from './calendar-day.ts'
@@ -15,15 +15,22 @@ type GetOrganizationTodayParams = {
   organizationId: string
 }
 
-/** The organization's calendar day right now, as 'YYYY-MM-DD', and the day its week starts on */
-export const getOrganizationCalendar = async ({ db, organizationId }: GetOrganizationTodayParams) => {
+const readSettings = async ({ db, organizationId }: GetOrganizationTodayParams) => {
   const organization = await db.organization.findUniqueOrThrow({
     where: { id: organizationId },
     select: { country: true, settings: { select: { time_zone: true, week_start: true, date_format: true } } },
   })
-  const settings = resolveOrganizationSettings({ stored: organization.settings, country: organization.country })
+  return resolveOrganizationSettings({ stored: organization.settings, country: organization.country })
+}
+
+/** The organization's calendar day right now, as 'YYYY-MM-DD', and the day its week starts on */
+export const getOrganizationCalendar = async (params: GetOrganizationTodayParams) => {
+  const settings = await readSettings(params)
   return { today: todayIn(settings.time_zone), weekStart: settings.week_start }
 }
+
+/** The organization's calendar day as 'YYYY-MM-DD' and its wall-clock time as 'HH:MM' right now */
+export const getOrganizationNow = async (params: GetOrganizationTodayParams) => nowIn((await readSettings(params)).time_zone)
 
 /** The organization's calendar day right now, as 'YYYY-MM-DD' */
 export const getOrganizationToday = async (params: GetOrganizationTodayParams) => (await getOrganizationCalendar(params)).today

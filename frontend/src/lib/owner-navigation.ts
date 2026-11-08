@@ -1,4 +1,4 @@
-import { Building2, CalendarRange, GraduationCap, Layers, LayoutDashboard, MapPin, Settings, UserCog, Users, UsersRound } from 'lucide-react'
+import { Building2, CalendarRange, ClipboardCheck, GraduationCap, Layers, LayoutDashboard, MapPin, Settings, UserCog, Users, UsersRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ModuleSlug } from './modules'
 
@@ -19,6 +19,7 @@ export type OwnerNavItem =
         | '/dashboard/lecturers'
         | '/dashboard/courses'
         | '/dashboard/groups'
+        | '/dashboard/attendance'
       label: string
       icon: LucideIcon
     }
@@ -59,7 +60,7 @@ export const OWNER_NAV_SECTIONS: OwnerNavSection[] = [
       { kind: 'module', slug: 'materials' },
       { kind: 'module', slug: 'assignments' },
       { kind: 'module', slug: 'tests', label: 'Tests and assessments' },
-      { kind: 'module', slug: 'attendance' },
+      { kind: 'page', to: '/dashboard/attendance', label: 'Attendance', icon: ClipboardCheck },
       { kind: 'module', slug: 'grades' },
     ],
   },

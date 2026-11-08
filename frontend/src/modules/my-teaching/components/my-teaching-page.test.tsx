@@ -69,13 +69,13 @@ describe('My teaching', () => {
     expect(screen.getByText('Autumn term')).toBeInTheDocument()
   })
 
-  it('shows a lecturer only My teaching in the sidebar', async () => {
+  it('shows a lecturer only My teaching and Attendance in the sidebar', async () => {
     signInAs(LECTURER)
     serveMyTeaching()
     renderRoute('/dashboard/my-teaching')
 
     const modules = await screen.findByRole('navigation', { name: 'Modules' })
-    expect(within(modules).getAllByRole('link').map((link) => link.textContent)).toEqual(['My teaching'])
+    expect(within(modules).getAllByRole('link').map((link) => link.textContent)).toEqual(['My teaching', 'Attendance'])
   })
 
   it('says when no record is linked yet, or no term is running', async () => {
@@ -99,7 +99,7 @@ describe('My teaching', () => {
     signInAs(LECTURER)
     serveMyTeaching()
 
-    for (const path of ['/dashboard', '/dashboard/overview', '/dashboard/members', '/dashboard/students', '/dashboard/lecturers', '/dashboard/locations', '/dashboard/my-school', '/dashboard/attendance']) {
+    for (const path of ['/dashboard', '/dashboard/overview', '/dashboard/members', '/dashboard/students', '/dashboard/lecturers', '/dashboard/locations', '/dashboard/my-school', '/dashboard/grades']) {
       const { router } = renderRoute(path)
       await waitFor(() => expect(router.state.location.pathname, path).toBe('/dashboard/my-teaching'))
       cleanup()

@@ -16,7 +16,8 @@
     "./courses": "./src/courses.ts",
     "./groups": "./src/groups.ts",
     "./invitations": "./src/invitations.ts",
-    "./calendar-day": "./src/calendar-day.ts"
+    "./calendar-day": "./src/calendar-day.ts",
+    "./attendance": "./src/attendance.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
