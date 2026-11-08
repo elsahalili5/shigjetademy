@@ -9,7 +9,7 @@ import { LoadError } from '#/components/LoadError'
 import { SectionCard } from '#/components/SectionCard'
 import { SkeletonRows } from '#/components/SkeletonRows'
 import { getErrorMessage } from '#/lib/error-message'
-import { useFormatDay } from '#/lib/use-format-date'
+import { useFormatDay, useFormatLessonSlot } from '#/lib/use-format-date'
 import type { RegisterParams } from '../api/attendance-api'
 import { useAttendanceRegister } from '../hooks/use-attendance-register'
 import { useMarkAllPresent } from '../hooks/use-mark-all-present'
@@ -23,13 +23,14 @@ interface AttendanceRegisterProps {
   organizationId: string
   groupId: string
   date: string
+  startTime: string
   /** The organization's time zone, where the lesson's times are */
   timeZone: string
 }
 
-/** One group's register on one day: its students and their marks, saved on each tap while this user may mark it */
-export function AttendanceRegister({ organizationId, groupId, date, timeZone }: AttendanceRegisterProps) {
-  const params = { organizationId, groupId, date }
+/** One session's register: its students and their marks, saved on each tap while this user may mark it */
+export function AttendanceRegister({ organizationId, groupId, date, startTime, timeZone }: AttendanceRegisterProps) {
+  const params = { organizationId, groupId, date, startTime }
   const register = useAttendanceRegister({ ...params, timeZone })
 
   if (register.status === 'error') return <LoadError what="register" onRetry={() => void register.refetch()} />
@@ -44,6 +45,7 @@ interface RegisterSectionProps {
 
 function RegisterSection({ params, register }: RegisterSectionProps) {
   const formatDay = useFormatDay()
+  const formatLessonSlot = useFormatLessonSlot()
   const markAllPresent = useMarkAllPresent(params)
   const hasUnmarked = register.students.some((student) => !student.status)
 
@@ -60,8 +62,9 @@ function RegisterSection({ params, register }: RegisterSectionProps) {
     >
       <div className="grid gap-4 px-5 py-4">
         <p className="tabular text-ink-2">
-          {register.group.course} · {formatDay(register.date)} · {register.opens_at}–{register.locks_at}
+          {register.group.course} · {formatDay(register.date)} · {register.start_time}–{register.end_time}
         </p>
+        {register.rescheduled_from ? <p className="tabular text-ink-2">Rescheduled from {formatLessonSlot({ day: register.rescheduled_from.date, time: register.rescheduled_from.start_time })}</p> : null}
         <RegisterNotice register={register} />
         {markAllPresent.isError ? <FormAlert>{getErrorMessage(markAllPresent.error)}</FormAlert> : null}
         <RegisterStudents params={params} register={register} isMarkingAll={markAllPresent.isPending} />
@@ -97,14 +100,14 @@ function RegisterNotice({ register }: RegisterNoticeProps) {
   if (register.group.status === 'ARCHIVED') return <p className="text-ink-2">This group is archived, so its register is read-only.</p>
   switch (register.window) {
     case 'UPCOMING':
-      return <p className="font-semibold text-ink-2">Opens at {register.opens_at}</p>
+      return <p className="font-semibold text-ink-2">Opens at {register.start_time}</p>
     case 'OPEN':
       return !register.can_edit && register.substitute ? <p className="text-ink-2">{getLecturerName(register.substitute)} is covering this lesson, so it’s read-only for you.</p> : null
     case 'LOCKED':
       return register.can_edit ? (
-        <p className="text-ink-2">Locked at {register.locks_at}. Changes now are logged as corrections.</p>
+        <p className="text-ink-2">Locked at {register.end_time}. Changes now are logged as corrections.</p>
       ) : (
-        <p className="text-ink-2">Locked at {register.locks_at}. A school admin can still correct it.</p>
+        <p className="text-ink-2">Locked at {register.end_time}. A school admin can still correct it.</p>
       )
     default: {
       const unknown: never = register.window

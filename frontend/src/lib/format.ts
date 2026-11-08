@@ -5,6 +5,7 @@ const dateTimeFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'mediu
 const timeFormatter = new Intl.DateTimeFormat(undefined, { timeStyle: 'short' })
 // Calendar days are read and shown in UTC, so they never shift a day
 const dayFormatter = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+const lessonDayFormatter = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
 
 const toUtcDate = (day: string) => new Date(`${day}T00:00:00.000Z`)
 
@@ -60,3 +61,22 @@ type FormatOrganizationDayParams = {
 /** A calendar day like "2026-09-01" in the organization's order, the same day wherever the user is */
 export const formatOrganizationDay = ({ day, dateFormat }: FormatOrganizationDayParams) =>
   writeInOrder({ formatter: dayFormatter, date: toUtcDate(day), order: dateFormat })
+
+/** A lesson's calendar day with its weekday and without the year, like "Mon 9 Nov" in the user's locale */
+export const formatLessonDay = (day: string) => lessonDayFormatter.format(toUtcDate(day))
+
+/** A lesson's calendar day with its weekday and without the year, in the organization's order: "Mon 9 Nov" or "Mon, Nov 9" */
+export const formatOrganizationLessonDay = ({ day, dateFormat }: FormatOrganizationDayParams) => {
+  const parts = lessonDayFormatter.formatToParts(toUtcDate(day))
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? ''
+  switch (dateFormat) {
+    case 'DAY_MONTH_YEAR':
+      return `${part('weekday')} ${part('day')} ${part('month')}`
+    case 'MONTH_DAY_YEAR':
+      return `${part('weekday')}, ${part('month')} ${part('day')}`
+    default: {
+      const unknown: never = dateFormat
+      throw new Error(`Unknown date format: ${String(unknown)}`)
+    }
+  }
+}

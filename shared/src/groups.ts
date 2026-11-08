@@ -26,9 +26,20 @@ export type Weekday = (typeof WEEKDAYS)[number]
 const SCHEDULE_ENTRIES_MAX = 30
 
 /** A wall-clock time like "17:00", with no time zone */
-const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/
+export const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/
 
 const timeSchema = (message: string) => z.string().regex(TIME_PATTERN, message)
+
+type TimeRange = {
+  start: string
+  end: string
+}
+
+/** End after start, once both are times; a malformed one already has its own message */
+const isEndAfterStart = ({ start, end }: TimeRange) => !TIME_PATTERN.test(start) || !TIME_PATTERN.test(end) || end > start
+
+/** Where and how a start and end pair is refused: under its end field */
+const endAfterStartIssue = (endField: string) => ({ path: [endField], message: 'The end time must be after the start time.' })
 
 /** One weekly meeting, like Monday 17:00 to 18:30; it runs for the group's term, or its whole school year without one */
 const scheduleEntrySchema = z
@@ -37,7 +48,7 @@ const scheduleEntrySchema = z
     start_time: timeSchema('Enter the start time.'),
     end_time: timeSchema('Enter the end time.'),
   })
-  .refine(({ start_time, end_time }) => !TIME_PATTERN.test(start_time) || !TIME_PATTERN.test(end_time) || end_time > start_time, { path: ['end_time'], message: 'The end time must be after the start time.' })
+  .refine(({ start_time, end_time }) => isEndAfterStart({ start: start_time, end: end_time }), endAfterStartIssue('end_time'))
 
 export type GroupScheduleEntry = z.infer<typeof scheduleEntrySchema>
 
@@ -121,6 +132,25 @@ export const groupMoveSchema = z.object({
 })
 
 export type GroupMoveInput = z.infer<typeof groupMoveSchema>
+
+const RESCHEDULE_REASON_MAX = 500
+
+/**
+ * Moves one regular session of a group to a new date and time. The original is named by its day and start;
+ * the reason comes in as '' when left empty and is for staff only.
+ */
+export const lessonRescheduleSchema = z
+  .object({
+    original_date: z.iso.date('Choose the lesson to move.'),
+    original_start_time: timeSchema('Choose the lesson to move.'),
+    new_date: z.iso.date('Enter the new date.'),
+    new_start_time: timeSchema('Enter the start time.'),
+    new_end_time: timeSchema('Enter the end time.'),
+    reason: optionalText(RESCHEDULE_REASON_MAX),
+  })
+  .refine(({ new_start_time, new_end_time }) => isEndAfterStart({ start: new_start_time, end: new_end_time }), endAfterStartIssue('new_end_time'))
+
+export type LessonRescheduleInput = z.infer<typeof lessonRescheduleSchema>
 
 export const listGroupsQuerySchema = z.object({
   status: z.enum(GROUP_STATUSES, 'Unknown status').default('ACTIVE'),
@@ -206,4 +236,35 @@ export type GroupPage = {
   groups: Group[]
   total: number
   counts: Record<GroupStatus, number>
+}
+
+/** Whether a reschedule still moves its lesson, or was cancelled and the original came back */
+export type LessonRescheduleStatus = 'ACTIVE' | 'CANCELLED'
+
+/** One session of a group moved to another date and time; days are 'YYYY-MM-DD' and times 'HH:MM' */
+export type LessonReschedule = {
+  id: string
+  original_date: string
+  original_start_time: string
+  /** Read from the weekly schedule; null once the schedule no longer has that session */
+  original_end_time: string | null
+  new_date: string
+  new_start_time: string
+  new_end_time: string
+  /** For staff only */
+  reason: string | null
+  status: LessonRescheduleStatus
+  created_at: string
+  cancelled_at: string | null
+}
+
+/** A lesson moved to another date and time as students and lecturers read it: both slots, without the staff-only reason */
+export type RescheduledLesson = {
+  id: string
+  group: { id: string; name: string; course: string }
+  original_date: string
+  original_start_time: string
+  new_date: string
+  new_start_time: string
+  new_end_time: string
 }

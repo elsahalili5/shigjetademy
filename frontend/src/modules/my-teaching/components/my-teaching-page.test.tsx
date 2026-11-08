@@ -20,6 +20,7 @@ const MY_TEACHING: MyTeaching = {
   next_term: null,
   groups: [],
   cover: [],
+  rescheduled_lessons: [],
 }
 
 const COVER_GROUP: MyTeachingCoverGroup = {
@@ -67,6 +68,27 @@ describe('My teaching', () => {
     expect(within(details).getByText('Main campus, North campus')).toBeInTheDocument()
     expect(screen.getByText('2026–27')).toBeInTheDocument()
     expect(screen.getByText('Autumn term')).toBeInTheDocument()
+  })
+
+  it('lists moved lessons the lecturer takes on their new date, and those moved away from their slot to someone else', async () => {
+    signInAs(LECTURER)
+    const moved = { group: { id: 'group-a', name: 'Group A', course: 'Mathematics' }, original_start_time: '17:00', new_start_time: '16:00', new_end_time: '17:30' }
+    serveMyTeaching({
+      ...MY_TEACHING,
+      rescheduled_lessons: [
+        { ...moved, id: 'r1', original_date: '2026-11-16', new_date: '2026-11-20', is_teaching: true },
+        { ...moved, id: 'r2', original_date: '2026-11-23', new_date: '2026-11-25', is_teaching: false },
+      ],
+    })
+    renderRoute('/dashboard/my-teaching')
+
+    const section = await screen.findByRole('region', { name: 'Rescheduled lessons' })
+    const [toTake, movedAway] = within(section).getAllByRole('listitem')
+    expect(toTake).toHaveTextContent('Group A · Mathematics')
+    expect(toTake).toHaveTextContent('Moved from Mon 16 Nov, 17:00 to Fri 20 Nov, 16:00–17:30')
+    expect(toTake).toHaveTextContent('You take this lesson.')
+    expect(movedAway).toHaveTextContent('Mon 23 Nov, 17:00 · Moved to Wed 25 Nov, 16:00')
+    expect(movedAway).toHaveTextContent('Another lecturer takes it on the new date.')
   })
 
   it('shows a lecturer only My teaching and Attendance in the sidebar', async () => {

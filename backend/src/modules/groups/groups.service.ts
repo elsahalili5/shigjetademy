@@ -12,6 +12,7 @@ import { changeLecturer, checkMoveToYear, checkNewLecturer, getLecturerFields, o
 import { checkCapacityKept } from './group-enrolments.service.ts'
 import { activeEnrolments } from './group-selects.ts'
 import { meetingsSelect, replaceSchedule, toScheduleJson } from './group-schedule.ts'
+import { checkMovedLessonsKept } from './lesson-reschedules.service.ts'
 import type { GroupInput, GroupStatus, ListGroupsQuery } from './groups.types.ts'
 
 const relationSelect = { id: true, name: true } as const
@@ -250,6 +251,7 @@ export const GroupService = {
       if (data.academic_year_id !== stored.academic_year.id) {
         await checkMoveToYear({ tx, groupId, yearId: data.academic_year_id, today: calendar.today })
       }
+      await checkMovedLessonsKept({ tx, groupId, data, today: calendar.today })
       const { name } = await tx.group.update({ where: { id: groupId }, data: toGroupColumns(data), select: { name: true } })
       await replaceSchedule({ tx, groupId, schedule: data.schedule })
       await tx.activityLog.create({ data: { actor_id: actorId, action: 'GROUP_UPDATED', organization_id: organizationId, subject_name: name } })

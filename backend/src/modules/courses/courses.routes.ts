@@ -1,12 +1,13 @@
 import { Router } from 'express'
 import { authMiddleware } from '@shared/middleware/authMiddleware.ts'
-import { requirePermission } from '@shared/middleware/permissionMiddleware.ts'
+import { requireAnyPermission, requirePermission } from '@shared/middleware/permissionMiddleware.ts'
 import { validateRequestMiddleware } from '@shared/middleware/validateRequest.middleware.ts'
 import { organizationIdParamSchema } from '@modules/organization/organization.schema.ts'
 import { CourseController } from './courses.controller.ts'
 import { courseParamSchema, courseSchema, listCoursesQuerySchema } from './courses.schema.ts'
 
 // Mounted at /api/organizations. Only the owner and school admins with MANAGE_COURSES read or change courses.
+// The options, names only, also serve the read-only Groups list of admins with MANAGE_SCHEDULES.
 const router = Router()
 
 const COURSES = '/:organizationId/courses'
@@ -14,11 +15,13 @@ const COURSE = `${COURSES}/:courseId`
 
 const canManage = requirePermission('MANAGE_COURSES')
 
+const canReadOptions = requireAnyPermission(['MANAGE_COURSES', 'MANAGE_SCHEDULES'])
+
 router.get(COURSES, authMiddleware, validateRequestMiddleware(organizationIdParamSchema, 'params'), canManage, validateRequestMiddleware(listCoursesQuerySchema, 'query'), CourseController.listCourses)
 
 router.post(COURSES, authMiddleware, validateRequestMiddleware(organizationIdParamSchema, 'params'), canManage, validateRequestMiddleware(courseSchema), CourseController.createCourse)
 
-router.get(`${COURSES}/options`, authMiddleware, validateRequestMiddleware(organizationIdParamSchema, 'params'), canManage, CourseController.listCourseOptions)
+router.get(`${COURSES}/options`, authMiddleware, validateRequestMiddleware(organizationIdParamSchema, 'params'), canReadOptions, CourseController.listCourseOptions)
 
 // After /options, so "options" is never read as a course id
 router.get(COURSE, authMiddleware, validateRequestMiddleware(courseParamSchema, 'params'), canManage, CourseController.getCourse)

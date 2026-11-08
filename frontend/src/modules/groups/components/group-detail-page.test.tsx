@@ -1,8 +1,8 @@
-import { screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it, vi } from 'vitest'
-import { groupEnrolmentSchema, groupMoveSchema } from '@shigjetademy/shared/groups'
-import type { Group, GroupEnrolment, GroupLecturer, GroupLecturerHistory, GroupPage, GroupStudentOption } from '@shigjetademy/shared/groups'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { groupEnrolmentSchema, groupMoveSchema, lessonRescheduleSchema } from '@shigjetademy/shared/groups'
+import type { Group, GroupEnrolment, GroupLecturer, GroupLecturerHistory, GroupPage, GroupStudentOption, LessonReschedule } from '@shigjetademy/shared/groups'
 import { buildUser, OWNER_MEMBERSHIPS, signInAs, YLLKA_ADMIN_MEMBERSHIP } from '#/test/fixtures'
 import { renderRoute } from '#/test/render-route'
 import { server } from '#/test/server'
@@ -52,10 +52,12 @@ type ServeGroupParams = {
   group?: Group
   history?: GroupLecturerHistory
   enrolments?: GroupEnrolment[]
+  reschedules?: LessonReschedule[]
 }
 
-const serveGroup = ({ group = GROUP_A, history = HISTORY, enrolments = [ARTA_IN_A] }: ServeGroupParams = {}) =>
+const serveGroup = ({ group = GROUP_A, history = HISTORY, enrolments = [ARTA_IN_A], reschedules = [] }: ServeGroupParams = {}) =>
   server.use(
+    http.get(`${GROUPS_PATH}/${group.id}/reschedules`, () => HttpResponse.json({ data: reschedules })),
     http.get(`${GROUPS_PATH}/${group.id}`, () => HttpResponse.json({ data: group })),
     http.get(`${GROUPS_PATH}/${group.id}/lecturers`, () => HttpResponse.json({ data: history })),
     http.get(`${GROUPS_PATH}/${group.id}/enrolments`, () => HttpResponse.json({ data: enrolments })),
@@ -434,5 +436,240 @@ describe('GroupDetailPage', () => {
 
     await vi.waitFor(() => expect(router.state.location.pathname).not.toBe(GROUP_PAGE_PATH))
     expect(screen.queryByRole('heading', { level: 1, name: 'Group A' })).not.toBeInTheDocument()
+  })
+})
+
+// Monday 9 November 2026, 11:00 in Belgrade
+const MONDAY_MORNING = '2026-11-09T10:00:00.000Z'
+
+const MOVED_TO_FRIDAY: LessonReschedule = {
+  id: 'r0000000-0000-4000-8000-000000000001',
+  original_date: '2026-11-16',
+  original_start_time: '17:00',
+  original_end_time: '18:30',
+  new_date: '2026-11-20',
+  new_start_time: '16:00',
+  new_end_time: '17:30',
+  reason: 'Lecturer at a conference',
+  status: 'ACTIVE',
+  created_at: '2026-11-09T10:00:00.000Z',
+  cancelled_at: null,
+}
+
+const reschedulesSection = () => screen.findByRole('region', { name: 'Rescheduled lessons' })
+
+describe('GroupDetailPage: rescheduling a lesson', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(MONDAY_MORNING))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('moves a session to a new date and time, starting from the original’s times', async () => {
+    signInAsOwner()
+    serveGroup()
+    let sent: unknown
+    server.use(
+      http.post(`${GROUPS_PATH}/${GROUP_A.id}/reschedules`, async ({ request }) => {
+        sent = lessonRescheduleSchema.parse(await request.json())
+        serveGroup({ reschedules: [MOVED_TO_FRIDAY] })
+        return HttpResponse.json({ data: MOVED_TO_FRIDAY }, { status: 201 })
+      }),
+    )
+    const { user } = renderRoute(GROUP_PAGE_PATH)
+
+    await user.click(await within(await reschedulesSection()).findByRole('button', { name: 'Reschedule a lesson' }))
+    const dialog = screen.getByRole('dialog', { name: 'Reschedule a lesson' })
+    fireEvent.change(within(dialog).getByLabelText('Lesson date'), { target: { value: '2026-11-16' } })
+    const lesson = within(dialog).getByLabelText('Lesson')
+    expect(within(lesson).getAllByRole('option').map((option) => option.textContent)).toEqual(['Choose a lesson', '17:00–18:30'])
+    await user.selectOptions(lesson, '17:00–18:30')
+    expect(within(dialog).getByLabelText('New date')).toHaveValue('2026-11-16')
+    expect(within(dialog).getByLabelText('Start time')).toHaveValue('17:00')
+    expect(within(dialog).getByLabelText('End time')).toHaveValue('18:30')
+    fireEvent.change(within(dialog).getByLabelText('New date'), { target: { value: '2026-11-20' } })
+    fireEvent.change(within(dialog).getByLabelText('Start time'), { target: { value: '16:00' } })
+    fireEvent.change(within(dialog).getByLabelText('End time'), { target: { value: '17:30' } })
+    await user.type(within(dialog).getByLabelText('Reason (optional)'), 'Lecturer at a conference')
+    await user.click(within(dialog).getByRole('button', { name: 'Reschedule lesson' }))
+
+    await vi.waitFor(() => expect(dialog).not.toHaveAttribute('open'))
+    expect(sent).toEqual({ original_date: '2026-11-16', original_start_time: '17:00', new_date: '2026-11-20', new_start_time: '16:00', new_end_time: '17:30', reason: 'Lecturer at a conference' })
+    expect(await within(await reschedulesSection()).findByText('Moved to Fri 20 Nov, 16:00')).toBeInTheDocument()
+  })
+
+  it('offers no lesson to move on a day the group doesn’t meet', async () => {
+    signInAsOwner()
+    serveGroup()
+    const { user } = renderRoute(GROUP_PAGE_PATH)
+
+    await user.click(await within(await reschedulesSection()).findByRole('button', { name: 'Reschedule a lesson' }))
+    const dialog = screen.getByRole('dialog', { name: 'Reschedule a lesson' })
+    fireEvent.change(within(dialog).getByLabelText('Lesson date'), { target: { value: '2026-11-17' } })
+
+    expect(within(within(dialog).getByLabelText('Lesson')).getAllByRole('option').map((option) => option.textContent)).toEqual(['Choose a lesson'])
+    expect(within(dialog).getByText('The group has no lesson on this day.')).toBeInTheDocument()
+  })
+
+  it('shows why the server refuses a new slot under its field, and keeps the dialog open', async () => {
+    signInAsOwner()
+    serveGroup()
+    const message = 'This overlaps the group’s lesson at 17:00–18:30.'
+    server.use(
+      http.post(`${GROUPS_PATH}/${GROUP_A.id}/reschedules`, () =>
+        HttpResponse.json({ error: message, details: { formErrors: [], fieldErrors: { new_start_time: [message] } } }, { status: 400 }),
+      ),
+    )
+    const { user } = renderRoute(GROUP_PAGE_PATH)
+
+    await user.click(await within(await reschedulesSection()).findByRole('button', { name: 'Reschedule a lesson' }))
+    const dialog = screen.getByRole('dialog', { name: 'Reschedule a lesson' })
+    fireEvent.change(within(dialog).getByLabelText('Lesson date'), { target: { value: '2026-11-16' } })
+    await user.selectOptions(within(dialog).getByLabelText('Lesson'), '17:00–18:30')
+    fireEvent.change(within(dialog).getByLabelText('New date'), { target: { value: '2026-11-18' } })
+    await user.click(within(dialog).getByRole('button', { name: 'Reschedule lesson' }))
+
+    await vi.waitFor(() => expect(within(dialog).getByLabelText('Start time')).toHaveAttribute('aria-invalid', 'true'))
+    expect(within(dialog).getByLabelText('Start time')).toHaveAccessibleDescription(message)
+    expect(dialog).toHaveAttribute('open')
+  })
+
+  it('asks for the lesson to move before sending', async () => {
+    signInAsOwner()
+    serveGroup()
+    const { user } = renderRoute(GROUP_PAGE_PATH)
+
+    await user.click(await within(await reschedulesSection()).findByRole('button', { name: 'Reschedule a lesson' }))
+    const dialog = screen.getByRole('dialog', { name: 'Reschedule a lesson' })
+    await user.click(within(dialog).getByRole('button', { name: 'Reschedule lesson' }))
+
+    await vi.waitFor(() => expect(within(dialog).getByLabelText('Lesson')).toHaveAccessibleDescription('Choose the lesson to move.'))
+    expect(within(dialog).getByLabelText('Lesson date')).toHaveAccessibleDescription('Choose the lesson to move.')
+  })
+
+  it('lets an admin with Courses and groups but no Timetable read the moves, without changing them', async () => {
+    signInAs(buildUser({ memberships: [{ ...YLLKA_ADMIN_MEMBERSHIP, permissions: ['MANAGE_COURSES'] }] }))
+    server.use(
+      http.get(`*/api/organizations/org-2/groups/${GROUP_A.id}`, () => HttpResponse.json({ data: GROUP_A })),
+      http.get(`*/api/organizations/org-2/groups/${GROUP_A.id}/lecturers`, () => HttpResponse.json({ data: HISTORY })),
+      http.get(`*/api/organizations/org-2/groups/${GROUP_A.id}/enrolments`, () => HttpResponse.json({ data: [] })),
+      http.get(`*/api/organizations/org-2/groups/${GROUP_A.id}/reschedules`, () => HttpResponse.json({ data: [MOVED_TO_FRIDAY] })),
+      http.get('*/api/organizations/org-2/groups/lecturer-options', () => HttpResponse.json({ data: [] })),
+      http.get('*/api/organizations/org-2/groups/student-options', () => HttpResponse.json({ data: [] })),
+    )
+    renderRoute(GROUP_PAGE_PATH)
+
+    const section = await reschedulesSection()
+    expect(await within(section).findByText('Moved to Fri 20 Nov, 16:00')).toBeInTheDocument()
+    expect(within(section).queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('opens read-only for an admin with only Timetable, who can still reschedule, without the students and lecturers', async () => {
+    signInAs(buildUser({ memberships: [{ ...YLLKA_ADMIN_MEMBERSHIP, permissions: ['MANAGE_SCHEDULES'] }] }))
+    server.use(
+      http.get(`*/api/organizations/org-2/groups/${GROUP_A.id}`, () => HttpResponse.json({ data: GROUP_A })),
+      http.get(`*/api/organizations/org-2/groups/${GROUP_A.id}/reschedules`, () => HttpResponse.json({ data: [MOVED_TO_FRIDAY] })),
+      http.get('*/api/organizations/org-2/*', () => HttpResponse.json({ error: 'Forbidden' }, { status: 403 })),
+    )
+    renderRoute(GROUP_PAGE_PATH)
+
+    const section = await reschedulesSection()
+    expect(await within(section).findByText('Moved to Fri 20 Nov, 16:00')).toBeInTheDocument()
+    expect(within(section).getByRole('button', { name: 'Reschedule a lesson' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Details' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Schedule' })).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Students' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Lecturers' })).not.toBeInTheDocument()
+  })
+
+  it('offers no rescheduling on an archived group', async () => {
+    signInAsOwner()
+    serveGroup({ group: { ...GROUP_A, status: 'ARCHIVED' }, reschedules: [MOVED_TO_FRIDAY] })
+    renderRoute(GROUP_PAGE_PATH)
+
+    const section = await reschedulesSection()
+    expect(await within(section).findByText('Moved to Fri 20 Nov, 16:00')).toBeInTheDocument()
+    expect(within(section).queryByRole('button')).not.toBeInTheDocument()
+  })
+})
+
+describe('GroupDetailPage: rescheduled lessons', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(MONDAY_MORNING))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  const PAST: LessonReschedule = { ...MOVED_TO_FRIDAY, id: 'r0000000-0000-4000-8000-000000000002', original_date: '2026-11-02', new_date: '2026-11-04', reason: null, status: 'CANCELLED', cancelled_at: '2026-11-01T10:00:00.000Z' }
+
+  it('lists upcoming and past moves with the original and new slots, the reason and the status', async () => {
+    signInAsOwner()
+    serveGroup({ reschedules: [PAST, MOVED_TO_FRIDAY] })
+    renderRoute(GROUP_PAGE_PATH)
+
+    const section = await reschedulesSection()
+    const upcoming = await within(section).findByRole('list', { name: 'Upcoming' })
+    const past = within(section).getByRole('list', { name: 'Past' })
+    const [moved] = within(upcoming).getAllByRole('listitem')
+    expect(moved).toHaveTextContent('Mon 16 Nov, 17:00–18:30')
+    expect(moved).toHaveTextContent('Moved to Fri 20 Nov, 16:00 · until 17:30')
+    expect(moved).toHaveTextContent('Lecturer at a conference')
+    expect(moved).toHaveTextContent('Active')
+    const [cancelled] = within(past).getAllByRole('listitem')
+    expect(cancelled).toHaveTextContent('Mon 2 Nov, 17:00–18:30')
+    expect(cancelled).toHaveTextContent('Moved to Wed 4 Nov, 16:00')
+    expect(cancelled).toHaveTextContent('Cancelled')
+    expect(within(cancelled).queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('says when no lesson has been moved', async () => {
+    signInAsOwner()
+    serveGroup()
+    renderRoute(GROUP_PAGE_PATH)
+
+    expect(await within(await reschedulesSection()).findByText('No rescheduled lessons')).toBeInTheDocument()
+  })
+
+  it('cancels a move after one confirmation', async () => {
+    signInAsOwner()
+    serveGroup({ reschedules: [MOVED_TO_FRIDAY] })
+    let cancelledId = ''
+    server.use(
+      http.post(`${GROUPS_PATH}/${GROUP_A.id}/reschedules/:rescheduleId/cancel`, ({ params }) => {
+        cancelledId = String(params.rescheduleId)
+        const cancelled: LessonReschedule = { ...MOVED_TO_FRIDAY, status: 'CANCELLED', cancelled_at: '2026-11-09T10:00:00.000Z' }
+        serveGroup({ reschedules: [cancelled] })
+        return HttpResponse.json({ data: cancelled })
+      }),
+    )
+    const { user } = renderRoute(GROUP_PAGE_PATH)
+
+    const section = await reschedulesSection()
+    await user.click(await within(section).findByRole('button', { name: 'Cancel the move of Mon 16 Nov, 17:00–18:30' }))
+    await user.click(within(within(section).getByRole('group', { name: 'Cancel the move of Mon 16 Nov, 17:00–18:30' })).getByRole('button', { name: 'Cancel move' }))
+
+    expect(await within(section).findByText('Cancelled')).toBeInTheDocument()
+    expect(cancelledId).toBe(MOVED_TO_FRIDAY.id)
+    expect(within(section).queryByRole('button', { name: /Cancel the move/ })).not.toBeInTheDocument()
+  })
+
+  it('shows why a cancel is refused', async () => {
+    signInAsOwner()
+    serveGroup({ reschedules: [MOVED_TO_FRIDAY] })
+    const message = 'The moved lesson already has attendance marks, so it can’t be cancelled.'
+    server.use(http.post(`${GROUPS_PATH}/${GROUP_A.id}/reschedules/:rescheduleId/cancel`, () => HttpResponse.json({ error: message }, { status: 409 })))
+    const { user } = renderRoute(GROUP_PAGE_PATH)
+
+    const section = await reschedulesSection()
+    await user.click(await within(section).findByRole('button', { name: 'Cancel the move of Mon 16 Nov, 17:00–18:30' }))
+    await user.click(within(within(section).getByRole('group', { name: 'Cancel the move of Mon 16 Nov, 17:00–18:30' })).getByRole('button', { name: 'Cancel move' }))
+
+    expect(await within(section).findByRole('alert')).toHaveTextContent(message)
   })
 })

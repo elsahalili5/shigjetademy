@@ -1,12 +1,15 @@
 import type { Prisma } from '@generated/prisma/client.ts'
-import type { MyTeaching, MyTeachingCover, MyTeachingCoverGroup, MyTeachingGroup } from '@shigjetademy/shared/lecturers'
+import type { MyTeaching, MyTeachingCover, MyTeachingCoverGroup, MyTeachingGroup, MyTeachingRescheduledLesson } from '@shigjetademy/shared/lecturers'
 import { todayIn } from '@shigjetademy/shared/calendar-day'
 import { resolveOrganizationSettings } from '@shigjetademy/shared/organization-settings'
 import { toDate, toDay } from '@lib/calendar-day.ts'
 import { periodSelect, toPeriodJson } from '@lib/current-period.ts'
 import { prisma } from '@lib/prisma.ts'
 import type { WeekStart } from '@shigjetademy/shared/organization-settings'
+import { getPermanentLecturerId, getTeachingLecturerId } from '@modules/attendance/lesson-calendar.ts'
+import { lessonGroupSelectOn, toLessonGroup } from '@modules/attendance/lesson-group.ts'
 import { activeEnrolments } from '@modules/groups/group-selects.ts'
+import { byNewSlot, rescheduledLessonSelect, toRescheduledLesson, upcomingReschedules } from '@modules/groups/rescheduled-lessons.ts'
 import { meetingsSelect, toScheduleJson } from '@modules/groups/group-schedule.ts'
 
 const coverGroupSelect = {
@@ -58,9 +61,34 @@ type ReadTeachingParams = {
   weekStart: WeekStart
 }
 
-/** The active groups the lecturer permanently teaches today, in a school year that includes today, and what they cover from today on */
-const readTeaching = async ({ lecturerId, today, weekStart }: ReadTeachingParams): Promise<Pick<MyTeaching, 'groups' | 'cover'>> => {
-  const [assignments, substitutions] = await Promise.all([
+/**
+ * Lessons moved to today or later that the lecturer teaches on their new date, as the lesson calendar decides, so a substitute covering that day gets them;
+ * plus those that moved away from the lecturer's own slot, so its permanent lecturer still sees where it went
+ */
+const readRescheduledLessons = async ({ lecturerId, today }: Omit<ReadTeachingParams, 'weekStart'>) => {
+  const reschedules = await prisma.lessonReschedule.findMany({
+    where: {
+      ...upcomingReschedules(today),
+      group: { status: 'ACTIVE', OR: [{ lecturer_assignments: { some: { lecturer_id: lecturerId } } }, { substitutions: { some: { lecturer_id: lecturerId, cancelled_at: null } } }] },
+    },
+    orderBy: byNewSlot,
+    select: rescheduledLessonSelect,
+  })
+  // Each group once, however many of its lessons moved
+  const groups = await prisma.group.findMany({ where: { id: { in: [...new Set(reschedules.map((reschedule) => reschedule.group.id))] } }, select: lessonGroupSelectOn([]) })
+  const lessonGroups = new Map(groups.map((group) => [group.id, toLessonGroup(group)]))
+  return reschedules.flatMap((reschedule): MyTeachingRescheduledLesson[] => {
+    const group = lessonGroups.get(reschedule.group.id)
+    if (!group) return []
+    const isTeaching = getTeachingLecturerId({ group, day: toDay(reschedule.new_date) }) === lecturerId
+    const isMovedAway = getPermanentLecturerId({ group, day: toDay(reschedule.original_date) }) === lecturerId
+    return isTeaching || isMovedAway ? [{ ...toRescheduledLesson(reschedule), is_teaching: isTeaching }] : []
+  })
+}
+
+/** The active groups the lecturer permanently teaches today, in a school year that includes today, what they cover from today on, and their moved lessons */
+const readTeaching = async ({ lecturerId, today, weekStart }: ReadTeachingParams): Promise<Pick<MyTeaching, 'groups' | 'cover' | 'rescheduled_lessons'>> => {
+  const [assignments, substitutions, rescheduledLessons] = await Promise.all([
     prisma.groupLecturerAssignment.findMany({
       where: { lecturer_id: lecturerId, start_date: { lte: today }, OR: [{ end_date: null }, { end_date: { gte: today } }], group: { status: 'ACTIVE', academic_year: { start_date: { lte: today }, end_date: { gte: today } } } },
       orderBy: { group: { name: 'asc' } },
@@ -71,6 +99,7 @@ const readTeaching = async ({ lecturerId, today, weekStart }: ReadTeachingParams
       orderBy: { start_date: 'asc' },
       select: { id: true, start_date: true, end_date: true, group: { select: coverGroupSelect } },
     }),
+    readRescheduledLessons({ lecturerId, today }),
   ])
   const toCover = ({ id, start_date, end_date, group }: (typeof substitutions)[number]): MyTeachingCover => ({
     id,
@@ -79,7 +108,7 @@ const readTeaching = async ({ lecturerId, today, weekStart }: ReadTeachingParams
     end_date: toDay(end_date),
     group: toCoverGroup({ group, weekStart }),
   })
-  return { groups: assignments.map(({ group }) => toTeachingGroup({ group, weekStart })), cover: substitutions.map(toCover) }
+  return { groups: assignments.map(({ group }) => toTeachingGroup({ group, weekStart })), cover: substitutions.map(toCover), rescheduled_lessons: rescheduledLessons }
 }
 
 type GetMyTeachingParams = {
@@ -124,7 +153,7 @@ export const LecturerHomeService = {
     const nextTerm = year
       ? await prisma.academicTerm.findFirst({ where: { academic_year_id: year.id, start_date: { gt: today } }, orderBy: { start_date: 'asc' }, select: periodSelect })
       : null
-    const teaching = lecturer ? await readTeaching({ lecturerId: lecturer.id, today, weekStart: settings.week_start }) : { groups: [], cover: [] }
+    const teaching = lecturer ? await readTeaching({ lecturerId: lecturer.id, today, weekStart: settings.week_start }) : { groups: [], cover: [], rescheduled_lessons: [] }
     return {
       organization: { id: organization.id, name: organization.name },
       lecturer: lecturer && {

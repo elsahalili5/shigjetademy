@@ -3,8 +3,10 @@ import type { ActivityAction } from '@generated/prisma/enums.ts'
 import { prisma } from '@lib/prisma.ts'
 import { HttpError } from '@lib/httpError.ts'
 import { toDate } from '@lib/calendar-day.ts'
+import { getOrganizationToday } from '@lib/current-period.ts'
 import { lockOrganization } from '@lib/organization-lock.ts'
 import type { AcademicTermInput } from './academic-periods.types.ts'
+import { upcomingMovesInside, upcomingMovesOutside } from '@modules/groups/rescheduled-lessons.ts'
 import { findYear, overlapping, periodSelect, refuseOutsideYear, toPeriodJson } from './academic-periods.utils.ts'
 
 /** Terms and holidays: named date ranges inside one school year */
@@ -103,7 +105,34 @@ export const yearPeriodService = (kind: YearPeriodKind) => {
         throw new HttpError(409, `These dates overlap ${clash.name}`)
       }
     }
+    await checkMovedLessons({ tx, organizationId, yearId, range, periodId })
     return { name: data.name, start_date: range.start, end_date: range.end }
+  }
+
+  type CheckMovedLessonsParams = Omit<CheckPeriodParams, 'data'> & {
+    range: { start: Date; end: Date }
+  }
+
+  /** A holiday can't cover a lesson moved to today or later, and a term's new dates must still hold its groups' moves; earlier moves are history */
+  const checkMovedLessons = async ({ tx, organizationId, yearId, range, periodId }: CheckMovedLessonsParams) => {
+    const today = toDate(await getOrganizationToday({ db: tx, organizationId }))
+    switch (config.noun) {
+      case 'holiday':
+        if ((await tx.lessonReschedule.count({ where: { group: { academic_year_id: yearId }, ...upcomingMovesInside({ today, range }) } })) > 0) {
+          throw new HttpError(409, 'Some rescheduled lessons fall on these dates. Cancel or change them first.')
+        }
+        return
+      case 'term':
+        // A new term has no groups yet
+        if (periodId && (await tx.lessonReschedule.count({ where: { group: { academic_term_id: periodId }, ...upcomingMovesOutside({ today, range }) } })) > 0) {
+          throw new HttpError(409, 'Some rescheduled lessons fall outside these dates. Cancel or change them first.')
+        }
+        return
+      default: {
+        const unhandled: never = config.noun
+        throw new Error(`Unhandled period kind: ${String(unhandled)}`)
+      }
+    }
   }
 
   type FindPeriodParams = {

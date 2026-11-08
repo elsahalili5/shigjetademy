@@ -1,48 +1,15 @@
 import type { Prisma } from '@generated/prisma/client.ts'
-import type { AttendanceGroup, AttendanceRegister, AttendanceStatus, AttendanceStudent } from '@shigjetademy/shared/attendance'
+import type { AttendanceRegister, AttendanceSession, AttendanceStatus, AttendanceStudent } from '@shigjetademy/shared/attendance'
+import { getWeekday } from '@shigjetademy/shared/calendar-day'
 import { getStudentName } from '@shigjetademy/shared/students'
-import { toClock, toDate, toDay } from '@lib/calendar-day.ts'
+import { toDate, toTime } from '@lib/calendar-day.ts'
 import { getOrganizationNow } from '@lib/current-period.ts'
 import { HttpError } from '@lib/httpError.ts'
 import { lockOrganization } from '@lib/organization-lock.ts'
 import { prisma } from '@lib/prisma.ts'
-import { meetingsSelect } from '@modules/groups/group-schedule.ts'
-import { canEditRegister, getLesson, getPermanentLecturerId, getRegisterWindow, getSubstitution, getTeachingLecturerId, getWeekday } from './lesson-calendar.ts'
+import { canEditRegister, getPermanentLecturerId, getRegisterWindow, getSession, getSessions, getSubstitution, getTeachingLecturerId } from './lesson-calendar.ts'
 import type { LessonGroup, RegisterAccess } from './lesson-calendar.ts'
-
-const daysSelect = { start_date: true, end_date: true } as const
-
-/** What the lesson rules and the answers read of a group */
-const lessonGroupSelect = {
-  id: true,
-  name: true,
-  status: true,
-  course: { select: { name: true } },
-  location: { select: { name: true } },
-  academic_year: { select: { ...daysSelect, holidays: { select: daysSelect } } },
-  academic_term: { select: daysSelect },
-  meetings: meetingsSelect,
-  lecturer_assignments: { select: { id: true, lecturer_id: true, ...daysSelect } },
-  substitutions: { where: { cancelled_at: null }, select: { lecturer_id: true, ...daysSelect, lecturer: { select: { first_name: true, last_name: true } } } },
-} as const satisfies Prisma.GroupSelect
-
-type StoredLessonGroup = Prisma.GroupGetPayload<{ select: typeof lessonGroupSelect }>
-
-type StoredDays = {
-  start_date: Date
-  end_date: Date
-}
-
-const toDays = ({ start_date, end_date }: StoredDays) => ({ start_date: toDay(start_date), end_date: toDay(end_date) })
-
-/** The group as the pure lesson rules read it */
-const toLessonGroup = (group: StoredLessonGroup): LessonGroup => ({
-  period: toDays(group.academic_term ?? group.academic_year),
-  holidays: group.academic_year.holidays.map(toDays),
-  meetings: group.meetings.map((meeting) => ({ weekday: meeting.weekday, start_time: toClock(meeting.start_time), end_time: toClock(meeting.end_time) })),
-  assignments: group.lecturer_assignments.map((row) => ({ id: row.id, lecturer_id: row.lecturer_id, start_date: toDay(row.start_date), end_date: row.end_date && toDay(row.end_date) })),
-  substitutions: group.substitutions.map((row) => ({ lecturer_id: row.lecturer_id, lecturer: row.lecturer, ...toDays(row) })),
-})
+import { lessonGroupSelectOn, toLessonGroup } from './lesson-group.ts'
 
 /** Who is asking; the route only lets through attendance managers and lecturers */
 export type AttendanceViewer = {
@@ -63,14 +30,16 @@ type FindLecturerIdParams = {
 const findLecturerId = async ({ db, organizationId, userId }: FindLecturerIdParams) =>
   (await db.lecturer.findFirst({ where: { organization_id: organizationId, user_id: userId }, select: { id: true } }))?.id ?? null
 
+/** One session's register: the group, the day and the start time */
 type RegisterScope = {
   organizationId: string
   viewer: AttendanceViewer
   groupId: string
   date: string
+  startTime: string
 }
 
-type GetAccessParams = Omit<RegisterScope, 'groupId'> & {
+type GetAccessParams = Omit<RegisterScope, 'groupId' | 'startTime'> & {
   db: Db
   group: LessonGroup
 }
@@ -88,21 +57,21 @@ type LoadRegisterParams = RegisterScope & {
   db: Db
 }
 
-/** The organization's group with its lesson that day, what the user may do with it, and whether they may mark it now; 404, 403 and 409 in that order */
-const loadRegister = async ({ db, organizationId, viewer, groupId, date }: LoadRegisterParams) => {
-  const group = await db.group.findFirst({ where: { id: groupId, organization_id: organizationId }, select: lessonGroupSelect })
+/** The organization's group with its session that day at that start, what the user may do with it, and whether they may mark it now; 404, 403 and 409 in that order */
+const loadRegister = async ({ db, organizationId, viewer, groupId, date, startTime }: LoadRegisterParams) => {
+  const group = await db.group.findFirst({ where: { id: groupId, organization_id: organizationId }, select: lessonGroupSelectOn([date]) })
   if (!group) {
     throw new HttpError(404, 'Group not found')
   }
   const lessonGroup = toLessonGroup(group)
   const access = await getAccess({ db, organizationId, viewer, date, group: lessonGroup })
-  const lesson = getLesson({ group: lessonGroup, day: date })
-  if (!lesson) {
-    throw new HttpError(409, 'This group has no lesson on this day.')
+  const session = getSession({ group: lessonGroup, day: date, startTime })
+  if (!session) {
+    throw new HttpError(409, `This group has no lesson on this day at ${startTime}.`)
   }
-  const window = getRegisterWindow({ day: date, lesson, now: await getOrganizationNow({ db, organizationId }) })
+  const window = getRegisterWindow({ day: date, session, now: await getOrganizationNow({ db, organizationId }) })
   const substitute = getSubstitution({ group: lessonGroup, day: date })?.lecturer ?? null
-  return { group, access, lesson, window, substitute, canEdit: canEditRegister({ access, window, isArchived: group.status === 'ARCHIVED' }) }
+  return { group, access, session, window, substitute, canEdit: canEditRegister({ access, window, isArchived: group.status === 'ARCHIVED' }) }
 }
 
 type LoadedRegister = Awaited<ReturnType<typeof loadRegister>>
@@ -136,7 +105,10 @@ type ReadRegisterParams = {
   date: string
 }
 
-/** The register as the API answers it: the students in the group that day, by name, with only their names and marks */
+/** The session's key on its marks */
+const sessionKey = ({ group, session }: LoadedRegister, date: string) => ({ group_id: group.id, date: toDate(date), start_time: toTime(session.start_time) })
+
+/** The register as the API answers it: the students in the group that day, by name, with only their names and their marks in this session */
 const readRegister = async ({ db, register, date }: ReadRegisterParams): Promise<AttendanceRegister> => {
   const { group } = register
   const [enrolments, records] = await Promise.all([
@@ -145,13 +117,15 @@ const readRegister = async ({ db, register, date }: ReadRegisterParams): Promise
       orderBy: [{ student: { first_name: 'asc' } }, { student: { last_name: 'asc' } }, { student_id: 'asc' }],
       select: { student_id: true, student: { select: studentSelect } },
     }),
-    db.attendanceRecord.findMany({ where: { group_id: group.id, date: toDate(date) }, select: { student_id: true, status: true } }),
+    db.attendanceRecord.findMany({ where: sessionKey(register, date), select: { student_id: true, status: true } }),
   ])
   const statuses = new Map(records.map((record) => [record.student_id, record.status]))
   return {
     group: { id: group.id, name: group.name, course: group.course.name, status: group.status },
     date,
-    ...register.lesson,
+    start_time: register.session.start_time,
+    end_time: register.session.end_time,
+    rescheduled_from: register.session.rescheduled_from,
     window: register.window,
     can_edit: register.canEdit,
     substitute: register.substitute,
@@ -167,15 +141,15 @@ const checkCanWrite = ({ access }: LoadedRegister) => {
 }
 
 /** Why the user can't mark the register now, if so: nobody marks an archived group or a lesson outside its window */
-const checkCanEdit = ({ group, lesson, window, canEdit }: LoadedRegister) => {
+const checkCanEdit = ({ group, session, window, canEdit }: LoadedRegister) => {
   if (canEdit) return
   if (group.status === 'ARCHIVED') {
     throw new HttpError(409, 'This group is archived, so its register is read-only.')
   }
   if (window === 'UPCOMING') {
-    throw new HttpError(409, `This register opens at ${lesson.opens_at}.`)
+    throw new HttpError(409, `This register opens at ${session.start_time}.`)
   }
-  throw new HttpError(409, `This register locked at ${lesson.locks_at}.`)
+  throw new HttpError(409, `This register locked at ${session.end_time}.`)
 }
 
 type FindEnrolledStudentParams = {
@@ -212,7 +186,12 @@ type LogCorrectionsParams = {
 const logCorrections = async ({ tx, organizationId, actorId, register, date, students }: LogCorrectionsParams) => {
   if (register.window !== 'LOCKED' || students.length === 0) return
   await tx.activityLog.createMany({
-    data: students.map((student) => ({ actor_id: actorId, action: 'ATTENDANCE_CORRECTED' as const, organization_id: organizationId, subject_name: `${getStudentName(student)} in ${register.group.name} on ${date}` })),
+    data: students.map((student) => ({
+      actor_id: actorId,
+      action: 'ATTENDANCE_CORRECTED' as const,
+      organization_id: organizationId,
+      subject_name: `${getStudentName(student)} in ${register.group.name} on ${date}, ${register.session.start_time}`,
+    })),
   })
 }
 
@@ -228,24 +207,34 @@ type ListGroupsParams = {
 }
 
 export const AttendanceService = {
-  // Managers see every active group meeting that day; a lecturer only those they teach that day, so a covered day goes to the substitute
-  listGroups: async ({ organizationId, viewer, date }: ListGroupsParams): Promise<AttendanceGroup[]> => {
+  // Managers see every session of an active group that day; a lecturer only those they teach that day, so a covered day goes to the substitute
+  listSessions: async ({ organizationId, viewer, date }: ListGroupsParams): Promise<AttendanceSession[]> => {
     const lecturerId = viewer.isManager ? null : await findLecturerId({ db: prisma, organizationId, userId: viewer.userId })
     if (!viewer.isManager && !lecturerId) return []
     const teachingFilter = lecturerId ? { OR: [{ lecturer_assignments: { some: { lecturer_id: lecturerId } } }, { substitutions: { some: { lecturer_id: lecturerId } } }] } : {}
+    // Narrows the groups to read; the lesson calendar decides
+    const mayMeetFilter = {
+      OR: [{ meetings: { some: { weekday: getWeekday(date) } } }, { reschedules: { some: { new_date: toDate(date), cancelled_at: null } } }, { attendance: { some: { date: toDate(date) } } }],
+    }
     const groups = await prisma.group.findMany({
-      where: { organization_id: organizationId, status: 'ACTIVE', meetings: { some: { weekday: getWeekday(date) } }, ...teachingFilter },
-      select: lessonGroupSelect,
+      where: { organization_id: organizationId, status: 'ACTIVE', AND: [mayMeetFilter, teachingFilter] },
+      select: lessonGroupSelectOn([date]),
     })
     return groups
       .flatMap((group) => {
         const lessonGroup = toLessonGroup(group)
-        const lesson = getLesson({ group: lessonGroup, day: date })
-        if (!lesson) return []
         if (lecturerId && getTeachingLecturerId({ group: lessonGroup, day: date }) !== lecturerId) return []
-        return [{ id: group.id, name: group.name, course: group.course.name, location: group.location?.name ?? null, ...lesson }]
+        return getSessions({ group: lessonGroup, day: date }).map((session) => ({
+          group_id: group.id,
+          name: group.name,
+          course: group.course.name,
+          location: group.location?.name ?? null,
+          start_time: session.start_time,
+          end_time: session.end_time,
+          rescheduled_from: session.rescheduled_from,
+        }))
       })
-      .toSorted((a, b) => a.opens_at.localeCompare(b.opens_at) || a.name.localeCompare(b.name))
+      .toSorted((a, b) => a.start_time.localeCompare(b.start_time) || a.name.localeCompare(b.name))
   },
 
   getRegister: async (scope: RegisterScope) => {
@@ -253,7 +242,7 @@ export const AttendanceService = {
     return readRegister({ db: prisma, register, date: scope.date })
   },
 
-  // One row per student and day, so changing a mark updates it
+  // One row per student and session, so changing a mark updates it
   markStudent: ({ studentId, status, ...scope }: MarkStudentParams) =>
     prisma.$transaction(async (tx): Promise<AttendanceStudent> => {
       const { organizationId, viewer, groupId, date } = scope
@@ -262,10 +251,10 @@ export const AttendanceService = {
       checkCanWrite(register)
       const student = await findEnrolledStudent({ tx, organizationId, groupId, date, studentId })
       checkCanEdit(register)
-      const key = { group_id: groupId, student_id: studentId, date: toDate(date) }
-      const previous = await tx.attendanceRecord.findUnique({ where: { group_id_student_id_date: key }, select: { status: true } })
+      const key = { ...sessionKey(register, date), student_id: studentId }
+      const previous = await tx.attendanceRecord.findUnique({ where: { group_id_student_id_date_start_time: key }, select: { status: true } })
       const record = await tx.attendanceRecord.upsert({
-        where: { group_id_student_id_date: key },
+        where: { group_id_student_id_date_start_time: key },
         create: { ...key, status, marked_by_id: viewer.userId },
         update: { status, marked_by_id: viewer.userId },
         select: { status: true },
@@ -274,7 +263,7 @@ export const AttendanceService = {
       return toStudentJson({ student, status: record.status })
     }),
 
-  // Marks stay as they are; only students nobody has marked become present. After the lock, each of them is a correction of its own.
+  // Marks stay as they are; only students nobody has marked in this session become present. After the lock, each of them is a correction of its own.
   markAllPresent: (scope: RegisterScope) =>
     prisma.$transaction(async (tx) => {
       const { organizationId, viewer, groupId, date } = scope
@@ -284,11 +273,11 @@ export const AttendanceService = {
       checkCanEdit(register)
       const [enrolments, records] = await Promise.all([
         tx.groupEnrolment.findMany({ where: { group_id: groupId, ...enrolledOn(date) }, select: { student_id: true, student: { select: { first_name: true, last_name: true } } } }),
-        tx.attendanceRecord.findMany({ where: { group_id: groupId, date: toDate(date) }, select: { student_id: true } }),
+        tx.attendanceRecord.findMany({ where: sessionKey(register, date), select: { student_id: true } }),
       ])
       const marked = new Set(records.map((record) => record.student_id))
       const unmarked = uniqueByStudent(enrolments).filter((enrolment) => !marked.has(enrolment.student_id))
-      await tx.attendanceRecord.createMany({ data: unmarked.map((enrolment) => ({ group_id: groupId, student_id: enrolment.student_id, date: toDate(date), status: 'PRESENT' as const, marked_by_id: viewer.userId })) })
+      await tx.attendanceRecord.createMany({ data: unmarked.map((enrolment) => ({ ...sessionKey(register, date), student_id: enrolment.student_id, status: 'PRESENT' as const, marked_by_id: viewer.userId })) })
       await logCorrections({ tx, organizationId, actorId: viewer.userId, register, date, students: unmarked.map((enrolment) => enrolment.student) })
       return readRegister({ db: tx, register, date })
     }),

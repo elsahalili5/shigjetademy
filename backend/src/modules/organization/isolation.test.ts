@@ -22,6 +22,7 @@ type TargetIds = {
   groupId: string
   substitutionId: string
   enrolmentId: string
+  rescheduleId: string
   invitationId: string
 }
 
@@ -66,10 +67,14 @@ const ENROLMENT = { student_id: '00000000-0000-4000-8000-000000000005' } as cons
 
 const MOVE = { group_id: '00000000-0000-4000-8000-000000000006' } as const
 
-// A Wednesday in the seeded group's school year, when it meets and has a register
+// A Wednesday in the seeded group's school year, when it meets and has a register, and that session's start
 const LESSON_DATE = '2027-11-10'
+const LESSON_START = '17:00'
 
 const MARK = { status: 'PRESENT' } as const
+
+// A Wednesday session of the seeded group, moved to the Friday; well-formed, so the sweep reaches the organization checks
+const RESCHEDULE = { original_date: '2027-11-24', original_start_time: '17:00', new_date: '2027-11-26', new_start_time: '17:00', new_end_time: '18:30', reason: '' } as const
 
 const GROUP = { course_id: '00000000-0000-4000-8000-000000000001', name: 'Taken over', academic_year_id: '00000000-0000-4000-8000-000000000002', academic_term_id: null, location_id: null, capacity: null, lecturer_id: null, lecturer_effective_from: null, schedule: SCHEDULE } as const
 
@@ -153,12 +158,15 @@ const SCOPED_ENDPOINTS: ScopedEndpoint[] = [
   { method: 'post', route: '/:organizationId/groups/:groupId/enrolments', body: ENROLMENT },
   { method: 'post', route: '/:organizationId/groups/:groupId/enrolments/:enrolmentId/withdraw' },
   { method: 'post', route: '/:organizationId/groups/:groupId/enrolments/:enrolmentId/move', body: MOVE },
+  { method: 'get', route: '/:organizationId/groups/:groupId/reschedules' },
+  { method: 'post', route: '/:organizationId/groups/:groupId/reschedules', body: RESCHEDULE },
+  { method: 'post', route: '/:organizationId/groups/:groupId/reschedules/:rescheduleId/cancel' },
   { method: 'post', route: '/:organizationId/groups/:groupId/archive' },
   { method: 'post', route: '/:organizationId/groups/:groupId/restore' },
   { method: 'get', route: '/:organizationId/attendance/groups' },
-  { method: 'get', route: '/:organizationId/attendance/groups/:groupId/:date' },
-  { method: 'put', route: '/:organizationId/attendance/groups/:groupId/:date/students/:studentId', body: MARK },
-  { method: 'put', route: '/:organizationId/attendance/groups/:groupId/:date/mark-all-present' },
+  { method: 'get', route: '/:organizationId/attendance/groups/:groupId/:date/:startTime' },
+  { method: 'put', route: '/:organizationId/attendance/groups/:groupId/:date/:startTime/students/:studentId', body: MARK },
+  { method: 'put', route: '/:organizationId/attendance/groups/:groupId/:date/:startTime/mark-all-present' },
 ]
 
 type ToPathParams = {
@@ -181,8 +189,10 @@ const toPath = ({ route, ids }: ToPathParams) =>
     .replace(':groupId', ids.groupId)
     .replace(':substitutionId', ids.substitutionId)
     .replace(':enrolmentId', ids.enrolmentId)
+    .replace(':rescheduleId', ids.rescheduleId)
     .replace(':invitationId', ids.invitationId)
-    .replace(':date', LESSON_DATE)}`
+    .replace(':date', LESSON_DATE)
+    .replace(':startTime', LESSON_START)}`
 
 type SendParams = ScopedEndpoint & {
   ids: TargetIds
@@ -211,7 +221,7 @@ type SeedOrganizationParams = {
   slug: string
 }
 
-/** An organization with an owner, a school admin, a location, a department, a school year with a term and a holiday, a student with an open login invitation, a lecturer with an open login invitation, a course with a group that has a lecturer, a Wednesday meeting, a substitution, the student enrolled and marked present on LESSON_DATE, and an open admin invitation */
+/** An organization with an owner, a school admin, a location, a department, a school year with a term and a holiday, a student with an open login invitation, a lecturer with an open login invitation, a course with a group that has a lecturer, a Wednesday meeting, a substitution, the student enrolled and marked present on LESSON_DATE, the next Wednesday's session moved to the Thursday, and an open admin invitation */
 const seedOrganization = async ({ name, slug }: SeedOrganizationParams) => {
   const owner = await createUser({ email: `owner@${slug}.test` })
   const admin = await createUser({ email: `admin@${slug}.test` })
@@ -245,7 +255,10 @@ const seedOrganization = async ({ name, slug }: SeedOrganizationParams) => {
   const substitute = await prisma.lecturer.create({ data: { organization_id: organization.id, first_name: name, last_name: 'Substitute', employment_type: 'PART_TIME' } })
   const substitution = await prisma.groupSubstitution.create({ data: { group_id: group.id, lecturer_id: substitute.id, start_date: new Date('2027-11-01'), end_date: new Date('2027-11-03') } })
   const enrolment = await prisma.groupEnrolment.create({ data: { group_id: group.id, student_id: student.id, enrolled_on: new Date('2027-09-01') } })
-  await prisma.attendanceRecord.create({ data: { group_id: group.id, student_id: student.id, date: new Date(LESSON_DATE), status: 'PRESENT', marked_by_id: owner.id } })
+  const reschedule = await prisma.lessonReschedule.create({
+    data: { group_id: group.id, original_date: new Date('2027-11-17'), original_start_time: new Date('1970-01-01T17:00:00.000Z'), new_date: new Date('2027-11-18'), new_start_time: new Date('1970-01-01T17:00:00.000Z'), new_end_time: new Date('1970-01-01T18:30:00.000Z'), created_by_id: owner.id },
+  })
+  await prisma.attendanceRecord.create({ data: { group_id: group.id, student_id: student.id, date: new Date(LESSON_DATE), start_time: new Date(`1970-01-01T${LESSON_START}:00.000Z`), status: 'PRESENT', marked_by_id: owner.id } })
   const invitation = await prisma.invitation.create({
     data: { organization_id: organization.id, email: `invited@${slug}.test`, role: 'ADMIN', token_hash: slug, invited_by_id: owner.id, expires_at: new Date(Date.now() + 86_400_000) },
   })
@@ -271,7 +284,7 @@ const seedOrganization = async ({ name, slug }: SeedOrganizationParams) => {
       expires_at: new Date(Date.now() + 86_400_000),
     },
   })
-  return { organizationId: organization.id, membershipId: adminMembership.id, locationId: location.id, departmentId: department.id, yearId: year.id, termId: term.id, holidayId: holiday.id, studentId: student.id, lecturerId: lecturer.id, courseId: course.id, groupId: group.id, substitutionId: substitution.id, enrolmentId: enrolment.id, invitationId: invitation.id }
+  return { organizationId: organization.id, membershipId: adminMembership.id, locationId: location.id, departmentId: department.id, yearId: year.id, termId: term.id, holidayId: holiday.id, studentId: student.id, lecturerId: lecturer.id, courseId: course.id, groupId: group.id, substitutionId: substitution.id, enrolmentId: enrolment.id, rescheduleId: reschedule.id, invitationId: invitation.id }
 }
 
 let oxford: TargetIds
@@ -306,9 +319,10 @@ const yllkaAsItsOwnerSeesIt = async () => {
     groupLecturers: await read('/:organizationId/groups/:groupId/lecturers'),
     groupStudentOptions: await read('/:organizationId/groups/student-options'),
     groupEnrolments: await read('/:organizationId/groups/:groupId/enrolments'),
+    groupReschedules: await read('/:organizationId/groups/:groupId/reschedules'),
     archivedGroups: (await send({ method: 'get', route: '/:organizationId/groups?status=ARCHIVED', ids: yllka, auth })).body.data,
     attendanceGroups: await read(`/:organizationId/attendance/groups?date=${LESSON_DATE}`),
-    attendanceRegister: await read('/:organizationId/attendance/groups/:groupId/:date'),
+    attendanceRegister: await read('/:organizationId/attendance/groups/:groupId/:date/:startTime'),
   }
 }
 
@@ -338,10 +352,10 @@ describe('organization isolation', () => {
 
   it('does not reach another organization’s records through ids in its own paths', async () => {
     const before = await yllkaAsItsOwnerSeesIt()
-    // Oxford's own organization id with Yllka's member, location, department, academic period, student, lecturer, course, group, substitution, enrolment and invitation ids
+    // Oxford's own organization id with Yllka's member, location, department, academic period, student, lecturer, course, group, substitution, enrolment, reschedule and invitation ids
     const mixed: TargetIds = { ...yllka, organizationId: oxford.organizationId }
 
-    for (const endpoint of SCOPED_ENDPOINTS.filter((item) => /:(membership|location|department|year|term|holiday|student|lecturer|course|group|substitution|enrolment|invitation)Id/.test(item.route))) {
+    for (const endpoint of SCOPED_ENDPOINTS.filter((item) => /:(membership|location|department|year|term|holiday|student|lecturer|course|group|substitution|enrolment|reschedule|invitation)Id/.test(item.route))) {
       const response = await send({ ...endpoint, ids: mixed, auth: oxfordOwnerAuth })
       expect(response.status, `${endpoint.method.toUpperCase()} ${endpoint.route} answered ${response.status}`).toBe(404)
     }
@@ -387,7 +401,8 @@ describe('organization isolation', () => {
     const withdrawnYllkaEnrolment = await send({ method: 'post', route: '/:organizationId/groups/:groupId/enrolments/:enrolmentId/withdraw', ids: yllkaEnrolmentInOxfordGroup, auth: oxfordOwnerAuth })
     const movedYllkaEnrolment = await send({ method: 'post', route: '/:organizationId/groups/:groupId/enrolments/:enrolmentId/move', body: { group_id: oxford.groupId }, ids: yllkaEnrolmentInOxfordGroup, auth: oxfordOwnerAuth })
     const movedToYllkaGroup = await send({ method: 'post', route: '/:organizationId/groups/:groupId/enrolments/:enrolmentId/move', body: { group_id: yllka.groupId }, ids: oxford, auth: oxfordOwnerAuth })
-    const markedYllkaStudent = await send({ method: 'put', route: '/:organizationId/attendance/groups/:groupId/:date/students/:studentId', body: MARK, ids: { ...oxford, studentId: yllka.studentId }, auth: oxfordOwnerAuth })
+    const markedYllkaStudent = await send({ method: 'put', route: '/:organizationId/attendance/groups/:groupId/:date/:startTime/students/:studentId', body: MARK, ids: { ...oxford, studentId: yllka.studentId }, auth: oxfordOwnerAuth })
+    const cancelledYllkaReschedule = await send({ method: 'post', route: '/:organizationId/groups/:groupId/reschedules/:rescheduleId/cancel', ids: { ...oxford, rescheduleId: yllka.rescheduleId }, auth: oxfordOwnerAuth })
     const substitutionWithYllkaLecturer = await send({ method: 'post', route: '/:organizationId/groups/:groupId/substitutions', body: { ...SUBSTITUTION, lecturer_id: yllka.lecturerId }, ids: oxford, auth: oxfordOwnerAuth })
     const transferred = await send({
       method: 'post',
@@ -425,11 +440,31 @@ describe('organization isolation', () => {
     expect(markedYllkaStudent.status).toBe(404)
     expect(await prisma.attendanceRecord.count({ where: { student_id: yllka.studentId } })).toBe(1)
     expect(await prisma.attendanceRecord.count({ where: { group_id: oxford.groupId, student_id: yllka.studentId } })).toBe(0)
+    expect(cancelledYllkaReschedule.status).toBe(404)
+    expect(await prisma.lessonReschedule.findUniqueOrThrow({ where: { id: yllka.rescheduleId }, select: { cancelled_at: true } })).toEqual({ cancelled_at: null })
     expect(substitutionWithYllkaLecturer.status).toBe(400)
     expect(await prisma.groupSubstitution.count({ where: { lecturer_id: yllka.lecturerId } })).toBe(0)
     expect(transferred.status).toBe(404)
     expect(await prisma.membership.findUniqueOrThrow({ where: { id: yllka.membershipId }, select: { role: true } })).toEqual({ role: 'ADMIN' })
     expect((await request(app).get(toPath({ route: '/:organizationId/settings', ids: oxford })).set('Authorization', oxfordOwnerAuth)).status).toBe(200)
+    expect(await yllkaAsItsOwnerSeesIt()).toEqual(before)
+  })
+
+  it('lets a timetable admin read only their own organization’s groups and moves', async () => {
+    const timetable = await createUser({ email: 'timetable@oxford.test' })
+    await prisma.membership.create({ data: { user_id: timetable.id, organization_id: oxford.organizationId, role: 'ADMIN', permissions: ['MANAGE_SCHEDULES'] } })
+    const before = await yllkaAsItsOwnerSeesIt()
+    const auth = await loginAs('timetable@oxford.test')
+    const readable = ['/:organizationId/groups', '/:organizationId/groups/:groupId', '/:organizationId/groups/:groupId/reschedules', '/:organizationId/courses/options']
+
+    for (const route of readable) {
+      expect((await send({ method: 'get', route, ids: oxford, auth })).status, route).toBe(200)
+      expect((await send({ method: 'get', route, ids: yllka, auth })).status, route).toBe(403)
+    }
+    for (const route of readable.filter((item) => item.includes(':groupId'))) {
+      expect((await send({ method: 'get', route, ids: { ...yllka, organizationId: oxford.organizationId }, auth })).status, route).toBe(404)
+    }
+    expect((await send({ method: 'post', route: '/:organizationId/groups/:groupId/reschedules/:rescheduleId/cancel', ids: { ...oxford, rescheduleId: yllka.rescheduleId }, auth })).status).toBe(404)
     expect(await yllkaAsItsOwnerSeesIt()).toEqual(before)
   })
 
@@ -449,7 +484,7 @@ describe('organization isolation', () => {
     const yllkaOnlyAuth = await loginAs('only@yllka.test')
     const attendanceEndpoints = SCOPED_ENDPOINTS.filter((endpoint) => endpoint.route.includes('/attendance/'))
 
-    expect((await send({ method: 'get', route: '/:organizationId/attendance/groups/:groupId/:date', ids: yllka, auth: lecturerAuth })).status).toBe(200)
+    expect((await send({ method: 'get', route: '/:organizationId/attendance/groups/:groupId/:date/:startTime', ids: yllka, auth: lecturerAuth })).status).toBe(200)
     for (const endpoint of attendanceEndpoints) {
       const label = `${endpoint.method.toUpperCase()} ${endpoint.route}`
       expect((await send({ ...endpoint, ids: oxford, auth: yllkaOnlyAuth })).status, label).toBe(403)

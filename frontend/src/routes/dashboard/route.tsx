@@ -39,20 +39,23 @@ const BUILT_MODULE_PAGES = {
 
 const isBuiltModule = (slug: string): slug is keyof typeof BUILT_MODULE_PAGES => slug in BUILT_MODULE_PAGES
 
-// Modules a school admin sees only with their permission; the next gated module adds one entry
+// Modules a school admin sees only with one of their permissions; the next gated module adds one entry
 const MODULE_PERMISSIONS = {
-  students: 'MANAGE_STUDENTS',
-  lecturers: 'MANAGE_LECTURERS',
-  courses: 'MANAGE_COURSES',
-  groups: 'MANAGE_COURSES',
-  attendance: 'MANAGE_ATTENDANCE',
-} as const satisfies Partial<Record<ModuleSlug, Permission>>
+  students: ['MANAGE_STUDENTS'],
+  lecturers: ['MANAGE_LECTURERS'],
+  courses: ['MANAGE_COURSES'],
+  // Timetable admins read groups to move their lessons
+  groups: ['MANAGE_COURSES', 'MANAGE_SCHEDULES'],
+  attendance: ['MANAGE_ATTENDANCE'],
+} as const satisfies Partial<Record<ModuleSlug, readonly Permission[]>>
 
 const isGatedModule = (slug: ModuleSlug): slug is keyof typeof MODULE_PERMISSIONS => slug in MODULE_PERMISSIONS
 
 /** The gated modules this membership may not use, so the sidebar leaves them out */
 const getHiddenModuleSlugs = (membership: SessionMembership | undefined) =>
-  new Set(MODULES.map((m) => m.slug).filter((slug) => isGatedModule(slug) && !(membership && hasOrganizationPermission({ membership, permission: MODULE_PERMISSIONS[slug] }))))
+  new Set(
+    MODULES.map((m) => m.slug).filter((slug) => isGatedModule(slug) && !(membership && MODULE_PERMISSIONS[slug].some((permission) => hasOrganizationPermission({ membership, permission })))),
+  )
 
 const SIDEBAR_HEADING_CLASS = 'px-3.5 pb-2.5 font-data text-[0.807rem] tracking-[0.06em] text-on-navy-2 uppercase max-[860px]:hidden'
 

@@ -77,6 +77,7 @@ beforeEach(async () => {
   const owner = await createUser({ email: 'owner@oxford.test' })
   const manager = await createUser({ email: 'manager@oxford.test' })
   const admin = await createUser({ email: 'admin@oxford.test' })
+  const schedules = await createUser({ email: 'schedules@oxford.test' })
   const yllkaOwner = await createUser({ email: 'owner@yllka.test' })
   organizationId = (
     await createOrganization({
@@ -85,6 +86,7 @@ beforeEach(async () => {
       members: [
         { userId: manager.id, role: 'ADMIN', permissions: ['MANAGE_COURSES'] },
         { userId: admin.id, role: 'ADMIN', permissions: ['MANAGE_STUDENTS'] },
+        { userId: schedules.id, role: 'ADMIN', permissions: ['MANAGE_SCHEDULES'] },
       ],
     })
   ).id
@@ -267,6 +269,23 @@ describe('group access', () => {
     expect((await addGroup(group(), auth)).status).toBe(403)
     expect((await listGroups({}, auth)).status).toBe(403)
     expect((await readGroup(added.body.data.id, auth)).status).toBe(403)
+  })
+
+  it('lets a school admin with only MANAGE_SCHEDULES list and read groups, and change nothing else about them', async () => {
+    const auth = await loginAs('schedules@oxford.test')
+    const added = await addGroup(group())
+    const id = added.body.data.id
+
+    expect((await listGroups({}, auth)).body.data.groups).toMatchObject([{ id }])
+    expect((await readGroup(id, auth)).status).toBe(200)
+    expect((await request(app).get(`/api/organizations/${organizationId}/courses/options`).set('Authorization', auth)).status).toBe(200)
+    expect((await addGroup(group({ name: 'Group B' }), auth)).status).toBe(403)
+    expect((await request(app).put(`${groupsPath}/${id}`).set('Authorization', auth).send(group())).status).toBe(403)
+    expect((await request(app).post(`${groupsPath}/${id}/archive`).set('Authorization', auth)).status).toBe(403)
+    for (const path of ['lecturers', 'enrolments']) {
+      expect((await request(app).get(`${groupsPath}/${id}/${path}`).set('Authorization', auth)).status, path).toBe(403)
+    }
+    expect((await request(app).get(`${groupsPath}/lecturer-options`).set('Authorization', auth)).status).toBe(403)
   })
 })
 

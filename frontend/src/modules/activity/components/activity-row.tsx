@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Archive, ArchiveRestore, ArrowRightLeft, Building2, CalendarCog, ClipboardPen, CalendarPlus, CalendarRange, CalendarX, CirclePause, CirclePlay, Crown, KeyRound, Layers, Lock, Mail, MailCheck, MailX, MapPin, MapPinOff, MapPinPen, Network, Power, PowerOff, Send, Settings, SquarePen, Trash2, TreePalm, UserMinus, UserPen, UserPlus, UserRoundCheck, UserRoundMinus, UserRoundPen, UserRoundPlus, UserRoundX, UsersRound } from 'lucide-react'
+import { Archive, ArchiveRestore, ArrowRightLeft, Building2, CalendarClock, CalendarCog, CalendarX2, ClipboardPen, CalendarPlus, CalendarRange, CalendarX, CirclePause, CirclePlay, Crown, KeyRound, Layers, Lock, Mail, MailCheck, MailX, MapPin, MapPinOff, MapPinPen, Network, Power, PowerOff, Send, Settings, SquarePen, Trash2, TreePalm, UserMinus, UserPen, UserPlus, UserRoundCheck, UserRoundMinus, UserRoundPen, UserRoundPlus, UserRoundX, UsersRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ActivityAction, ActivityEntry, ActivityUser } from '@shigjetademy/shared/activity'
 import { useFormatDateTime } from '#/lib/use-format-date'
@@ -55,6 +55,8 @@ const ACTION_ICONS = {
   GROUP_STUDENT_WITHDRAWN: UserRoundMinus,
   GROUP_STUDENT_MOVED: ArrowRightLeft,
   ATTENDANCE_CORRECTED: ClipboardPen,
+  LESSON_RESCHEDULED: CalendarClock,
+  LESSON_RESCHEDULE_CANCELLED: CalendarX2,
   INVITATION_SENT: Mail,
   INVITATION_RESENT: Send,
   INVITATION_REVOKED: MailX,
@@ -74,6 +76,7 @@ const DELETED_TARGET = 'a deleted user'
 const UNNAMED_SUBJECT = 'with no name'
 const UNNAMED_EMAIL = 'someone'
 const UNNAMED_ATTENDANCE_STUDENT = 'a student'
+const UNNAMED_LESSON = 'a lesson'
 
 interface ActivityRowProps {
   entry: ActivityEntry
@@ -241,6 +244,20 @@ function ActivitySentence({ entry, shouldLinkOrganization }: ActivityRowProps) {
       return (
         <>
           {fullName({ user: entry.actor, fallback: DELETED_ACTOR })} corrected the attendance of {entry.subject_name ?? UNNAMED_ATTENDANCE_STUDENT}
+          {subjectOrganization ? <> at {subjectOrganization}</> : null}
+        </>
+      )
+    case 'LESSON_RESCHEDULED':
+      return (
+        <>
+          {fullName({ user: entry.actor, fallback: DELETED_ACTOR })} rescheduled {entry.subject_name ?? UNNAMED_LESSON}
+          {subjectOrganization ? <> at {subjectOrganization}</> : null}
+        </>
+      )
+    case 'LESSON_RESCHEDULE_CANCELLED':
+      return (
+        <>
+          {fullName({ user: entry.actor, fallback: DELETED_ACTOR })} cancelled the reschedule of {entry.subject_name ?? UNNAMED_LESSON}
           {subjectOrganization ? <> at {subjectOrganization}</> : null}
         </>
       )

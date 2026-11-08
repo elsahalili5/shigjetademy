@@ -64,6 +64,7 @@ describe('My school', () => {
       academic_year: { name: '2026–27', start_date: '2026-09-01', end_date: '2027-06-30' },
       term: { name: 'Autumn term', start_date: '2026-09-01', end_date: '2026-12-20' },
       groups: [],
+      rescheduled_lessons: [],
     })
   })
 
@@ -203,5 +204,59 @@ describe('My school: groups', () => {
 
     expect((await readMySchool('arta@student.test')).body.data.groups).toEqual([])
     expect((await readMySchool('unlinked@student.test')).body.data.groups).toEqual([])
+  })
+
+  type AddRescheduleParams = {
+    groupId: string
+    originalDate: string
+    newDate: string
+    cancelledAt?: Date
+  }
+
+  /** The group's 17:00 lesson on originalDate moved to 16:00–17:30 on newDate */
+  const addReschedule = ({ groupId, originalDate, newDate, cancelledAt }: AddRescheduleParams) =>
+    prisma.lessonReschedule.create({
+      data: {
+        group_id: groupId,
+        original_date: new Date(originalDate),
+        original_start_time: new Date('1970-01-01T17:00:00.000Z'),
+        new_date: new Date(newDate),
+        new_start_time: new Date('1970-01-01T16:00:00.000Z'),
+        new_end_time: new Date('1970-01-01T17:30:00.000Z'),
+        reason: 'Private reason',
+        cancelled_at: cancelledAt,
+      },
+    })
+
+  it('lists the student’s upcoming rescheduled lessons with both dates and times, and no reason', async () => {
+    const groupA = await addGroup({ name: 'Group A' })
+    const groupB = await addGroup({ name: 'Group B' })
+    const besasGroup = await addGroup({ name: 'Group C' })
+    await enrol({ groupId: groupA.id, studentId: artaId })
+    await enrol({ groupId: groupB.id, studentId: artaId })
+    await enrol({ groupId: besasGroup.id, studentId: besaId })
+    const later = await addReschedule({ groupId: groupB.id, originalDate: '2026-11-09', newDate: '2026-11-11' })
+    const soon = await addReschedule({ groupId: groupA.id, originalDate: '2026-11-02', newDate: '2026-11-04' })
+    await addReschedule({ groupId: groupA.id, originalDate: '2026-10-26', newDate: '2026-10-28' })
+    await addReschedule({ groupId: groupA.id, originalDate: '2026-11-16', newDate: '2026-11-18', cancelledAt: new Date('2026-10-30T10:00:00.000Z') })
+    await addReschedule({ groupId: besasGroup.id, originalDate: '2026-11-02', newDate: '2026-11-03' })
+
+    const response = await readMySchool('arta@student.test')
+
+    expect(response.body.data.rescheduled_lessons).toEqual([
+      { id: soon.id, group: { id: groupA.id, name: 'Group A', course: 'Mathematics' }, original_date: '2026-11-02', original_start_time: '17:00', new_date: '2026-11-04', new_start_time: '16:00', new_end_time: '17:30' },
+      { id: later.id, group: { id: groupB.id, name: 'Group B', course: 'Mathematics' }, original_date: '2026-11-09', original_start_time: '17:00', new_date: '2026-11-11', new_start_time: '16:00', new_end_time: '17:30' },
+    ])
+  })
+
+  it('leaves out rescheduled lessons of groups the student has left and of archived groups', async () => {
+    const left = await addGroup({ name: 'Left' })
+    const archived = await addGroup({ name: 'Archived', status: 'ARCHIVED' })
+    await enrol({ groupId: left.id, studentId: artaId, withdrawnOn: '2026-10-15' })
+    await enrol({ groupId: archived.id, studentId: artaId })
+    await addReschedule({ groupId: left.id, originalDate: '2026-11-02', newDate: '2026-11-04' })
+    await addReschedule({ groupId: archived.id, originalDate: '2026-11-02', newDate: '2026-11-04' })
+
+    expect((await readMySchool('arta@student.test')).body.data.rescheduled_lessons).toEqual([])
   })
 })
