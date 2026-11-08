@@ -1,5 +1,6 @@
 import { Construction } from 'lucide-react'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
+import type { AuthUser } from '@shigjetademy/shared/auth'
 import { adminModuleBySlug } from '#/lib/admin-modules'
 import type { AdminModule } from '#/lib/admin-modules'
 import { getSessionUser, refuseHomeOnlyMember } from '#/lib/route-guard'
@@ -9,6 +10,7 @@ import type { Module } from '#/lib/modules'
 import { ActivityModule } from '#/modules/activity/components/activity-module'
 import { useActiveMembership } from '#/modules/auth/hooks/use-active-membership'
 import { useAuth } from '#/modules/auth/hooks/use-auth'
+import { ProfilePage } from '#/modules/auth/components/profile-page'
 import { isOrganizationOwner, isPlatformAdmin } from '#/modules/auth/utils/session-user'
 import { ClientsModule } from '#/modules/organization/components/clients-module'
 import { StatisticsModule } from '#/modules/organization/components/statistics-module'
@@ -38,7 +40,8 @@ function DashboardModulePage() {
   const schoolModule = moduleBySlug(slug)
   const isOwner = isOrganizationOwner(membership)
 
-  if (adminModule) return <AdminModulePage module={adminModule} />
+  // Only reached once isPlatformAdmin(auth.user) has resolved an adminModule, so the user is never null here
+  if (adminModule) return <AdminModulePage module={adminModule} user={auth.user as AuthUser} />
   // The route guard already sent unknown modules back to the dashboard
   if (!schoolModule) return null
   return <NotBuilt mod={schoolModule} isOwner={isOwner} />
@@ -46,9 +49,10 @@ function DashboardModulePage() {
 
 interface AdminModulePageProps {
   module: AdminModule
+  user: AuthUser
 }
 
-function AdminModulePage({ module }: AdminModulePageProps) {
+function AdminModulePage({ module, user }: AdminModulePageProps) {
   useTitle(`${module.name} · Shigjetademy`)
   switch (module.slug) {
     case 'clients':
@@ -57,6 +61,9 @@ function AdminModulePage({ module }: AdminModulePageProps) {
       return <StatisticsModule />
     case 'activity':
       return <ActivityModule />
+    case 'settings':
+      // The same account page everyone reaches from the sidebar avatar, with its own entry here too
+      return <ProfilePage user={user} />
     default: {
       const unknown: never = module.slug
       throw new Error(`Unknown admin module: ${String(unknown)}`)

@@ -2,6 +2,7 @@ import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import type { AuthUser } from '@shigjetademy/shared/auth'
+import type { StudentNoteEntry } from '@shigjetademy/shared/student-notes'
 import type { MySchool, MySchoolGroup } from '@shigjetademy/shared/students'
 import { buildUser, DEFAULT_SETTINGS, OWNER_MEMBERSHIPS, signInAs } from '#/test/fixtures'
 import { renderRoute } from '#/test/render-route'
@@ -18,7 +19,10 @@ const MY_SCHOOL: MySchool = {
   term: { name: 'Autumn term', start_date: '2026-09-01', end_date: '2026-12-20' },
   groups: [],
   rescheduled_lessons: [],
+  notes: [],
 }
+
+const NOTE: StudentNoteEntry = { id: 'note-1', body: 'Struggling with fractions.', group: { id: 'group-a', name: 'Group A' }, lecturer: { first_name: 'Arben', last_name: 'Hoxha' }, created_at: '2026-10-01T09:00:00.000Z' }
 
 const GROUP_A: MySchoolGroup = {
   id: 'group-a',
@@ -150,5 +154,28 @@ describe('My school', () => {
     const { router } = renderRoute('/dashboard/my-school')
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/overview'))
+  })
+
+  it('lists their notes with the body, group, lecturer’s name and when, read-only, and nothing about the lecturer beyond their name', async () => {
+    signInAs(STUDENT)
+    serveMySchool({ ...MY_SCHOOL, groups: [GROUP_A], notes: [NOTE] })
+    renderRoute('/dashboard/my-school')
+
+    const section = await screen.findByRole('region', { name: 'Notes' })
+    const [note] = within(section).getAllByRole('listitem')
+    expect(note).toHaveTextContent('Struggling with fractions.')
+    expect(note).toHaveTextContent('Group A')
+    expect(note).toHaveTextContent('Arben Hoxha')
+    expect(within(section).queryByRole('button')).not.toBeInTheDocument()
+    expect(section.textContent).not.toContain('@')
+  })
+
+  it('says "No notes yet" when none are written', async () => {
+    signInAs(STUDENT)
+    serveMySchool({ ...MY_SCHOOL, groups: [GROUP_A] })
+    renderRoute('/dashboard/my-school')
+
+    const section = await screen.findByRole('region', { name: 'Notes' })
+    expect(within(section).getByText('No notes yet')).toBeInTheDocument()
   })
 })

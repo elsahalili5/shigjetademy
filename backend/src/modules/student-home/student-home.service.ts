@@ -8,6 +8,7 @@ import { prisma } from '@lib/prisma.ts'
 import { activeEnrolments } from '@modules/groups/group-selects.ts'
 import { byNewSlot, rescheduledLessonSelect, toRescheduledLesson, upcomingReschedules } from '@modules/groups/rescheduled-lessons.ts'
 import { meetingsSelect, toScheduleJson } from '@modules/groups/group-schedule.ts'
+import { noteSelect, toNoteEntry } from '@modules/student-notes/student-notes.service.ts'
 
 // What a student reads of a group: no lecturer history, staff notes or other students
 const schoolGroupSelect = {
@@ -35,7 +36,10 @@ export const StudentHomeService = {
     const settings = resolveOrganizationSettings({ stored: organization.settings, country: organization.country })
     const today = toDate(todayIn(settings.time_zone))
     const [student, year] = await Promise.all([
-      prisma.student.findFirst({ where: { organization_id: organizationId, user_id: userId }, select: { id: true, first_name: true, last_name: true, student_number: true } }),
+      prisma.student.findFirst({
+        where: { organization_id: organizationId, user_id: userId },
+        select: { id: true, first_name: true, last_name: true, student_number: true, student_notes: { orderBy: { created_at: 'desc' }, select: noteSelect } },
+      }),
       prisma.academicYear.findFirst({
         where: { organization_id: organizationId, is_current: true },
         select: { ...periodSelect, terms: { where: { start_date: { lte: today }, end_date: { gte: today } }, select: periodSelect, take: 1 } },
@@ -67,6 +71,7 @@ export const StudentHomeService = {
         schedule: toScheduleJson({ meetings: group.meetings, weekStart: settings.week_start }),
       })),
       rescheduled_lessons: reschedules.map(toRescheduledLesson),
+      notes: student?.student_notes.map(toNoteEntry) ?? [],
     }
   },
 }

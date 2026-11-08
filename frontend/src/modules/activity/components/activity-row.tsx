@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Archive, ArchiveRestore, ArrowRightLeft, Building2, CalendarClock, CalendarCog, CalendarX2, ClipboardPen, CalendarPlus, CalendarRange, CalendarX, CirclePause, CirclePlay, Crown, KeyRound, Layers, Lock, Mail, MailCheck, MailX, MapPin, MapPinOff, MapPinPen, Network, Power, PowerOff, Send, Settings, SquarePen, Trash2, TreePalm, UserMinus, UserPen, UserPlus, UserRoundCheck, UserRoundMinus, UserRoundPen, UserRoundPlus, UserRoundX, UsersRound } from 'lucide-react'
+import { Archive, ArchiveRestore, ArrowRightLeft, Building2, CalendarClock, CalendarCog, CalendarX2, ClipboardPen, CalendarPlus, CalendarRange, CalendarX, CirclePause, CirclePlay, Crown, KeyRound, Layers, Lock, Mail, MailCheck, MailX, MapPin, MapPinOff, MapPinPen, Network, NotebookPen, Power, PowerOff, Send, Settings, SquarePen, Trash2, TreePalm, UserMinus, UserPen, UserPlus, UserRoundCheck, UserRoundMinus, UserRoundPen, UserRoundPlus, UserRoundX, UsersRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ActivityAction, ActivityEntry, ActivityUser } from '@shigjetademy/shared/activity'
 import { useFormatDateTime } from '#/lib/use-format-date'
@@ -61,6 +61,7 @@ const ACTION_ICONS = {
   INVITATION_RESENT: Send,
   INVITATION_REVOKED: MailX,
   INVITATION_ACCEPTED: MailCheck,
+  STUDENT_NOTE_ADDED: NotebookPen,
 } as const satisfies Record<ActivityAction, LucideIcon>
 
 type FullNameParams = {
@@ -286,6 +287,13 @@ function ActivitySentence({ entry, shouldLinkOrganization }: ActivityRowProps) {
       return (
         <>
           {fullName({ user: entry.actor, fallback: DELETED_ACTOR })} accepted the invitation and joined {organization}
+        </>
+      )
+    case 'STUDENT_NOTE_ADDED':
+      return (
+        <>
+          {fullName({ user: entry.actor, fallback: DELETED_ACTOR })} wrote a note about {entry.subject_name ?? UNNAMED_ATTENDANCE_STUDENT}
+          {subjectOrganization ? <> at {subjectOrganization}</> : null}
         </>
       )
     default: {

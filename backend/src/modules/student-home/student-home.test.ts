@@ -65,6 +65,7 @@ describe('My school', () => {
       term: { name: 'Autumn term', start_date: '2026-09-01', end_date: '2026-12-20' },
       groups: [],
       rescheduled_lessons: [],
+      notes: [],
     })
   })
 
@@ -258,5 +259,60 @@ describe('My school: groups', () => {
     await addReschedule({ groupId: archived.id, originalDate: '2026-11-02', newDate: '2026-11-04' })
 
     expect((await readMySchool('arta@student.test')).body.data.rescheduled_lessons).toEqual([])
+  })
+})
+
+describe('My school: notes', () => {
+  let groupId: string
+
+  beforeEach(async () => {
+    const yearId = (await prisma.academicYear.findFirstOrThrow({ where: { organization_id: organizationId } })).id
+    const courseId = (await createCourse({ organizationId, name: 'Mathematics' })).id
+    const group = await prisma.group.create({ data: { organization_id: organizationId, course_id: courseId, name: 'Group A', academic_year_id: yearId } })
+    groupId = group.id
+  })
+
+  const addNote = async (studentId: string, body: string, lecturerId?: string, createdAt?: Date) =>
+    prisma.studentNote.create({ data: { student_id: studentId, group_id: groupId, body, lecturer_id: lecturerId, ...(createdAt ? { created_at: createdAt } : {}) } })
+
+  it('lists their own notes newest first, with the body, group and author’s name, and no staff-only data', async () => {
+    const arta = await prisma.student.findFirstOrThrow({ where: { first_name: 'Arta' } })
+    const lecturer = await createUser({ email: 'arben@lecturer.test' })
+    await addNote(arta.id, 'First note.', lecturer.id, new Date('2026-10-01T09:00:00.000Z'))
+    const second = await addNote(arta.id, 'Second note.', lecturer.id, new Date('2026-10-02T09:00:00.000Z'))
+
+    const response = await readMySchool('arta@student.test')
+
+    expect(response.body.data.notes).toEqual([
+      { id: second.id, body: 'Second note.', group: { id: groupId, name: 'Group A' }, lecturer: { first_name: 'Test', last_name: 'User' }, created_at: expect.any(String) },
+      expect.objectContaining({ body: 'First note.' }),
+    ])
+    expect(JSON.stringify(response.body.data.notes)).not.toContain('@')
+  })
+
+  it('shows "No notes yet" worthy response: an empty list when none are written', async () => {
+    const response = await readMySchool('arta@student.test')
+
+    expect(response.body.data.notes).toEqual([])
+  })
+
+  it('shows a deleted lecturer’s note as having no author, not failing', async () => {
+    const arta = await prisma.student.findFirstOrThrow({ where: { first_name: 'Arta' } })
+    const lecturer = await createUser({ email: 'gone@lecturer.test' })
+    await addNote(arta.id, 'From a deleted lecturer.', lecturer.id)
+    await prisma.user.delete({ where: { id: lecturer.id } })
+
+    const response = await readMySchool('arta@student.test')
+
+    expect(response.body.data.notes).toEqual([{ id: expect.any(String), body: 'From a deleted lecturer.', group: { id: groupId, name: 'Group A' }, lecturer: null, created_at: expect.any(String) }])
+  })
+
+  it('leaves out another student’s notes', async () => {
+    const besa = await prisma.student.findFirstOrThrow({ where: { first_name: 'Besa' } })
+    await addNote(besa.id, 'About Besa.')
+
+    const response = await readMySchool('arta@student.test')
+
+    expect(response.body.data.notes).toEqual([])
   })
 })
