@@ -404,7 +404,7 @@ describe('AttendancePage: access', () => {
     renderRoute('/dashboard/attendance')
 
     const modules = await screen.findByRole('navigation', { name: 'Modules' })
-    expect(within(modules).getAllByRole('link').map((link) => link.textContent)).toEqual(['My teaching', 'Attendance', 'Lessons'])
+    expect(within(modules).getAllByRole('link').map((link) => link.textContent)).toEqual(['My teaching', 'Students', 'Attendance', 'Lessons'])
     expect(within(modules).getByRole('link', { name: 'Attendance' })).toHaveAttribute('href', '/dashboard/attendance')
   })
 
