@@ -12,11 +12,14 @@ import { attendanceGroupsQuerySchema, attendanceMarkSchema, registerParamSchema,
 const router = Router()
 
 const GROUPS = '/:organizationId/attendance/groups'
+const HISTORY = '/:organizationId/attendance/history'
 const REGISTER = `${GROUPS}/:groupId/:date/:startTime`
 
 const canTakeAttendance = requireOrganizationAccess({ isAllowed: (membership) => membership.role === 'LECTURER' || hasOrganizationPermission({ membership, permission: 'MANAGE_ATTENDANCE' }) })
 
 router.get(GROUPS, authMiddleware, validateRequestMiddleware(organizationIdParamSchema, 'params'), canTakeAttendance, validateRequestMiddleware(attendanceGroupsQuerySchema, 'query'), AttendanceController.listGroups)
+
+router.get(HISTORY, authMiddleware, validateRequestMiddleware(organizationIdParamSchema, 'params'), canTakeAttendance, AttendanceController.listHistory)
 
 router.get(REGISTER, authMiddleware, validateRequestMiddleware(registerParamSchema, 'params'), canTakeAttendance, AttendanceController.getRegister)
 

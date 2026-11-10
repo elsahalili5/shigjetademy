@@ -37,6 +37,19 @@ export const AttendanceController = {
     }
   },
 
+  listHistory: async (req: OrganizationRequest, res: Response) => {
+    try {
+      const viewer = getViewer(req)
+      if (!viewer) {
+        return res.status(401).json({ error: 'Unauthorized' })
+      }
+      const history = await AttendanceService.listHistory({ organizationId: req.params.organizationId, viewer })
+      return res.status(200).json({ data: history })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to fetch the attendance history' })
+    }
+  },
+
   getRegister: async (req: RegisterRequest, res: Response) => {
     try {
       const viewer = getViewer(req)

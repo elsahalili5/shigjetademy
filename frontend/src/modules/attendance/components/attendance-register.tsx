@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { UsersRound } from 'lucide-react'
+import { toast } from 'react-hot-toast'
 import { ATTENDANCE_STATUSES } from '@shigjetademy/shared/attendance'
 import type { AttendanceRegister as Register, AttendanceStatus, AttendanceStudent } from '@shigjetademy/shared/attendance'
 import { getLecturerName } from '@shigjetademy/shared/lecturers'
@@ -12,12 +14,28 @@ import { getErrorMessage } from '#/lib/error-message'
 import { useFormatDay, useFormatLessonSlot } from '#/lib/use-format-date'
 import type { RegisterParams } from '../api/attendance-api'
 import { useAttendanceRegister } from '../hooks/use-attendance-register'
-import { useMarkAllPresent } from '../hooks/use-mark-all-present'
-import { useMarkStudent } from '../hooks/use-mark-student'
+import { useSaveAttendance } from '../hooks/use-save-attendance'
+import type { PendingMarks } from '../hooks/use-save-attendance'
 import { ATTENDANCE_STATUS_LABELS, NOT_MARKED_LABEL } from '../utils/status-labels'
 
 const STATUS_BUTTON_CLASS =
   'inline-flex min-h-9 items-center rounded-full px-3.5 text-[0.93rem] font-semibold text-ink-2 transition-colors duration-150 hover:text-ink aria-disabled:opacity-60 aria-pressed:bg-white aria-pressed:text-ink aria-pressed:shadow-card'
+
+// An unsaved mark is outlined instead of filled, so it reads as staged rather than already saved
+const STATUS_BUTTON_PENDING_CLASS =
+  'inline-flex min-h-9 items-center rounded-full px-3.5 text-[0.93rem] font-semibold text-ink-2 transition-colors duration-150 hover:text-ink aria-disabled:opacity-60 aria-pressed:border aria-pressed:border-ink aria-pressed:bg-transparent aria-pressed:text-ink'
+
+type GetStatusHintParams = {
+  displayedStatus: AttendanceStatus | null
+  isUnsavedPending: boolean
+}
+
+/** What to say beside a student's marking buttons: that they're unmarked, that their mark isn't saved yet, or nothing */
+const getStatusHint = ({ displayedStatus, isUnsavedPending }: GetStatusHintParams) => {
+  if (!displayedStatus) return NOT_MARKED_LABEL
+  if (isUnsavedPending) return 'Unsaved'
+  return null
+}
 
 interface AttendanceRegisterProps {
   organizationId: string
@@ -28,7 +46,7 @@ interface AttendanceRegisterProps {
   timeZone: string
 }
 
-/** One session's register: its students and their marks, saved on each tap while this user may mark it */
+/** One session's register: its students and their marks, staged by a tap and saved once Save is clicked */
 export function AttendanceRegister({ organizationId, groupId, date, startTime, timeZone }: AttendanceRegisterProps) {
   const params = { organizationId, groupId, date, startTime }
   const register = useAttendanceRegister({ ...params, timeZone })
@@ -46,17 +64,70 @@ interface RegisterSectionProps {
 function RegisterSection({ params, register }: RegisterSectionProps) {
   const formatDay = useFormatDay()
   const formatLessonSlot = useFormatLessonSlot()
-  const markAllPresent = useMarkAllPresent(params)
-  const hasUnmarked = register.students.some((student) => !student.status)
+  const saveAttendance = useSaveAttendance(params)
+  const [pendingMarks, setPendingMarks] = useState<PendingMarks>({})
+  const [isEditingSaved, setIsEditingSaved] = useState(false)
+  const [saveErrors, setSaveErrors] = useState<Record<string, unknown>>({})
+  const canMarkAllPresent = register.students.some((student) => !student.status && !(student.id in pendingMarks))
+  const pendingEntries = Object.entries(pendingMarks)
+  const isOverwritingSaved = pendingEntries.some(([studentId]) => register.students.find((student) => student.id === studentId)?.status != null)
+  const saveLabel = isOverwritingSaved ? 'Save Changes' : 'Save Attendance'
+  const isSaving = saveAttendance.isPending
+
+  const handleToggleEditing = () => setIsEditingSaved((current) => !current)
+
+  const handleMarkAllPresent = () => {
+    setPendingMarks((current) => {
+      const next = { ...current }
+      for (const student of register.students) {
+        if (!student.status && !(student.id in next)) next[student.id] = 'PRESENT'
+      }
+      return next
+    })
+  }
+
+  const handleStage = ({ studentId, status }: { studentId: string; status: AttendanceStatus }) => {
+    setPendingMarks((current) => ({ ...current, [studentId]: status }))
+    setSaveErrors((current) => {
+      if (!(studentId in current)) return current
+      const { [studentId]: _removed, ...rest } = current
+      return rest
+    })
+  }
+
+  const handleSave = () => {
+    saveAttendance.mutate(pendingMarks, {
+      onSuccess: (outcomes) => {
+        setPendingMarks((current) => {
+          const next = { ...current }
+          for (const outcome of outcomes) if (outcome.outcome === 'saved') delete next[outcome.studentId]
+          return next
+        })
+        const failed = outcomes.filter((outcome) => outcome.outcome === 'failed')
+        setSaveErrors(Object.fromEntries(failed.map((outcome) => [outcome.studentId, outcome.error])))
+        if (failed.length === 0) toast.success('Attendance saved.')
+      },
+    })
+  }
 
   return (
     <SectionCard
       title={register.group.name}
       action={
         register.can_edit ? (
-          <button type="button" className="button button--ghost min-h-10 px-4 text-base" disabled={!hasUnmarked || markAllPresent.isPending} onClick={() => markAllPresent.mutate()}>
-            Mark all present
-          </button>
+          <span className="flex flex-wrap items-center gap-2">
+            <button type="button" className="button button--ghost min-h-10 px-4 text-base" aria-pressed={isEditingSaved} disabled={isSaving} onClick={handleToggleEditing}>
+              Edit Attendance
+            </button>
+            <button type="button" className="button button--ghost min-h-10 px-4 text-base" disabled={!canMarkAllPresent || isSaving} onClick={handleMarkAllPresent}>
+              Mark all present
+            </button>
+            {pendingEntries.length > 0 ? (
+              <button type="button" className="button min-h-10 px-4 text-base" disabled={isSaving} onClick={handleSave}>
+                {saveLabel}
+              </button>
+            ) : null}
+          </span>
         ) : null
       }
     >
@@ -66,28 +137,9 @@ function RegisterSection({ params, register }: RegisterSectionProps) {
         </p>
         {register.rescheduled_from ? <p className="tabular text-ink-2">Rescheduled from {formatLessonSlot({ day: register.rescheduled_from.date, time: register.rescheduled_from.start_time })}</p> : null}
         <RegisterNotice register={register} />
-        {markAllPresent.isError ? <FormAlert>{getErrorMessage(markAllPresent.error)}</FormAlert> : null}
-        <RegisterStudents params={params} register={register} isMarkingAll={markAllPresent.isPending} />
+        <RegisterStudents register={register} pendingMarks={pendingMarks} saveErrors={saveErrors} isEditingSaved={isEditingSaved} isSaving={isSaving} onStage={handleStage} />
       </div>
     </SectionCard>
-  )
-}
-
-interface RegisterStudentsProps {
-  params: RegisterParams
-  register: Register
-  /** "Mark all present" is saving, so single marks wait */
-  isMarkingAll: boolean
-}
-
-function RegisterStudents({ params, register, isMarkingAll }: RegisterStudentsProps) {
-  if (register.students.length === 0) return <EmptyMessage icon={UsersRound} title="No students on this day" text="Students enrolled in the group on this date show here." />
-  return (
-    <ul className="grid" aria-label="Students">
-      {register.students.map((student) => (
-        <RegisterRow key={student.id} params={params} student={student} isEditable={register.can_edit} isMarkingAll={isMarkingAll} />
-      ))}
-    </ul>
   )
 }
 
@@ -116,22 +168,57 @@ function RegisterNotice({ register }: RegisterNoticeProps) {
   }
 }
 
-interface RegisterRowProps {
-  params: RegisterParams
-  student: AttendanceStudent
-  isEditable: boolean
-  isMarkingAll: boolean
+interface RegisterStudentsProps {
+  register: Register
+  pendingMarks: PendingMarks
+  saveErrors: Record<string, unknown>
+  isEditingSaved: boolean
+  isSaving: boolean
+  onStage: (params: { studentId: string; status: AttendanceStatus }) => void
 }
 
-function RegisterRow({ params, student, isEditable, isMarkingAll }: RegisterRowProps) {
-  const markStudent = useMarkStudent({ ...params, studentId: student.id })
+function RegisterStudents({ register, pendingMarks, saveErrors, isEditingSaved, isSaving, onStage }: RegisterStudentsProps) {
+  if (register.students.length === 0) return <EmptyMessage icon={UsersRound} title="No students on this day" text="Students enrolled in the group on this date show here." />
+  return (
+    <ul className="grid" aria-label="Students">
+      {register.students.map((student) => (
+        <RegisterRow
+          key={student.id}
+          student={student}
+          canEditRegister={register.can_edit}
+          isEditingSaved={isEditingSaved}
+          isSaving={isSaving}
+          pendingStatus={pendingMarks[student.id]}
+          saveError={saveErrors[student.id]}
+          onStage={onStage}
+        />
+      ))}
+    </ul>
+  )
+}
+
+interface RegisterRowProps {
+  student: AttendanceStudent
+  canEditRegister: boolean
+  isEditingSaved: boolean
+  isSaving: boolean
+  pendingStatus: AttendanceStatus | undefined
+  saveError: unknown
+  onStage: (params: { studentId: string; status: AttendanceStatus }) => void
+}
+
+function RegisterRow({ student, canEditRegister, isEditingSaved, isSaving, pendingStatus, saveError, onStage }: RegisterRowProps) {
   const name = getStudentName(student)
-  // aria-disabled instead of disabled, so focus stays on the button that was pressed while it saves
-  const isBusy = markStudent.isPending || isMarkingAll
+  const isUnsavedPending = pendingStatus !== undefined
+  const displayedStatus = pendingStatus ?? student.status
+  // Re-marking an already-saved student needs Edit Attendance on; a never-marked one is always tappable
+  const isRowEditable = canEditRegister && (student.status === null || isEditingSaved || isUnsavedPending)
+  // A stable single slot for the leading hint, so the status group below it keeps the same position across renders
+  const statusHint = getStatusHint({ displayedStatus, isUnsavedPending })
 
   const handleMark = (status: AttendanceStatus) => {
-    if (isBusy || status === student.status) return
-    markStudent.mutate(status)
+    if (!isRowEditable || isSaving || status === displayedStatus) return
+    onStage({ studentId: student.id, status })
   }
 
   return (
@@ -141,22 +228,29 @@ function RegisterRow({ params, student, isEditable, isMarkingAll }: RegisterRowP
           {name}
           {student.is_archived ? ' (archived)' : null}
         </span>
-        {isEditable ? (
+        {isRowEditable ? (
           <span className="flex flex-wrap items-center gap-3">
-            {student.status ? null : <span className="text-[0.93rem] text-ink-3">{NOT_MARKED_LABEL}</span>}
+            <span className="text-[0.93rem] font-semibold text-ink-3">{statusHint}</span>
             <span role="group" aria-label={`Attendance for ${name}`} className="flex w-fit gap-1 rounded-full bg-mist p-1">
               {ATTENDANCE_STATUSES.map((status) => (
-                <button key={status} type="button" className={STATUS_BUTTON_CLASS} aria-pressed={student.status === status} aria-disabled={isBusy} onClick={() => handleMark(status)}>
+                <button
+                  key={status}
+                  type="button"
+                  className={isUnsavedPending ? STATUS_BUTTON_PENDING_CLASS : STATUS_BUTTON_CLASS}
+                  aria-pressed={displayedStatus === status}
+                  aria-disabled={isSaving}
+                  onClick={() => handleMark(status)}
+                >
                   {ATTENDANCE_STATUS_LABELS[status]}
                 </button>
               ))}
             </span>
           </span>
         ) : (
-          <span className="text-[0.93rem] text-ink-2">{student.status ? ATTENDANCE_STATUS_LABELS[student.status] : NOT_MARKED_LABEL}</span>
+          <span className="text-[0.93rem] text-ink-2">{displayedStatus ? ATTENDANCE_STATUS_LABELS[displayedStatus] : NOT_MARKED_LABEL}</span>
         )}
       </span>
-      {markStudent.isError ? <FormAlert>{getErrorMessage(markStudent.error)}</FormAlert> : null}
+      {saveError ? <FormAlert>{getErrorMessage(saveError)}</FormAlert> : null}
     </li>
   )
 }

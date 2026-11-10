@@ -53,6 +53,18 @@ export type AttendanceStudent = {
   status: AttendanceStatus | null
 }
 
+/** One past session with at least one saved mark, for the history list: who, when, and how much of it is marked */
+export type AttendanceHistoryEntry = {
+  group_id: string
+  name: string
+  course: string
+  date: string
+  start_time: string
+  end_time: string
+  marked: number
+  total: number
+}
+
 /** The register of one lesson session */
 export type AttendanceRegister = {
   group: { id: string; name: string; course: string; status: GroupStatus }

@@ -1,8 +1,8 @@
 import type { Prisma } from '@generated/prisma/client.ts'
-import type { AttendanceRegister, AttendanceSession, AttendanceStatus, AttendanceStudent } from '@shigjetademy/shared/attendance'
+import type { AttendanceHistoryEntry, AttendanceRegister, AttendanceSession, AttendanceStatus, AttendanceStudent } from '@shigjetademy/shared/attendance'
 import { getWeekday } from '@shigjetademy/shared/calendar-day'
 import { getStudentName } from '@shigjetademy/shared/students'
-import { toDate, toTime } from '@lib/calendar-day.ts'
+import { addDays, toClock, toDate, toDay, toTime } from '@lib/calendar-day.ts'
 import { getOrganizationNow } from '@lib/current-period.ts'
 import { HttpError } from '@lib/httpError.ts'
 import { lockOrganization } from '@lib/organization-lock.ts'
@@ -11,6 +11,11 @@ import { canEditRegister, getPermanentLecturerId, getRegisterWindow, getSession,
 import type { LessonGroup, RegisterAccess } from './lesson-calendar.ts'
 import { findLecturerId } from './lecturer-lookup.ts'
 import { lessonGroupSelectOn, toLessonGroup } from './lesson-group.ts'
+
+// How far back the history list looks
+const HISTORY_WINDOW_DAYS = 30
+// At most this many of the most recent sessions
+const HISTORY_LIMIT = 20
 
 /** Who is asking; the route only lets through attendance managers and lecturers */
 export type AttendanceViewer = {
@@ -197,6 +202,20 @@ type ListGroupsParams = {
   date: string
 }
 
+type ListHistoryParams = {
+  organizationId: string
+  viewer: AttendanceViewer
+}
+
+type HistoryKeyParams = {
+  group_id: string
+  date: string
+  start_time: string
+}
+
+/** One session's key for matching a marked count onto its history entry */
+const historyKey = ({ group_id, date, start_time }: HistoryKeyParams) => `${group_id}|${date}|${start_time}`
+
 export const AttendanceService = {
   // Managers see every session of an active group that day; a lecturer only those they teach that day, so a covered day goes to the substitute
   listSessions: async ({ organizationId, viewer, date }: ListGroupsParams): Promise<AttendanceSession[]> => {
@@ -226,6 +245,71 @@ export const AttendanceService = {
         }))
       })
       .toSorted((a, b) => a.start_time.localeCompare(b.start_time) || a.name.localeCompare(b.name))
+  },
+
+  // The last 30 days' sessions with at least one saved mark, newest first, capped at 20; scoped the same way as listSessions, without the single-date constraint
+  listHistory: async ({ organizationId, viewer }: ListHistoryParams): Promise<AttendanceHistoryEntry[]> => {
+    const lecturerId = viewer.isManager ? null : await findLecturerId({ db: prisma, organizationId, userId: viewer.userId })
+    if (!viewer.isManager && !lecturerId) return []
+    const teachingFilter = lecturerId ? { OR: [{ lecturer_assignments: { some: { lecturer_id: lecturerId } } }, { substitutions: { some: { lecturer_id: lecturerId } } }] } : {}
+    const { day: today } = await getOrganizationNow({ db: prisma, organizationId })
+    const since = toDate(addDays({ day: today, days: -HISTORY_WINDOW_DAYS }))
+
+    // Not capped yet: a lecturer's per-day teaching check below can drop some, so the cap is applied after that
+    const allRecords = await prisma.attendanceRecord.findMany({
+      where: { date: { gte: since }, group: { organization_id: organizationId, ...teachingFilter } },
+      distinct: ['group_id', 'date', 'start_time'],
+      orderBy: [{ date: 'desc' }, { start_time: 'desc' }],
+      select: { group_id: true, date: true, start_time: true },
+    })
+    if (allRecords.length === 0) return []
+
+    const dates = [...new Set(allRecords.map((record) => toDay(record.date)))]
+    const groupIds = [...new Set(allRecords.map((record) => record.group_id))]
+    const groups = await prisma.group.findMany({ where: { id: { in: groupIds } }, select: lessonGroupSelectOn(dates) })
+    const groupById = new Map(groups.map((group) => [group.id, group]))
+
+    // lecturer_assignments/substitutions are date-ranged, so the coarse teachingFilter above can include a group's whole history
+    // even for days this lecturer never actually taught (e.g. a one-day substitution, or a later reassignment) - recheck per record's own day
+    const records = allRecords
+      .filter((record) => {
+        if (!lecturerId) return true
+        const group = groupById.get(record.group_id)
+        return !!group && getTeachingLecturerId({ group: toLessonGroup(group), day: toDay(record.date) }) === lecturerId
+      })
+      .slice(0, HISTORY_LIMIT)
+    if (records.length === 0) return []
+
+    const enrolmentsByGroup = await prisma.groupEnrolment.findMany({
+      where: { group_id: { in: [...new Set(records.map((record) => record.group_id))] } },
+      select: { group_id: true, student_id: true, enrolled_on: true, withdrawn_on: true },
+    })
+    const marked = await prisma.attendanceRecord.groupBy({
+      by: ['group_id', 'date', 'start_time'],
+      where: { OR: records.map(({ group_id, date, start_time }) => ({ group_id, date, start_time })) },
+      _count: { _all: true },
+    })
+    const markedByKey = new Map(marked.map((row) => [historyKey({ group_id: row.group_id, date: toDay(row.date), start_time: toClock(row.start_time) }), row._count._all]))
+
+    return records.map((record) => {
+      const date = toDay(record.date)
+      const startTime = toClock(record.start_time)
+      const group = groupById.get(record.group_id)
+      const session = group ? getSession({ group: toLessonGroup(group), day: date, startTime }) : null
+      const enrolledThatDay = enrolmentsByGroup.filter(
+        (enrolment) => enrolment.group_id === record.group_id && enrolment.enrolled_on <= toDate(date) && (!enrolment.withdrawn_on || enrolment.withdrawn_on >= toDate(date)),
+      )
+      return {
+        group_id: record.group_id,
+        name: group?.name ?? '',
+        course: group?.course.name ?? '',
+        date,
+        start_time: startTime,
+        end_time: session?.end_time ?? startTime,
+        marked: markedByKey.get(historyKey({ group_id: record.group_id, date, start_time: startTime })) ?? 0,
+        total: uniqueByStudent(enrolledThatDay).length,
+      }
+    })
   },
 
   getRegister: async (scope: RegisterScope) => {

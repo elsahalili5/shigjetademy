@@ -783,3 +783,71 @@ describe('a rescheduled session', () => {
     expect(groupNames(await listGroups('arben@lecturer.test', TUESDAY))).toEqual([])
   })
 })
+
+const historyPath = () => `/api/organizations/${organizationId}/attendance/history`
+
+const readHistory = async (email: string) => request(app).get(historyPath()).set('Authorization', await loginAs(email))
+
+describe('attendance history', () => {
+  it('shows the owner and admins with attendance a session once it has at least one saved mark, newest first', async () => {
+    const groupA = await addGroup({ name: 'Group A', lecturerId: arbenId })
+    const groupB = await addGroup({ name: 'Group B', lecturerId: teutaId, schedule: [{ weekday: 'TUESDAY', start_time: '09:00', end_time: '10:00' }] })
+    const arta = await addStudent(groupA.id, { firstName: 'Arta', lastName: 'Gashi' })
+    await addStudent(groupA.id, { firstName: 'Besa', lastName: 'Berisha' })
+    const dren = await addStudent(groupB.id, { firstName: 'Dren', lastName: 'Krasniqi' })
+    await addMark({ groupId: groupA.id, studentId: arta.id, date: MONDAY, status: 'PRESENT' })
+    await addMark({ groupId: groupB.id, studentId: dren.id, date: TUESDAY, startTime: '09:00', status: 'ABSENT' })
+    // A lesson that happened but nobody marked yet: not in the history
+    await addGroup({ name: 'Unmarked', lecturerId: arbenId })
+
+    const response = await readHistory('owner@oxford.test')
+
+    expect(response.status).toBe(200)
+    expect(response.body.data).toEqual([
+      { group_id: groupB.id, name: 'Group B', course: 'Mathematics', date: TUESDAY, start_time: '09:00', end_time: '10:00', marked: 1, total: 1 },
+      { group_id: groupA.id, name: 'Group A', course: 'Mathematics', date: MONDAY, start_time: '17:00', end_time: '18:30', marked: 1, total: 2 },
+    ])
+  })
+
+  it('shows a lecturer only their own groups’ history', async () => {
+    const groupA = await addGroup({ name: 'Group A', lecturerId: arbenId })
+    const groupB = await addGroup({ name: 'Group B', lecturerId: teutaId })
+    const arta = await addStudent(groupA.id, { firstName: 'Arta', lastName: 'Gashi' })
+    const besa = await addStudent(groupB.id, { firstName: 'Besa', lastName: 'Berisha' })
+    await addMark({ groupId: groupA.id, studentId: arta.id, date: MONDAY, status: 'PRESENT' })
+    await addMark({ groupId: groupB.id, studentId: besa.id, date: MONDAY, status: 'ABSENT' })
+
+    expect((await readHistory('arben@lecturer.test')).body.data.map((entry: { name: string }) => entry.name)).toEqual(['Group A'])
+    expect((await readHistory('teuta@lecturer.test')).body.data.map((entry: { name: string }) => entry.name)).toEqual(['Group B'])
+  })
+
+  it('only shows marks from the last 30 days', async () => {
+    const group = await addGroup({ name: 'Group A', lecturerId: arbenId })
+    const arta = await addStudent(group.id, { firstName: 'Arta', lastName: 'Gashi' })
+    await addMark({ groupId: group.id, studentId: arta.id, date: MONDAY, status: 'PRESENT' })
+    await addMark({ groupId: group.id, studentId: arta.id, date: '2026-09-01', status: 'PRESENT' })
+
+    const response = await readHistory('owner@oxford.test')
+
+    expect(response.body.data.map((entry: { date: string }) => entry.date)).toEqual([MONDAY])
+  })
+
+  it('caps at the 20 most recent sessions', async () => {
+    const group = await addGroup({ name: 'Group A', lecturerId: arbenId, schedule: [] })
+    const arta = await addStudent(group.id, { firstName: 'Arta', lastName: 'Gashi' })
+    for (let day = 1; day <= 25; day += 1) {
+      await addMark({ groupId: group.id, studentId: arta.id, date: `2026-11-${String(day).padStart(2, '0')}`, status: 'PRESENT' })
+    }
+
+    const response = await readHistory('owner@oxford.test')
+
+    expect(response.body.data).toHaveLength(20)
+    expect(response.body.data[0].date).toBe('2026-11-25')
+  })
+
+  it('refuses admins without attendance, students and other organizations', async () => {
+    for (const email of ['courses@oxford.test', 'student@oxford.test', 'owner@yllka.test']) {
+      expect((await readHistory(email)).status, email).toBe(403)
+    }
+  })
+})

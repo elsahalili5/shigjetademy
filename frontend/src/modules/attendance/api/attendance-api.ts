@@ -1,9 +1,13 @@
 import { apiClient } from '#/api/client'
-import type { AttendanceMarkInput, AttendanceRegister, AttendanceSession, AttendanceStudent } from '@shigjetademy/shared/attendance'
+import type { AttendanceHistoryEntry, AttendanceMarkInput, AttendanceRegister, AttendanceSession, AttendanceStudent } from '@shigjetademy/shared/attendance'
 
 type ListGroupsParams = {
   organizationId: string
   date: string
+}
+
+type ListHistoryParams = {
+  organizationId: string
 }
 
 /** One session's register: the group, the day and the session's start as 'HH:MM' */
@@ -25,7 +29,7 @@ const registerPath = ({ organizationId, groupId, date, startTime }: RegisterPara
 
 export const attendanceApi = {
   sessions: ({ organizationId, date }: ListGroupsParams) => apiClient.get<AttendanceSession[]>(`${attendancePath(organizationId)}/groups`, { params: { date } }),
+  history: ({ organizationId }: ListHistoryParams) => apiClient.get<AttendanceHistoryEntry[]>(`${attendancePath(organizationId)}/history`),
   register: (params: RegisterParams) => apiClient.get<AttendanceRegister>(registerPath(params)),
   markStudent: ({ studentId, status, ...params }: MarkStudentParams) => apiClient.put<AttendanceStudent, AttendanceMarkInput>(`${registerPath(params)}/students/${studentId}`, { status }),
-  markAllPresent: (params: RegisterParams) => apiClient.put<AttendanceRegister>(`${registerPath(params)}/mark-all-present`),
 }
