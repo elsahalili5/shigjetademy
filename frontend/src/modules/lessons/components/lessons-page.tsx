@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { CalendarX, Presentation } from 'lucide-react'
 import type { LessonPlanSession } from '@shigjetademy/shared/lesson-plans'
@@ -64,6 +64,11 @@ function LessonPlanSessionPicker({ organizationId, date, session, onChange }: Le
   const pickerId = useId()
   const sessions = useLessonPlanSessions({ organizationId, date })
   const formatLessonSlot = useFormatLessonSlot()
+
+  // The day's only session needs no manual pick; a day with none or several still does
+  useEffect(() => {
+    if (session === null && sessions.data?.length === 1) onChange(sessions.data[0])
+  }, [sessions.data, session, onChange])
 
   const handleChange = (event: ChangeEvent<HTMLSelectElement>) => onChange(sessions.data?.find((item) => getLessonPlanSessionKey(item) === event.target.value) ?? null)
 
