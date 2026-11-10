@@ -399,7 +399,7 @@ describe('edits that would clash with a moved lesson', () => {
     request(app)
       .put(groupPath())
       .set('Authorization', await loginAs('owner@oxford.test'))
-      .send({ course_id: courseId, name: 'Group A', academic_year_id: yearId, academic_term_id: termId, location_id: null, capacity: null, lecturer_id: arbenId, lecturer_effective_from: null, schedule })
+      .send({ course_id: courseId, name: 'Group A', academic_year_id: yearId, academic_term_id: termId, room_id: null, capacity: null, lecturer_id: arbenId, lecturer_effective_from: null, schedule })
 
   it('refuses a schedule edit overlapping a lesson moved to today or later, naming it', async () => {
     await reschedule()
@@ -428,7 +428,7 @@ describe('edits that would clash with a moved lesson', () => {
     const moved = await request(app)
       .put(groupPath())
       .set('Authorization', await loginAs('owner@oxford.test'))
-      .send({ course_id: courseId, name: 'Group A', academic_year_id: yearId, academic_term_id: otherTerm.id, location_id: null, capacity: null, lecturer_id: arbenId, lecturer_effective_from: null, schedule: [MORNING, AFTERNOON, FRIDAY_LATE] })
+      .send({ course_id: courseId, name: 'Group A', academic_year_id: yearId, academic_term_id: otherTerm.id, room_id: null, capacity: null, lecturer_id: arbenId, lecturer_effective_from: null, schedule: [MORNING, AFTERNOON, FRIDAY_LATE] })
     const shortened = await request(app)
       .put(`${yearPath()}/terms/${termId}`)
       .set('Authorization', await loginAs('owner@oxford.test'))

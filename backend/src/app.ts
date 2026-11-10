@@ -15,6 +15,8 @@ import locationRoutes from '@modules/location/location.routes.ts'
 import organizationRoutes from '@modules/organization/organization.routes.ts'
 import organizationSettingsRoutes from '@modules/organization-settings/organization-settings.routes.ts'
 import platformSettingsRoutes from '@modules/platform-settings/platform-settings.routes.ts'
+import roomRoutes from '@modules/rooms/room.routes.ts'
+import scheduleRoutes from '@modules/schedule/schedule.routes.ts'
 import studentHomeRoutes from '@modules/student-home/student-home.routes.ts'
 import studentRoutes from '@modules/students/students.routes.ts'
 import studentRosterRoutes from '@modules/student-roster/student-roster.routes.ts'
@@ -31,6 +33,8 @@ app.use('/api/invitations', invitationRoutes)
 app.use('/api/organizations', organizationRoutes)
 app.use('/api/platform', platformSettingsRoutes)
 app.use('/api/organizations', locationRoutes)
+app.use('/api/organizations', roomRoutes)
+app.use('/api/organizations', scheduleRoutes)
 app.use('/api/organizations', academicPeriodsRoutes)
 app.use('/api/organizations', organizationSettingsRoutes)
 app.use('/api/organizations', studentRoutes)

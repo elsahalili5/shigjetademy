@@ -16,7 +16,7 @@ import { useAcademicYears } from '#/modules/academic-periods/hooks/use-academic-
 import { useCourseOptions } from '#/modules/courses/hooks/use-course-options'
 import { useActiveMembership } from '#/modules/auth/hooks/use-active-membership'
 import { isCoursesManager } from '#/modules/courses/utils/permissions'
-import { useLocations } from '#/modules/locations/hooks/use-locations'
+import { useRooms } from '#/modules/locations/hooks/use-rooms'
 import { useGroupLecturerOptions } from '../hooks/use-group-lecturer-options'
 import { useGroups } from '../hooks/use-groups'
 import type { LoadedGroups } from '../hooks/use-groups'
@@ -58,14 +58,14 @@ export function GroupsPage({ organizationId, organizationName, timeZone }: Group
   const groups = useGroups({ organizationId, status, ...listFilters })
   const courses = useCourseOptions(organizationId)
   const years = useAcademicYears(organizationId)
-  const locations = useLocations(organizationId)
+  const rooms = useRooms(organizationId)
   const lecturers = useGroupLecturerOptions({ organizationId, isEnabled: canManage })
   const setGroupStatus = useSetGroupStatus(organizationId)
   const [dialogMode, setDialogMode] = useState<GroupDialogMode>({ kind: 'add', openCount: 0 })
   const [lecturersDialogMode, setLecturersDialogMode] = useState<GroupLecturersDialogMode>({ group: null, openCount: 0 })
   const [notice, setNotice] = useState<Notice | null>(null)
 
-  const formOptions: GroupFormOptions = { courses: courses.data ?? [], years: years.data ?? [], locations: locations.data ?? [], lecturers: lecturers.data ?? [] }
+  const formOptions: GroupFormOptions = { courses: courses.data ?? [], years: years.data ?? [], rooms: rooms.data ?? [], lecturers: lecturers.data ?? [] }
   const setup = getGroupSetup({ years: years.data, courses: courses.data })
   const isListFailed = groups.status === 'error' || courses.status === 'error' || years.status === 'error' || lecturers.status === 'error'
 

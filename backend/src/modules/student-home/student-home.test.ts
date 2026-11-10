@@ -143,8 +143,9 @@ describe('My school: groups', () => {
   it('lists the student’s active groups by name with their course, year, term, location and schedule, and nothing about other students', async () => {
     const term = await prisma.academicTerm.findFirstOrThrow({ where: { name: 'Autumn term' } })
     const location = await prisma.location.create({ data: { organization_id: organizationId, name: 'Main campus', is_main: true } })
+    const room = await prisma.room.create({ data: { location_id: location.id, name: 'Main campus' } })
     const groupB = await addGroup({ name: 'Group B' })
-    await prisma.group.update({ where: { id: groupB.id }, data: { academic_term_id: term.id, location_id: location.id } })
+    await prisma.group.update({ where: { id: groupB.id }, data: { academic_term_id: term.id, room_id: room.id } })
     const groupA = await addGroup({ name: 'Group A' })
     await enrol({ groupId: groupB.id, studentId: artaId })
     await enrol({ groupId: groupA.id, studentId: artaId })

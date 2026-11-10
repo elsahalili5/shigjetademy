@@ -1,7 +1,13 @@
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { MapPin } from 'lucide-react'
 import type { OrganizationLocation } from '@shigjetademy/shared/location'
+import type { OrganizationRoom } from '@shigjetademy/shared/rooms'
 import { LoadError } from '#/components/LoadError'
+import { useLocationRooms } from '../hooks/use-location-rooms'
+import { useRemoveRoom } from '../hooks/use-remove-room'
+import { RoomDialog } from './room-dialog'
+import type { RoomDialogMode } from './room-dialog'
+import { RoomList } from './room-list'
 import { RowAction, RowActions } from './row-actions'
 import { SkeletonRows } from './skeleton-rows'
 
@@ -11,15 +17,18 @@ export type RemoveLocationInput = {
 }
 
 interface LocationListProps {
+  organizationId: string
   status: 'pending' | 'error' | 'success'
   locations?: OrganizationLocation[]
   isOwner: boolean
   onRetry: () => void
   onEdit: (location: OrganizationLocation) => void
   onRemove: (input: RemoveLocationInput) => void
+  onRoomSaved: (saved: OrganizationRoom) => void
+  onRoomRemoved: (room: OrganizationRoom) => void
 }
 
-export function LocationList({ status, locations, isOwner, onRetry, onEdit, onRemove }: LocationListProps) {
+export function LocationList({ organizationId, status, locations, isOwner, onRetry, onEdit, onRemove, onRoomSaved, onRoomRemoved }: LocationListProps) {
   if (status === 'error') return <LoadError what="locations" onRetry={onRetry} />
   if (!locations) return <SkeletonRows />
 
@@ -38,11 +47,14 @@ export function LocationList({ status, locations, isOwner, onRetry, onEdit, onRe
       {locations.map((location) => (
         <LocationRow
           key={location.id}
+          organizationId={organizationId}
           location={location}
           otherLocations={locations.filter((other) => other.id !== location.id)}
           isOwner={isOwner}
           onEdit={onEdit}
           onRemove={onRemove}
+          onRoomSaved={onRoomSaved}
+          onRoomRemoved={onRoomRemoved}
         />
       ))}
     </ul>
@@ -50,14 +62,17 @@ export function LocationList({ status, locations, isOwner, onRetry, onEdit, onRe
 }
 
 interface LocationRowProps {
+  organizationId: string
   location: OrganizationLocation
   otherLocations: OrganizationLocation[]
   isOwner: boolean
   onEdit: (location: OrganizationLocation) => void
   onRemove: (input: RemoveLocationInput) => void
+  onRoomSaved: (saved: OrganizationRoom) => void
+  onRoomRemoved: (room: OrganizationRoom) => void
 }
 
-function LocationRow({ location, otherLocations, isOwner, onEdit, onRemove }: LocationRowProps) {
+function LocationRow({ organizationId, location, otherLocations, isOwner, onEdit, onRemove, onRoomSaved, onRoomRemoved }: LocationRowProps) {
   const place = [location.address, location.city].filter(Boolean).join(', ')
   const details = [place, location.phone].filter(Boolean).join(' · ')
 
@@ -74,11 +89,57 @@ function LocationRow({ location, otherLocations, isOwner, onEdit, onRemove }: Lo
         <span className="text-[0.88rem] text-ink-3">{details || 'No address added'}</span>
       </span>
       {isOwner ? <LocationActions location={location} otherLocations={otherLocations} onEdit={onEdit} onRemove={onRemove} /> : null}
+      <LocationRoomsSection organizationId={organizationId} locationId={location.id} isOwner={isOwner} onRoomSaved={onRoomSaved} onRoomRemoved={onRoomRemoved} />
     </li>
   )
 }
 
-type LocationActionsProps = Omit<LocationRowProps, 'isOwner'>
+interface LocationRoomsSectionProps {
+  organizationId: string
+  locationId: string
+  isOwner: boolean
+  onRoomSaved: (saved: OrganizationRoom) => void
+  onRoomRemoved: (room: OrganizationRoom) => void
+}
+
+/** One location's rooms: its own list, add, edit and remove */
+function LocationRoomsSection({ organizationId, locationId, isOwner, onRoomSaved, onRoomRemoved }: LocationRoomsSectionProps) {
+  const roomDialogRef = useRef<HTMLDialogElement>(null)
+  const rooms = useLocationRooms({ organizationId, locationId })
+  const removeRoom = useRemoveRoom()
+  const [roomDialogMode, setRoomDialogMode] = useState<RoomDialogMode>({ kind: 'add' })
+
+  const handleAddRoom = () => {
+    setRoomDialogMode({ kind: 'add' })
+    roomDialogRef.current?.showModal()
+  }
+
+  const handleEditRoom = (room: OrganizationRoom) => {
+    setRoomDialogMode({ kind: 'edit', room })
+    roomDialogRef.current?.showModal()
+  }
+
+  const handleRemoveRoom = (room: OrganizationRoom) => {
+    removeRoom.mutate({ organizationId, locationId, roomId: room.id }, { onSuccess: () => onRoomRemoved(room) })
+  }
+
+  return (
+    <>
+      <RoomList
+        status={rooms.status}
+        rooms={rooms.data}
+        isOwner={isOwner}
+        onRetry={() => void rooms.refetch()}
+        onAdd={handleAddRoom}
+        onEdit={handleEditRoom}
+        onRemove={handleRemoveRoom}
+      />
+      {isOwner ? <RoomDialog dialogRef={roomDialogRef} organizationId={organizationId} locationId={locationId} mode={roomDialogMode} onSaved={onRoomSaved} /> : null}
+    </>
+  )
+}
+
+type LocationActionsProps = Pick<LocationRowProps, 'location' | 'otherLocations' | 'onEdit' | 'onRemove'>
 
 /** Edit and remove; removing asks once, and removing the main location first asks which one takes over */
 function LocationActions({ location, otherLocations, onEdit, onRemove }: LocationActionsProps) {

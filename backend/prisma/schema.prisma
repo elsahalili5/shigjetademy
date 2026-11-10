@@ -86,6 +86,9 @@ enum ActivityAction {
   LOCATION_CREATED
   LOCATION_UPDATED
   LOCATION_REMOVED
+  ROOM_CREATED
+  ROOM_UPDATED
+  ROOM_REMOVED
   DEPARTMENT_CREATED
   DEPARTMENT_UPDATED
   DEPARTMENT_REMOVED
@@ -192,33 +195,33 @@ enum DateFormat {
 // ─────────────────────────────────────────
 
 model User {
-  id                  String     @id @default(uuid()) @db.Uuid
-  first_name          String
-  last_name           String
-  email               String     @unique
-  password_hash       String
-  status              UserStatus @default(PENDING)
+  id            String     @id @default(uuid()) @db.Uuid
+  first_name    String
+  last_name     String
+  email         String     @unique
+  password_hash String
+  status        UserStatus @default(PENDING)
 
-  lockout_enabled     Boolean    @default(true)
-  access_failed_count Int        @default(0)
+  lockout_enabled     Boolean   @default(true)
+  access_failed_count Int       @default(0)
   locked_until        DateTime?
-  email_confirmed     Boolean    @default(false)
+  email_confirmed     Boolean   @default(false)
 
-  created_at          DateTime   @default(now())
-  updated_at          DateTime   @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  user_roles          UserRole[]
-  user_tokens         UserTokens[]
-  refresh_tokens      RefreshTokens[]
-  memberships         Membership[]
-  sent_invitations    Invitation[] @relation("InvitedBy")
-  activity_as_actor   ActivityLog[] @relation("ActivityActor")
-  activity_as_target  ActivityLog[] @relation("ActivityTarget")
-  attendance_marked   AttendanceRecord[]
-  lesson_reschedules  LessonReschedule[]
+  user_roles           UserRole[]
+  user_tokens          UserTokens[]
+  refresh_tokens       RefreshTokens[]
+  memberships          Membership[]
+  sent_invitations     Invitation[]       @relation("InvitedBy")
+  activity_as_actor    ActivityLog[]      @relation("ActivityActor")
+  activity_as_target   ActivityLog[]      @relation("ActivityTarget")
+  attendance_marked    AttendanceRecord[]
+  lesson_reschedules   LessonReschedule[]
   lesson_plans_written LessonPlan[]
-  student_records     Student[]
-  lecturer_records    Lecturer[]
+  student_records      Student[]
+  lecturer_records     Lecturer[]
 }
 
 /// Platform-wide roles (PLATFORM_ADMIN); organization roles live on Membership
@@ -251,7 +254,7 @@ model RefreshTokens {
   created DateTime @default(now())
   revoked Boolean  @default(false)
 
-  user    User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
 }
@@ -266,7 +269,7 @@ model UserTokens {
   used_at    DateTime?
   created_at DateTime  @default(now())
 
-  user       User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id, type])
 }
@@ -276,27 +279,27 @@ model UserTokens {
 // ─────────────────────────────────────────
 
 model Organization {
-  id           String             @id @default(uuid()) @db.Uuid
-  name         String
-  type         OrganizationType
-  country      String             @db.Char(2)
-  currency     String             @db.Char(3)
-  size         String?
-  email        String?
-  phone        String?
-  website      String?
+  id            String             @id @default(uuid()) @db.Uuid
+  name          String
+  type          OrganizationType
+  country       String             @db.Char(2)
+  currency      String             @db.Char(3)
+  size          String?
+  email         String?
+  phone         String?
+  website       String?
   /// Shigjetademy's share of each student payment, in hundredths of a percent (300 = 3%)
-  fee_rate_bps Int                @default(300)
-  status       OrganizationStatus @default(ACTIVE)
+  fee_rate_bps  Int                @default(300)
+  status        OrganizationStatus @default(ACTIVE)
   /// Set once, from the platform's default trial days, when the organization is created; never changed afterward by a platform settings change
   trial_ends_at DateTime?
 
-  created_at   DateTime           @default(now())
-  updated_at   DateTime           @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  memberships  Membership[]
-  invitations  Invitation[]
-  activity     ActivityLog[]
+  memberships    Membership[]
+  invitations    Invitation[]
+  activity       ActivityLog[]
   locations      Location[]
   departments    Department[]
   academic_years AcademicYear[]
@@ -309,68 +312,85 @@ model Organization {
 
 /// How one organization runs. An organization without a row reads the defaults; the row is written on its first save.
 model OrganizationSettings {
-  organization_id String       @id @db.Uuid
+  organization_id String     @id @db.Uuid
   /// An IANA time zone, like Europe/Belgrade
   time_zone       String
-  week_start      WeekStart    @default(MONDAY)
-  date_format     DateFormat   @default(DAY_MONTH_YEAR)
+  week_start      WeekStart  @default(MONDAY)
+  date_format     DateFormat @default(DAY_MONTH_YEAR)
 
-  created_at      DateTime     @default(now())
-  updated_at      DateTime     @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  organization    Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
 }
 
 /// How the whole platform runs: one row, written on its first save. Reading it when it doesn't exist yet returns the defaults.
 model PlatformSettings {
-  id                  Int      @id @default(1)
-  platform_name       String   @default("Shigjetademy")
+  id                  Int     @id @default(1)
+  platform_name       String  @default("Shigjetademy")
   logo_url            String?
-  maintenance_mode    Boolean  @default(false)
+  maintenance_mode    Boolean @default(false)
   maintenance_message String?
   /// How many days a new organization's trial runs; 0 means no trial
-  default_trial_days  Int      @default(14)
+  default_trial_days  Int     @default(14)
 
-  created_at          DateTime @default(now())
-  updated_at          DateTime @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 }
 
 /// A campus or branch. While an organization has any, exactly one is its main location (kept by the location service).
 model Location {
-  id              String       @id @default(uuid()) @db.Uuid
-  organization_id String       @db.Uuid
+  id              String  @id @default(uuid()) @db.Uuid
+  organization_id String  @db.Uuid
   name            String
   address         String?
   city            String?
   phone           String?
-  is_main         Boolean      @default(false)
+  is_main         Boolean @default(false)
 
-  created_at      DateTime     @default(now())
-  updated_at      DateTime     @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  organization    Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  departments     Department[]
-  lecturers       LecturerLocation[]
-  groups          Group[]
+  organization Organization       @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  departments  Department[]
+  lecturers    LecturerLocation[]
+  rooms        Room[]
 
   @@index([organization_id])
 }
 
+/// A room at a location, like Room 101; it only exists inside its location, unlike a department
+model Room {
+  id          String @id @default(uuid()) @db.Uuid
+  location_id String @db.Uuid
+  name        String
+  /// Seats; no enforcement against a group's size
+  capacity    Int?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  location Location @relation(fields: [location_id], references: [id], onDelete: Cascade)
+  groups   Group[]
+
+  @@index([location_id])
+}
+
 /// Removing its location keeps the department, without a location
 model Department {
-  id              String       @id @default(uuid()) @db.Uuid
-  organization_id String       @db.Uuid
-  location_id     String?      @db.Uuid
+  id              String  @id @default(uuid()) @db.Uuid
+  organization_id String  @db.Uuid
+  location_id     String? @db.Uuid
   name            String
   description     String?
 
-  created_at      DateTime     @default(now())
-  updated_at      DateTime     @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  organization    Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  location        Location?    @relation(fields: [location_id], references: [id], onDelete: SetNull)
-  lecturers       Lecturer[]
-  courses         Course[]
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  location     Location?    @relation(fields: [location_id], references: [id], onDelete: SetNull)
+  lecturers    Lecturer[]
+  courses      Course[]
 
   @@unique([organization_id, name])
   @@index([location_id])
@@ -454,12 +474,12 @@ model Student {
   user_id         String?       @db.Uuid
   notes           String?
 
-  created_at      DateTime      @default(now())
-  updated_at      DateTime      @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  organization    Organization  @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  user            User?         @relation(fields: [user_id], references: [id], onDelete: SetNull)
-  invitations     Invitation[]
+  organization     Organization       @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  user             User?              @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  invitations      Invitation[]
   group_enrolments GroupEnrolment[]
   attendance       AttendanceRecord[]
 
@@ -493,15 +513,15 @@ model Lecturer {
   /// The login linked to this record, at most one
   user_id         String?        @db.Uuid
 
-  created_at      DateTime       @default(now())
-  updated_at      DateTime       @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  organization    Organization       @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  department      Department?        @relation(fields: [department_id], references: [id], onDelete: SetNull)
-  user            User?              @relation(fields: [user_id], references: [id], onDelete: SetNull)
-  locations       LecturerLocation[]
-  invitations     Invitation[]
-  group_assignments GroupLecturerAssignment[]
+  organization        Organization              @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  department          Department?               @relation(fields: [department_id], references: [id], onDelete: SetNull)
+  user                User?                     @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  locations           LecturerLocation[]
+  invitations         Invitation[]
+  group_assignments   GroupLecturerAssignment[]
   group_substitutions GroupSubstitution[]
 
   @@unique([organization_id, user_id])
@@ -512,11 +532,11 @@ model Lecturer {
 
 /// Where a lecturer teaches; removing either side removes only the link
 model LecturerLocation {
-  lecturer_id String   @db.Uuid
-  location_id String   @db.Uuid
+  lecturer_id String @db.Uuid
+  location_id String @db.Uuid
 
-  lecturer    Lecturer @relation(fields: [lecturer_id], references: [id], onDelete: Cascade)
-  location    Location @relation(fields: [location_id], references: [id], onDelete: Cascade)
+  lecturer Lecturer @relation(fields: [lecturer_id], references: [id], onDelete: Cascade)
+  location Location @relation(fields: [location_id], references: [id], onDelete: Cascade)
 
   @@id([lecturer_id, location_id])
   @@index([location_id])
@@ -540,13 +560,13 @@ model Course {
   department_id   String       @db.Uuid
   status          CourseStatus @default(ACTIVE)
 
-  created_at      DateTime     @default(now())
-  updated_at      DateTime     @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  organization    Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
   /// NoAction: a department with courses can't be deleted (the department service says why), while deleting the organization still removes both, as both sit directly under it
-  department      Department   @relation(fields: [department_id], references: [id], onDelete: NoAction)
-  groups          Group[]
+  department   Department   @relation(fields: [department_id], references: [id], onDelete: NoAction)
+  groups       Group[]
 
   @@unique([organization_id, name])
   @@unique([organization_id, code])
@@ -556,41 +576,41 @@ model Course {
 
 /// A class the organization runs: one course in one school year. Groups are archived, never deleted.
 model Group {
-  id               String        @id @default(uuid()) @db.Uuid
-  organization_id  String        @db.Uuid
-  course_id        String        @db.Uuid
+  id               String      @id @default(uuid()) @db.Uuid
+  organization_id  String      @db.Uuid
+  course_id        String      @db.Uuid
   name             String
-  academic_year_id String        @db.Uuid
+  academic_year_id String      @db.Uuid
   /// Removing the term keeps the group, without one
-  academic_term_id String?       @db.Uuid
-  /// Stands in for a room until rooms exist; removing the location keeps the group, without one
-  location_id      String?       @db.Uuid
+  academic_term_id String?     @db.Uuid
+  /// Removing the room keeps the group, without one
+  room_id          String?     @db.Uuid
   /// Seats; a full group takes no new students and can't drop below its active ones (kept by the groups services); null for no limit
   capacity         Int?
-  status           GroupStatus   @default(ACTIVE)
+  status           GroupStatus @default(ACTIVE)
 
-  created_at       DateTime      @default(now())
-  updated_at       DateTime      @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  organization     Organization  @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  course           Course        @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  organization         Organization              @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  course               Course                    @relation(fields: [course_id], references: [id], onDelete: Cascade)
   /// NoAction: a year with groups can't be deleted (the academic periods service says why), while deleting the organization still removes both
-  academic_year    AcademicYear  @relation(fields: [academic_year_id], references: [id], onDelete: NoAction)
-  academic_term    AcademicTerm? @relation(fields: [academic_term_id], references: [id], onDelete: SetNull)
-  location         Location?     @relation(fields: [location_id], references: [id], onDelete: SetNull)
+  academic_year        AcademicYear              @relation(fields: [academic_year_id], references: [id], onDelete: NoAction)
+  academic_term        AcademicTerm?             @relation(fields: [academic_term_id], references: [id], onDelete: SetNull)
+  room                 Room?                     @relation(fields: [room_id], references: [id], onDelete: SetNull)
   lecturer_assignments GroupLecturerAssignment[]
-  substitutions    GroupSubstitution[]
-  meetings         GroupMeeting[]
-  enrolments       GroupEnrolment[]
-  attendance       AttendanceRecord[]
-  reschedules      LessonReschedule[]
-  lesson_plans     LessonPlan[]
+  substitutions        GroupSubstitution[]
+  meetings             GroupMeeting[]
+  enrolments           GroupEnrolment[]
+  attendance           AttendanceRecord[]
+  reschedules          LessonReschedule[]
+  lesson_plans         LessonPlan[]
 
   @@unique([course_id, academic_year_id, name])
   @@index([organization_id, status])
   @@index([academic_year_id])
   @@index([academic_term_id])
-  @@index([location_id])
+  @@index([room_id])
 }
 
 /// One weekly meeting of a group, like Monday 17:00 to 18:30. It runs for the group's term, or its whole school year without one; on one day they don't overlap (kept by the groups service).
@@ -604,7 +624,7 @@ model GroupMeeting {
 
   created_at DateTime @default(now())
 
-  group      Group    @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [group_id], references: [id], onDelete: Cascade)
 
   @@index([group_id])
 }
@@ -620,12 +640,12 @@ model GroupEnrolment {
   /// Null while active
   withdrawn_on DateTime? @db.Date
 
-  created_at   DateTime  @default(now())
-  updated_at   DateTime  @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  group        Group     @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  group   Group   @relation(fields: [group_id], references: [id], onDelete: Cascade)
   /// Cascade, not NoAction: a row sits under the organization through the group, so a NoAction check would run before that cascade reaches it and block deleting the organization. Students are archived, never deleted on their own.
-  student      Student   @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [student_id], references: [id], onDelete: Cascade)
 
   @@index([group_id, withdrawn_on])
   @@index([student_id, withdrawn_on])
@@ -645,13 +665,13 @@ model AttendanceRecord {
   /// Who set the current status; null once that user is deleted, and the mark stays
   marked_by_id String?          @db.Uuid
 
-  created_at   DateTime         @default(now())
-  updated_at   DateTime         @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  group        Group            @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  group     Group   @relation(fields: [group_id], references: [id], onDelete: Cascade)
   /// Cascade, not NoAction: a row sits under the organization through the group, so a NoAction check would run before that cascade reaches it and block deleting the organization. Students are archived, never deleted on their own.
-  student      Student          @relation(fields: [student_id], references: [id], onDelete: Cascade)
-  marked_by    User?            @relation(fields: [marked_by_id], references: [id], onDelete: SetNull)
+  student   Student @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  marked_by User?   @relation(fields: [marked_by_id], references: [id], onDelete: SetNull)
 
   @@unique([group_id, student_id, date, start_time])
   @@index([group_id, date, start_time])
@@ -681,8 +701,8 @@ model LessonReschedule {
   cancelled_at        DateTime?
 
   /// Cascade: a row sits under the organization through the group, so deleting the organization removes it
-  group               Group     @relation(fields: [group_id], references: [id], onDelete: Cascade)
-  created_by          User?     @relation(fields: [created_by_id], references: [id], onDelete: SetNull)
+  group      Group @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  created_by User? @relation(fields: [created_by_id], references: [id], onDelete: SetNull)
 
   @@index([group_id, original_date])
   @@index([group_id, new_date])
@@ -692,25 +712,25 @@ model LessonReschedule {
 /// One lesson session's plan: a group on a day at a start time. The topic may be set ahead of the session; what was covered only from its start time on.
 /// Both are free text and optional; a session with neither doesn't need a row.
 model LessonPlan {
-  id            String    @id @default(uuid()) @db.Uuid
-  group_id      String    @db.Uuid
+  id            String   @id @default(uuid()) @db.Uuid
+  group_id      String   @db.Uuid
   /// The lesson's calendar day in the organization's time zone
-  date          DateTime  @db.Date
+  date          DateTime @db.Date
   /// The session's wall-clock start, stored rather than read from the schedule, for the same reason as on AttendanceRecord
-  start_time    DateTime  @db.Time(0)
+  start_time    DateTime @db.Time(0)
   /// Planned ahead of the session; editable at any time
   topic         String?
   /// What was actually covered; editable only from the session's start time on
   covered       String?
   /// Who last wrote to this row; null once that user is deleted, and the row stays
-  updated_by_id String?   @db.Uuid
+  updated_by_id String?  @db.Uuid
 
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   /// Cascade, not NoAction: a row sits under the organization through the group, same reasoning as AttendanceRecord
-  group         Group     @relation(fields: [group_id], references: [id], onDelete: Cascade)
-  updated_by    User?     @relation(fields: [updated_by_id], references: [id], onDelete: SetNull)
+  group      Group @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  updated_by User? @relation(fields: [updated_by_id], references: [id], onDelete: SetNull)
 
   @@unique([group_id, date, start_time])
   @@index([group_id, date, start_time])
@@ -727,12 +747,12 @@ model GroupLecturerAssignment {
   /// Null while open
   end_date    DateTime? @db.Date
 
-  created_at  DateTime  @default(now())
-  updated_at  DateTime  @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  group       Group     @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  group    Group    @relation(fields: [group_id], references: [id], onDelete: Cascade)
   /// Cascade, not NoAction: a row sits under the organization through the group, so a NoAction check would run before that cascade reaches it and block deleting the organization. Lecturers are archived, never deleted on their own.
-  lecturer    Lecturer  @relation(fields: [lecturer_id], references: [id], onDelete: Cascade)
+  lecturer Lecturer @relation(fields: [lecturer_id], references: [id], onDelete: Cascade)
 
   @@index([group_id, start_date])
   @@index([lecturer_id])
@@ -750,12 +770,12 @@ model GroupSubstitution {
   /// Set when cancelled; the row stays on record and frees its days
   cancelled_at DateTime?
 
-  created_at   DateTime  @default(now())
-  updated_at   DateTime  @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  group        Group     @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  group    Group    @relation(fields: [group_id], references: [id], onDelete: Cascade)
   /// Cascade for the same reason as on GroupLecturerAssignment
-  lecturer     Lecturer  @relation(fields: [lecturer_id], references: [id], onDelete: Cascade)
+  lecturer Lecturer @relation(fields: [lecturer_id], references: [id], onDelete: Cascade)
 
   @@index([group_id, start_date])
   @@index([lecturer_id, end_date])
@@ -770,11 +790,11 @@ model Membership {
   permissions     Permission[]
   status          MembershipStatus @default(ACTIVE)
 
-  created_at      DateTime         @default(now())
-  updated_at      DateTime         @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  user            User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  organization    Organization     @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, organization_id])
   @@index([organization_id, role])
@@ -797,15 +817,15 @@ model Invitation {
   expires_at      DateTime
   invited_by_id   String           @db.Uuid
 
-  created_at      DateTime         @default(now())
-  accepted_at     DateTime?
-  revoked_at      DateTime?
+  created_at  DateTime  @default(now())
+  accepted_at DateTime?
+  revoked_at  DateTime?
 
-  organization    Organization     @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  invited_by      User             @relation("InvitedBy", fields: [invited_by_id], references: [id])
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  invited_by   User         @relation("InvitedBy", fields: [invited_by_id], references: [id])
   /// Cascade: an invitation for a deleted record could never be accepted correctly
-  student         Student?         @relation(fields: [student_id], references: [id], onDelete: Cascade)
-  lecturer        Lecturer?        @relation(fields: [lecturer_id], references: [id], onDelete: Cascade)
+  student      Student?     @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  lecturer     Lecturer?    @relation(fields: [lecturer_id], references: [id], onDelete: Cascade)
 
   @@index([organization_id, status])
   @@index([email])
@@ -832,9 +852,9 @@ model ActivityLog {
   subject_name    String?
   created_at      DateTime       @default(now())
 
-  actor           User?          @relation("ActivityActor", fields: [actor_id], references: [id], onDelete: SetNull)
-  organization    Organization?  @relation(fields: [organization_id], references: [id], onDelete: SetNull)
-  target_user     User?          @relation("ActivityTarget", fields: [target_user_id], references: [id], onDelete: SetNull)
+  actor        User?         @relation("ActivityActor", fields: [actor_id], references: [id], onDelete: SetNull)
+  organization Organization? @relation(fields: [organization_id], references: [id], onDelete: SetNull)
+  target_user  User?         @relation("ActivityTarget", fields: [target_user_id], references: [id], onDelete: SetNull)
 
   @@index([created_at])
   @@index([organization_id])

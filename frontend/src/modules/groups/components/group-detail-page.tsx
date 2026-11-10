@@ -1,5 +1,4 @@
-import { Link } from '@tanstack/react-router'
-import { ArrowLeft, UsersRound } from 'lucide-react'
+import { UsersRound } from 'lucide-react'
 import { todayIn } from '@shigjetademy/shared/calendar-day'
 import type { Group } from '@shigjetademy/shared/groups'
 import { isApiError } from '#/api/client'
@@ -39,12 +38,12 @@ export function GroupDetailPage({ organizationId, groupId, timeZone }: GroupDeta
 
   return (
     <div className="flex h-full min-w-0 flex-col overflow-y-auto">
-      <DashboardPageHeader icon={UsersRound} title={group.data?.name ?? 'Group'} subtitle={group.data ? `${group.data.course.name} · ${group.data.academic_year.name}` : 'A class you run'}>
-        <Link className="button button--ghost min-h-11 px-4 text-base" to="/dashboard/groups">
-          <ArrowLeft size={17} strokeWidth={2.2} aria-hidden="true" />
-          Back to Groups
-        </Link>
-      </DashboardPageHeader>
+      <DashboardPageHeader
+        icon={UsersRound}
+        title={group.data?.name ?? 'Group'}
+        subtitle={group.data ? `${group.data.course.name} · ${group.data.academic_year.name}` : 'A class you run'}
+        backTo={{ to: '/dashboard/groups', label: 'Back to Groups' }}
+      />
       <div className="grid max-w-[880px] min-w-0 gap-5 px-[clamp(20px,3.4vw,44px)] pb-10">
         <GroupDetailContent organizationId={organizationId} group={group.data} status={group.status} isNotFound={isNotFound} timeZone={timeZone} onRetry={() => void group.refetch()} />
       </div>
@@ -80,7 +79,7 @@ function GroupDetailContent({ organizationId, group, status, isNotFound, timeZon
           <Detail term="Course">{group.course.name}</Detail>
           <Detail term="School year">{group.academic_year.name}</Detail>
           <Detail term="Term">{group.academic_term?.name ?? <NotSet text="No term" />}</Detail>
-          <Detail term="Location">{group.location?.name ?? <NotSet text="No location" />}</Detail>
+          <Detail term="Room">{group.room?.name ?? <NotSet text="No room" />}</Detail>
           <Detail term="Capacity">{group.capacity === null ? <NotSet text="No limit" /> : getSeats(group.capacity)}</Detail>
           <Detail term="Students">
             <span className="tabular">{getEnrolmentCountLabel(group)}</span>

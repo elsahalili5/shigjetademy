@@ -22,7 +22,7 @@ export function useGroupForm({ group, defaultYearId }: UseGroupFormParams) {
       name: group?.name ?? '',
       academic_year_id: group?.academic_year.id ?? defaultYearId,
       academic_term_id: group?.academic_term?.id ?? null,
-      location_id: group?.location?.id ?? null,
+      room_id: group?.room?.id ?? null,
       capacity: group?.capacity ?? null,
       lecturer_id: (group && getPlannedLecturer(group)?.id) ?? null,
       lecturer_effective_from: group?.lecturer_change?.start_date ?? null,

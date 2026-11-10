@@ -1,0 +1,4 @@
+-- AlterEnum
+ALTER TYPE "ActivityAction" ADD VALUE 'ROOM_CREATED';
+ALTER TYPE "ActivityAction" ADD VALUE 'ROOM_UPDATED';
+ALTER TYPE "ActivityAction" ADD VALUE 'ROOM_REMOVED';

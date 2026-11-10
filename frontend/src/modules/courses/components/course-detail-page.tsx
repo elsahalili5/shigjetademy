@@ -1,5 +1,4 @@
-import { Link } from '@tanstack/react-router'
-import { ArrowLeft, Layers, UsersRound } from 'lucide-react'
+import { Layers, UsersRound } from 'lucide-react'
 import type { CourseDetail } from '@shigjetademy/shared/courses'
 import { isApiError } from '#/api/client'
 import { DashboardPageHeader } from '#/components/DashboardPageHeader'
@@ -27,12 +26,12 @@ export function CourseDetailPage({ organizationId, courseId }: CourseDetailPageP
 
   return (
     <div className="flex h-full min-w-0 flex-col overflow-y-auto">
-      <DashboardPageHeader icon={Layers} title={course.data?.name ?? 'Course'} subtitle={course.data ? `${course.data.level} · ${course.data.department.name}` : 'Something you teach'}>
-        <Link className="button button--ghost min-h-11 px-4 text-base" to="/dashboard/courses">
-          <ArrowLeft size={17} strokeWidth={2.2} aria-hidden="true" />
-          Back to Courses
-        </Link>
-      </DashboardPageHeader>
+      <DashboardPageHeader
+        icon={Layers}
+        title={course.data?.name ?? 'Course'}
+        subtitle={course.data ? `${course.data.level} · ${course.data.department.name}` : 'Something you teach'}
+        backTo={{ to: '/dashboard/courses', label: 'Back to Courses' }}
+      />
       <div className="grid min-w-0 gap-5 px-[clamp(20px,3.4vw,44px)] pb-10">
         <CourseDetailContent course={course.data} status={course.status} isNotFound={isNotFound} onRetry={() => void course.refetch()} />
       </div>

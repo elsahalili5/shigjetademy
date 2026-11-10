@@ -12,15 +12,16 @@ let yearId: string
 let otherYearId: string
 let autumnId: string
 let otherYearTermId: string
-let mainCampusId: string
-let northCampusId: string
+let mainCampusRoomId: string
+let northCampusRoomId: string
+let northCampusLocationId: string
 
 type GroupBody = {
   course_id: string
   name: string
   academic_year_id: string
   academic_term_id: string | null
-  location_id: string | null
+  room_id: string | null
   capacity: number | null
   lecturer_id: string | null
   lecturer_effective_from: string | null
@@ -40,7 +41,7 @@ const group = (overrides: Partial<GroupBody> = {}): GroupBody => ({
   name: 'Group A',
   academic_year_id: yearId,
   academic_term_id: null,
-  location_id: null,
+  room_id: null,
   capacity: null,
   lecturer_id: null,
   lecturer_effective_from: null,
@@ -70,7 +71,8 @@ const yllkaRecords = async () => {
   const year = await prisma.academicYear.create({ data: { organization_id: yllka.id, name: '2026–27', start_date: new Date('2026-09-01'), end_date: new Date('2027-06-30'), is_current: true } })
   const term = await prisma.academicTerm.create({ data: { academic_year_id: year.id, name: 'Autumn', start_date: new Date('2026-09-01'), end_date: new Date('2027-01-31') } })
   const location = await prisma.location.create({ data: { organization_id: yllka.id, name: 'Yllka campus', is_main: true } })
-  return { courseId: course.id, yearId: year.id, termId: term.id, locationId: location.id }
+  const room = await prisma.room.create({ data: { location_id: location.id, name: 'Yllka room' } })
+  return { courseId: course.id, yearId: year.id, termId: term.id, roomId: room.id }
 }
 
 beforeEach(async () => {
@@ -96,15 +98,17 @@ beforeEach(async () => {
   otherYearId = (await prisma.academicYear.create({ data: { organization_id: organizationId, name: '2027–28', start_date: new Date('2027-09-01'), end_date: new Date('2028-06-30') } })).id
   autumnId = (await prisma.academicTerm.create({ data: { academic_year_id: yearId, name: 'Autumn', start_date: new Date('2026-09-01'), end_date: new Date('2027-01-31') } })).id
   otherYearTermId = (await prisma.academicTerm.create({ data: { academic_year_id: otherYearId, name: 'Autumn', start_date: new Date('2027-09-01'), end_date: new Date('2028-01-31') } })).id
-  mainCampusId = (await prisma.location.create({ data: { organization_id: organizationId, name: 'Main campus', is_main: true } })).id
-  northCampusId = (await prisma.location.create({ data: { organization_id: organizationId, name: 'North campus' } })).id
+  const mainCampusId = (await prisma.location.create({ data: { organization_id: organizationId, name: 'Main campus', is_main: true } })).id
+  northCampusLocationId = (await prisma.location.create({ data: { organization_id: organizationId, name: 'North campus' } })).id
+  mainCampusRoomId = (await prisma.room.create({ data: { location_id: mainCampusId, name: 'Main campus' } })).id
+  northCampusRoomId = (await prisma.room.create({ data: { location_id: northCampusLocationId, name: 'North campus' } })).id
   groupsPath = `/api/organizations/${organizationId}/groups`
   ownerAuth = await loginAs('owner@oxford.test')
 })
 
 describe('adding and listing groups', () => {
   it('adds a group with every field and lists it', async () => {
-    const response = await addGroup(group({ academic_term_id: autumnId, location_id: mainCampusId, capacity: 20 }))
+    const response = await addGroup(group({ academic_term_id: autumnId, room_id: mainCampusRoomId, capacity: 20 }))
 
     expect(response.status).toBe(201)
     expect(response.body.data).toMatchObject({
@@ -114,7 +118,7 @@ describe('adding and listing groups', () => {
       course: { id: mathematicsId, name: 'Mathematics', status: 'ACTIVE' },
       academic_year: { id: yearId, name: '2026–27' },
       academic_term: { id: autumnId, name: 'Autumn' },
-      location: { id: mainCampusId, name: 'Main campus' },
+      room: { id: mainCampusRoomId, name: 'Main campus' },
     })
     const list = await listGroups()
     expect(list.status).toBe(200)
@@ -126,7 +130,7 @@ describe('adding and listing groups', () => {
     const response = await addGroup(group())
 
     expect(response.status).toBe(201)
-    expect(response.body.data).toMatchObject({ academic_term: null, location: null, capacity: null })
+    expect(response.body.data).toMatchObject({ academic_term: null, room: null, capacity: null })
   })
 
   it('asks for a name, a course and a year', async () => {
@@ -192,7 +196,7 @@ describe('adding and listing groups', () => {
     const course = await addGroup(group({ course_id: yllka.courseId }))
     const year = await addGroup(group({ academic_year_id: yllka.yearId }))
     const term = await addGroup(group({ academic_term_id: yllka.termId }))
-    const location = await addGroup(group({ location_id: yllka.locationId }))
+    const location = await addGroup(group({ room_id: yllka.roomId }))
 
     expect(course.status).toBe(400)
     expect(course.body.details.fieldErrors.course_id).toEqual(['Choose one of your organization’s courses.'])
@@ -201,7 +205,7 @@ describe('adding and listing groups', () => {
     expect(term.status).toBe(400)
     expect(term.body.details.fieldErrors.academic_term_id).toEqual(['Choose a term of this school year.'])
     expect(location.status).toBe(400)
-    expect(location.body.details.fieldErrors.location_id).toEqual(['Choose one of your organization’s locations.'])
+    expect(location.body.details.fieldErrors.room_id).toEqual(['Choose one of your organization’s rooms.'])
     expect((await listGroups()).body.data.groups).toEqual([])
   })
 
@@ -244,13 +248,13 @@ describe('what removing a place does to groups', () => {
     expect((await listGroups()).body.data.groups).toMatchObject([{ id: added.body.data.id, academic_term: null }])
   })
 
-  it('keeps the group, without a location, when its location is removed', async () => {
-    const added = await addGroup(group({ location_id: northCampusId }))
+  it('keeps the group, without a room, when its room’s location is removed', async () => {
+    const added = await addGroup(group({ room_id: northCampusRoomId }))
 
-    const response = await request(app).delete(`/api/organizations/${organizationId}/locations/${northCampusId}`).set('Authorization', ownerAuth)
+    const response = await request(app).delete(`/api/organizations/${organizationId}/locations/${northCampusLocationId}`).set('Authorization', ownerAuth)
 
     expect(response.status).toBe(200)
-    expect((await listGroups()).body.data.groups).toMatchObject([{ id: added.body.data.id, location: null }])
+    expect((await listGroups()).body.data.groups).toMatchObject([{ id: added.body.data.id, room: null }])
   })
 })
 
@@ -294,7 +298,7 @@ const readGroup = async (id: string, auth = ownerAuth) => request(app).get(`${gr
 describe('reading one group', () => {
   it('answers the group with its course, year, term, location, capacity and lecturer', async () => {
     const lecturer = await addLecturer({ firstName: 'Arben', lastName: 'Hoxha' })
-    const added = await addGroup(group({ academic_term_id: autumnId, location_id: mainCampusId, capacity: 20, lecturer_id: lecturer.id }))
+    const added = await addGroup(group({ academic_term_id: autumnId, room_id: mainCampusRoomId, capacity: 20, lecturer_id: lecturer.id }))
 
     const response = await readGroup(added.body.data.id)
 
@@ -306,7 +310,7 @@ describe('reading one group', () => {
       course: { id: mathematicsId, name: 'Mathematics' },
       academic_year: { id: yearId, name: '2026–27' },
       academic_term: { id: autumnId, name: 'Autumn' },
-      location: { id: mainCampusId, name: 'Main campus' },
+      room: { id: mainCampusRoomId, name: 'Main campus' },
       lecturer: { id: lecturer.id, first_name: 'Arben', last_name: 'Hoxha' },
     })
   })
@@ -389,7 +393,7 @@ describe('editing groups', () => {
 
     const response = await updateGroup(
       added.body.data.id,
-      group({ course_id: physics.id, name: 'Group B', academic_year_id: otherYearId, academic_term_id: otherYearTermId, location_id: mainCampusId, capacity: 12 }),
+      group({ course_id: physics.id, name: 'Group B', academic_year_id: otherYearId, academic_term_id: otherYearTermId, room_id: mainCampusRoomId, capacity: 12 }),
     )
 
     expect(response.status).toBe(200)
@@ -399,7 +403,7 @@ describe('editing groups', () => {
       course: { id: physics.id },
       academic_year: { id: otherYearId },
       academic_term: { id: otherYearTermId },
-      location: { id: mainCampusId },
+      room: { id: mainCampusRoomId },
     })
   })
 
@@ -436,7 +440,7 @@ describe('editing groups', () => {
     expect((await updateGroup(id, group({ course_id: yllka.courseId }))).status).toBe(400)
     expect((await updateGroup(id, group({ academic_year_id: yllka.yearId }))).status).toBe(400)
     expect((await updateGroup(id, group({ academic_term_id: yllka.termId }))).status).toBe(400)
-    expect((await updateGroup(id, group({ location_id: yllka.locationId }))).status).toBe(400)
+    expect((await updateGroup(id, group({ room_id: yllka.roomId }))).status).toBe(400)
   })
 
   it('refuses moving a group onto an archived course', async () => {
@@ -1025,7 +1029,7 @@ describe('deleting an organization', () => {
 
   it('removes its groups, years and lecturers along with it', async () => {
     const lecturer = await addLecturer({ firstName: 'Arben' })
-    const added = await addGroup(group({ academic_term_id: autumnId, location_id: mainCampusId, lecturer_id: lecturer.id }))
+    const added = await addGroup(group({ academic_term_id: autumnId, room_id: mainCampusRoomId, lecturer_id: lecturer.id }))
     expect(await prisma.group.count({ where: { id: added.body.data.id } })).toBe(1)
 
     await prisma.organization.delete({ where: { id: organizationId } })

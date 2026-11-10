@@ -158,8 +158,9 @@ describe('My teaching: groups and cover', () => {
 
   it('lists the groups the lecturer permanently teaches today, by name, with their course, year and location', async () => {
     const north = await prisma.location.findFirstOrThrow({ where: { name: 'North campus' } })
+    const northRoom = await prisma.room.create({ data: { location_id: north.id, name: 'North campus' } })
     const groupB = await addGroup({ name: 'Group B', lecturerId: arbenId })
-    await prisma.group.update({ where: { id: groupB.id }, data: { location_id: north.id } })
+    await prisma.group.update({ where: { id: groupB.id }, data: { room_id: northRoom.id } })
     const groupA = await addGroup({ name: 'Group A', lecturerId: arbenId })
 
     const { groups } = (await readMyTeaching('arben@lecturer.test')).body.data

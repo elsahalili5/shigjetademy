@@ -5,19 +5,15 @@ import type { AcademicYear } from '@shigjetademy/shared/academic-periods'
 import type { CourseOption } from '@shigjetademy/shared/courses'
 import { groupSchema, groupSubstitutionSchema } from '@shigjetademy/shared/groups'
 import type { Group, GroupLecturer, GroupLecturerHistory, GroupLecturerOption, GroupPage, GroupStatus, GroupSubstitution } from '@shigjetademy/shared/groups'
-import type { OrganizationLocation } from '@shigjetademy/shared/location'
+import type { GroupRoomOption } from '@shigjetademy/shared/rooms'
 import { buildUser, OWNER_MEMBERSHIPS, signInAs, YLLKA_ADMIN_MEMBERSHIP } from '#/test/fixtures'
 import { renderRoute } from '#/test/render-route'
 import { server } from '#/test/server'
 
-const MAIN_CAMPUS: OrganizationLocation = {
+const MAIN_ROOM: GroupRoomOption = {
   id: '3f0c2a1a-6b1f-4c55-9a3e-0d1e9b1c2f01',
-  name: 'Main campus',
-  address: null,
-  city: null,
-  phone: null,
-  is_main: true,
-  created_at: '2026-09-01T09:00:00.000Z',
+  name: 'Room 101',
+  location: { id: 'b2c4a1a1-6b1f-4c55-9a3e-0d1e9b1c2f01', name: 'Main campus' },
 }
 
 const MATHEMATICS: CourseOption = { id: '7c1c2f43-0d1e-4c55-9a3e-6b1f0c2a2b01', name: 'Mathematics', status: 'ACTIVE' }
@@ -60,7 +56,7 @@ const GROUP_A: Group = {
   course: MATHEMATICS,
   academic_year: { id: THIS_YEAR.id, name: THIS_YEAR.name },
   academic_term: { id: AUTUMN.id, name: AUTUMN.name },
-  location: { id: MAIN_CAMPUS.id, name: MAIN_CAMPUS.name },
+  room: { id: MAIN_ROOM.id, name: MAIN_ROOM.name },
   lecturer: ARBEN,
   lecturer_change: null,
   schedule: [
@@ -78,7 +74,7 @@ const GROUP_B: Group = {
   course: ENGLISH,
   academic_year: { id: NEXT_YEAR.id, name: NEXT_YEAR.name },
   academic_term: null,
-  location: null,
+  room: null,
   lecturer: null,
   schedule: [],
   enrolled_count: 3,
@@ -122,7 +118,7 @@ const serveOptions = ({ organizationId = 'org-1', courses = [ENGLISH, MATHEMATIC
   server.use(
     http.get(`*/api/organizations/${organizationId}/courses/options`, () => HttpResponse.json({ data: courses })),
     http.get(`*/api/organizations/${organizationId}/academic-periods/years`, () => HttpResponse.json({ data: years })),
-    http.get(`*/api/organizations/${organizationId}/locations`, () => HttpResponse.json({ data: [MAIN_CAMPUS] })),
+    http.get(`*/api/organizations/${organizationId}/rooms`, () => HttpResponse.json({ data: [MAIN_ROOM] })),
     http.get(`*/api/organizations/${organizationId}/groups/lecturer-options`, () => HttpResponse.json({ data: LECTURER_OPTIONS })),
   )
 
@@ -164,7 +160,7 @@ const fillEntry = async ({ user, dialog, position, day, start, end }: FillEntryP
 const MONDAY_EVENING = { weekday: 'MONDAY', start_time: '17:00', end_time: '18:30' } as const
 
 describe('GroupsPage: list', () => {
-  it('lists groups with their course, year, term, location and capacity', async () => {
+  it('lists groups with their course, year, term, room and capacity', async () => {
     signInAsOwner({ active: [GROUP_A, GROUP_B] })
     renderRoute('/dashboard/groups')
 
@@ -175,10 +171,18 @@ describe('GroupsPage: list', () => {
     expect(groupA).not.toHaveTextContent('Archived')
     expect(groupA).toHaveTextContent('2026–27')
     expect(groupA).toHaveTextContent('Autumn term')
-    expect(groupA).toHaveTextContent('Main campus')
+    expect(groupA).toHaveTextContent('Room 101')
     expect(groupA).toHaveTextContent('20 seats')
     expect(groupB).toHaveTextContent('English')
     expect(groupB).toHaveTextContent('2027–28')
+  })
+
+  it('says "Not set" for a group without a room assigned', async () => {
+    signInAsOwner({ active: [GROUP_B] })
+    renderRoute('/dashboard/groups')
+
+    const [row] = await rowsOf()
+    expect(within(row).getAllByText('Not set')[0]).toBeInTheDocument()
   })
 
   it('shows the permanent lecturer of each group, or that there is none', async () => {
@@ -204,7 +208,7 @@ describe('GroupsPage: list', () => {
     renderRoute('/dashboard/groups')
 
     const [row] = await rowsOf()
-    expect(within(row).getAllByText('Main campus · 1 seat')[0]).toBeInTheDocument()
+    expect(within(row).getAllByText('Room 101 · 1 seat')[0]).toBeInTheDocument()
   })
 
   it('shows skeleton rows while loading', async () => {
@@ -312,7 +316,7 @@ describe('GroupsPage: add', () => {
     await user.selectOptions(within(dialog).getByLabelText('Course'), 'Mathematics')
     await user.type(within(dialog).getByLabelText('Name'), 'Group A')
     await user.selectOptions(within(dialog).getByLabelText(/^Term/), 'Autumn term')
-    await user.selectOptions(within(dialog).getByLabelText(/^Location/), 'Main campus')
+    await user.selectOptions(within(dialog).getByLabelText(/^Room/), 'Room 101 · Main campus')
     await user.type(within(dialog).getByLabelText('Capacity (optional)'), '20')
     await user.selectOptions(within(dialog).getByLabelText(/^Lecturer/), await within(dialog).findByRole('option', { name: 'Arben Hoxha · Mathematics, Physics' }))
     await fillEntry({ user, dialog, position: 1, day: 'Monday', start: '17:00', end: '18:30' })
@@ -326,7 +330,7 @@ describe('GroupsPage: add', () => {
       name: 'Group A',
       academic_year_id: THIS_YEAR.id,
       academic_term_id: AUTUMN.id,
-      location_id: MAIN_CAMPUS.id,
+      room_id: MAIN_ROOM.id,
       capacity: 20,
       lecturer_id: ARBEN.id,
       lecturer_effective_from: null,
@@ -354,7 +358,7 @@ describe('GroupsPage: add', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Add group' }))
 
     await screen.findByText('Added Group A.')
-    expect(sent).toMatchObject({ academic_term_id: null, location_id: null, capacity: null, lecturer_id: null, lecturer_effective_from: null })
+    expect(sent).toMatchObject({ academic_term_id: null, room_id: null, capacity: null, lecturer_id: null, lecturer_effective_from: null })
   })
 
   it('offers the chosen year’s terms and clears the term when the year changes', async () => {
@@ -663,7 +667,7 @@ describe('GroupsPage: edit', () => {
     expect(within(dialog).getByLabelText('Name')).toHaveValue('Group A')
     expect(within(dialog).getByLabelText('School year')).toHaveValue(THIS_YEAR.id)
     expect(within(dialog).getByLabelText(/^Term/)).toHaveValue(AUTUMN.id)
-    expect(within(dialog).getByLabelText(/^Location/)).toHaveValue(MAIN_CAMPUS.id)
+    expect(within(dialog).getByLabelText(/^Room/)).toHaveValue(MAIN_ROOM.id)
     await user.clear(within(dialog).getByLabelText('Capacity (optional)'))
     await user.type(within(dialog).getByLabelText('Capacity (optional)'), '25')
     await user.click(within(dialog).getByRole('button', { name: 'Save changes' }))
@@ -674,7 +678,7 @@ describe('GroupsPage: edit', () => {
       name: 'Group A',
       academic_year_id: THIS_YEAR.id,
       academic_term_id: AUTUMN.id,
-      location_id: MAIN_CAMPUS.id,
+      room_id: MAIN_ROOM.id,
       capacity: 25,
       lecturer_id: ARBEN.id,
       lecturer_effective_from: null,

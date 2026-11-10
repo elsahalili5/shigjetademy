@@ -16,7 +16,7 @@ const GROUP_A: Group = {
   course: { id: '7c1c2f43-0d1e-4c55-9a3e-6b1f0c2a2b01', name: 'Mathematics', status: 'ACTIVE' },
   academic_year: { id: '6c3f5d4d-9e4c-4f88-8d6b-3a4bce4f5a01', name: '2026–27' },
   academic_term: null,
-  location: null,
+  room: null,
   lecturer: { id: '9e5b7f6f-b06e-4baa-af8d-5c6de06b7c01', first_name: 'Arben', last_name: 'Hoxha', status: 'ACTIVE' },
   lecturer_change: null,
   schedule: [{ weekday: 'MONDAY', start_time: '17:00', end_time: '18:30' }],
