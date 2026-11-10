@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Archive, ArchiveRestore, ArrowRightLeft, Building2, CalendarClock, CalendarCog, CalendarX2, ClipboardPen, CalendarPlus, CalendarRange, CalendarX, CirclePause, CirclePlay, Crown, KeyRound, Layers, Lock, Mail, MailCheck, MailX, MapPin, MapPinOff, MapPinPen, Network, Power, PowerOff, Send, Settings, SlidersHorizontal, SquarePen, Trash2, TreePalm, UserMinus, UserPen, UserPlus, UserRoundCheck, UserRoundMinus, UserRoundPen, UserRoundPlus, UserRoundX, UsersRound } from 'lucide-react'
+import { Archive, ArchiveRestore, ArrowRightLeft, Building2, CalendarClock, CalendarCog, CalendarX2, ClipboardPen, CalendarPlus, CalendarRange, CalendarX, CirclePause, CirclePlay, Crown, DoorClosed, DoorOpen, KeyRound, Layers, Lock, Mail, MailCheck, MailX, MapPin, MapPinOff, MapPinPen, Network, Power, PowerOff, Send, Settings, SlidersHorizontal, SquarePen, Trash2, TreePalm, UserMinus, UserPen, UserPlus, UserRoundCheck, UserRoundMinus, UserRoundPen, UserRoundPlus, UserRoundX, UsersRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ActivityAction, ActivityEntry, ActivityUser } from '@shigjetademy/shared/activity'
 import { useFormatDateTime } from '#/lib/use-format-date'
@@ -16,6 +16,9 @@ const ACTION_ICONS = {
   LOCATION_CREATED: MapPin,
   LOCATION_UPDATED: MapPinPen,
   LOCATION_REMOVED: MapPinOff,
+  ROOM_CREATED: DoorOpen,
+  ROOM_UPDATED: SquarePen,
+  ROOM_REMOVED: DoorClosed,
   DEPARTMENT_CREATED: Network,
   DEPARTMENT_UPDATED: SquarePen,
   DEPARTMENT_REMOVED: Trash2,
@@ -149,6 +152,12 @@ function ActivitySentence({ entry, shouldLinkOrganization }: ActivityRowProps) {
       return <SubjectSentence entry={entry} verb="changed" noun="location" organization={subjectOrganization} />
     case 'LOCATION_REMOVED':
       return <SubjectSentence entry={entry} verb="removed" noun="location" organization={subjectOrganization} />
+    case 'ROOM_CREATED':
+      return <SubjectSentence entry={entry} verb="added" noun="room" organization={subjectOrganization} />
+    case 'ROOM_UPDATED':
+      return <SubjectSentence entry={entry} verb="changed" noun="room" organization={subjectOrganization} />
+    case 'ROOM_REMOVED':
+      return <SubjectSentence entry={entry} verb="removed" noun="room" organization={subjectOrganization} />
     case 'DEPARTMENT_CREATED':
       return <SubjectSentence entry={entry} verb="added" noun="department" organization={subjectOrganization} />
     case 'DEPARTMENT_UPDATED':
@@ -301,7 +310,7 @@ function ActivitySentence({ entry, shouldLinkOrganization }: ActivityRowProps) {
 interface SubjectSentenceProps {
   entry: ActivityEntry
   verb: 'added' | 'changed' | 'removed' | 'archived' | 'restored'
-  noun: 'location' | 'department' | 'school year' | 'term' | 'holiday' | 'student' | 'lecturer' | 'course' | 'group'
+  noun: 'location' | 'room' | 'department' | 'school year' | 'term' | 'holiday' | 'student' | 'lecturer' | 'course' | 'group'
   organization: ReactNode
 }
 
