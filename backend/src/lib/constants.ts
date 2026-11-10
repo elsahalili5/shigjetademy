@@ -12,6 +12,7 @@ export const safeUserSelect = {
   email: true,
   status: true,
   email_confirmed: true,
+  avatar_url: true,
   created_at: true,
   user_roles: { select: { role: { select: { name: true } } } },
   memberships: {

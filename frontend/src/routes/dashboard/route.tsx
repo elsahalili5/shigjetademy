@@ -5,8 +5,8 @@ import type { Permission } from '@shigjetademy/shared/auth'
 import type { OrganizationStatus } from '@shigjetademy/shared/organization'
 import { Link, Outlet, createFileRoute, useMatchRoute, useNavigate } from '@tanstack/react-router'
 import wordmark from '#/assets/brand/shigjetademy-wordmark.png'
-import { initials } from '#/lib/initials'
 import { ADMIN_MODULES } from '#/lib/admin-modules'
+import { UserAvatar } from '#/components/UserAvatar'
 import { MODULES, moduleBySlug } from '#/lib/modules'
 import type { ModuleSlug } from '#/lib/modules'
 import { OWNER_NAV_SECTIONS } from '#/lib/owner-navigation'
@@ -126,9 +126,11 @@ function DashboardLayout() {
               className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1.5 py-1.5 no-underline transition-colors duration-200 hover:bg-navy-2 aria-[current=page]:bg-navy-2"
               aria-label="Your profile"
             >
-              <span className="grid size-9 flex-none place-items-center rounded-full bg-green-wash text-[0.9rem] font-bold text-green-deep" aria-hidden="true">
-                {initials(fullName)}
-              </span>
+              <UserAvatar
+                name={fullName}
+                avatarUrl={auth.user?.avatar_url ?? null}
+                className="grid size-9 flex-none place-items-center rounded-full bg-green-wash text-[0.9rem] font-bold text-green-deep"
+              />
               <span className="grid min-w-0 flex-1 leading-tight">
                 <span className="truncate font-semibold text-white">{fullName}</span>
                 <span className="truncate text-[0.87rem] text-on-navy-2">{auth.user?.email}</span>

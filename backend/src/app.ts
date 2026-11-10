@@ -1,3 +1,5 @@
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import express from 'express'
 import cors from 'cors'
 import academicPeriodsRoutes from '@modules/academic-periods/academic-periods.routes.ts'
@@ -26,6 +28,15 @@ export const app = express()
 
 app.use(cors())
 app.use(express.json({ limit: '20kb' }))
+
+// Serves uploaded files (e.g. profile avatars) stored on local disk; nosniff stops a browser from
+// reinterpreting a served file as something other than the content type we set for it
+app.use(
+  '/api/uploads',
+  express.static(path.join(path.dirname(fileURLToPath(import.meta.url)), '../uploads'), {
+    setHeaders: (res) => res.setHeader('X-Content-Type-Options', 'nosniff'),
+  }),
+)
 
 app.use('/api/activity', activityRoutes)
 app.use('/api/auth', authRoutes)

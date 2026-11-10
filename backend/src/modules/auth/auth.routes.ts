@@ -20,4 +20,8 @@ router.put('/me', authMiddleware, validateRequestMiddleware(updateProfileSchema)
 
 router.post('/change-password', authMiddleware, validateRequestMiddleware(changePasswordSchema), AuthController.changePassword)
 
+router.post('/avatar', authMiddleware, AuthController.uploadAvatar)
+
+router.delete('/avatar', authMiddleware, AuthController.removeAvatar)
+
 export default router

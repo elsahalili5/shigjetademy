@@ -96,6 +96,7 @@ export type AuthUser = {
   email: string
   status: 'PENDING' | 'ACTIVE' | 'LOCKED' | 'DISABLED'
   email_confirmed: boolean
+  avatar_url: string | null
   created_at: string
   user_roles: { role: { name: string } }[]
   memberships: {
@@ -112,6 +113,11 @@ export type LoginUserResponse = AuthTokens & { user: AuthUser }
 export type RegisterUserResponse = LoginUserResponse
 
 export type RefreshTokenResponse = AuthTokens
+
+/** The profile avatar upload: same limits enforced client-side (for a fast error) and server-side (for real) */
+export const ALLOWED_AVATAR_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const
+
+export const AVATAR_MAX_BYTES = 2 * 1024 * 1024
 
 type HasOrganizationPermissionParams = {
   membership: { role: MemberRole; permissions: Permission[] }

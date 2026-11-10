@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt'
 import { prisma } from '@lib/prisma.ts'
+import { deleteAvatarFile, saveAvatarFile } from '@lib/avatar-storage.ts'
 import { SALT_ROUNDS, safeUserSelect } from '@lib/constants.ts'
 import { HttpError } from '@lib/httpError.ts'
 import { generateAccessToken, generateRefreshToken, REFRESH_TOKEN_EXPIRY_MS, verifyRefreshToken } from '@lib/jwt.ts'
@@ -48,6 +49,12 @@ type UpdateProfileParams = {
 type ChangePasswordParams = {
   userId: string
   data: ChangePasswordInput
+}
+
+type UploadAvatarParams = {
+  userId: string
+  mimeType: string
+  buffer: Buffer
 }
 
 export const AuthService = {
@@ -232,5 +239,24 @@ export const AuthService = {
     ])
 
     return issueTokens(userId)
+  },
+
+  // Replacing a photo removes the old file only once the DB points at the new one, so a failed update never
+  // deletes a file the record still references and never orphans the just-saved file
+  uploadAvatar: async ({ userId, mimeType, buffer }: UploadAvatarParams): Promise<SessionUser> => {
+    const existing = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { avatar_url: true } })
+    const avatarUrl = await saveAvatarFile({ userId, mimeType, buffer })
+
+    const user = await prisma.user.update({ where: { id: userId }, data: { avatar_url: avatarUrl }, select: safeUserSelect })
+    await deleteAvatarFile(existing.avatar_url)
+    return toSessionUser(user)
+  },
+
+  removeAvatar: async (userId: string): Promise<SessionUser> => {
+    const existing = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { avatar_url: true } })
+
+    const user = await prisma.user.update({ where: { id: userId }, data: { avatar_url: null }, select: safeUserSelect })
+    await deleteAvatarFile(existing.avatar_url)
+    return toSessionUser(user)
   },
 }

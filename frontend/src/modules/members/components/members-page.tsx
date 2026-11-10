@@ -9,9 +9,9 @@ import { DashboardPageHeader } from '#/components/DashboardPageHeader'
 import { LoadError } from '#/components/LoadError'
 import { NoticeBar } from '#/components/NoticeBar'
 import type { Notice } from '#/components/NoticeBar'
+import { UserAvatar } from '#/components/UserAvatar'
 import { showErrorToast } from '#/lib/error-toast'
 import { fullName } from '#/lib/full-name'
-import { initials } from '#/lib/initials'
 import { useFormatDate } from '#/lib/use-format-date'
 import { ROLE_LABELS } from '#/modules/auth/utils/role-labels'
 import { useAdminInvitationAction } from '../hooks/use-admin-invitation-action'
@@ -318,9 +318,7 @@ function MemberRow({ member, isRemoving, onEdit, onRemove }: MemberRowProps) {
 
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-rule px-5 py-4 last:border-b-0">
-      <span className="grid size-10 flex-none place-items-center rounded-full bg-green-wash text-[0.9rem] font-bold text-green-deep" aria-hidden="true">
-        {initials(name)}
-      </span>
+      <UserAvatar name={name} avatarUrl={member.avatar_url} className="grid size-10 flex-none place-items-center rounded-full bg-green-wash text-[0.9rem] font-bold text-green-deep" />
       <span className="grid min-w-[220px] flex-1 gap-0.5 leading-tight">
         <span className="flex flex-wrap items-center gap-2">
           <span className="font-semibold">{name}</span>

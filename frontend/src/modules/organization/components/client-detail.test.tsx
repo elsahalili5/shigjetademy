@@ -17,8 +17,8 @@ const CLIENT: ClientOrganizationDetail = {
   created_at: '2026-10-01T09:00:00.000Z',
   member_counts: { OWNER: 1, ADMIN: 0, LECTURER: 1, STUDENT: 0, GUARDIAN: 0 },
   members: [
-    { membership_id: 'm-1', id: 'u-1', first_name: 'Arben', last_name: 'Krasniqi', email: 'owner@oxford.test', role: 'OWNER', joined_at: '2026-10-01T09:00:00.000Z' },
-    { membership_id: 'm-2', id: 'u-2', first_name: 'Leon', last_name: 'Hoxha', email: 'lecturer@oxford.test', role: 'LECTURER', joined_at: '2026-10-02T09:00:00.000Z' },
+    { membership_id: 'm-1', id: 'u-1', first_name: 'Arben', last_name: 'Krasniqi', email: 'owner@oxford.test', avatar_url: null, role: 'OWNER', joined_at: '2026-10-01T09:00:00.000Z' },
+    { membership_id: 'm-2', id: 'u-2', first_name: 'Leon', last_name: 'Hoxha', email: 'lecturer@oxford.test', avatar_url: null, role: 'LECTURER', joined_at: '2026-10-02T09:00:00.000Z' },
   ],
   pending_invitations: [],
 }

@@ -3,6 +3,7 @@ import { AlertCircle, ArrowLeft, Mail, RotateCw } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import type { ClientOrganizationDetail } from '@shigjetademy/shared/organization'
 import { isApiError } from '#/api/client'
+import { UserAvatar } from '#/components/UserAvatar'
 import { showErrorToast } from '#/lib/error-toast'
 import { useFormatDate } from '#/lib/use-format-date'
 import { initials } from '#/lib/initials'
@@ -106,9 +107,11 @@ function ClientProfile({ client }: ClientProfileProps) {
           <ul className="grid">
             {client.members.map((member) => (
               <li key={member.membership_id} className="flex items-center gap-3 border-b border-rule py-3 last:border-b-0">
-                <span className="grid size-10 flex-none place-items-center rounded-full bg-green-wash text-[0.9rem] font-bold text-green-deep" aria-hidden="true">
-                  {initials(`${member.first_name} ${member.last_name}`)}
-                </span>
+                <UserAvatar
+                  name={`${member.first_name} ${member.last_name}`}
+                  avatarUrl={member.avatar_url}
+                  className="grid size-10 flex-none place-items-center rounded-full bg-green-wash text-[0.9rem] font-bold text-green-deep"
+                />
                 <span className="grid min-w-0 flex-1 leading-tight">
                   <span className="truncate font-semibold">
                     {member.first_name} {member.last_name}
