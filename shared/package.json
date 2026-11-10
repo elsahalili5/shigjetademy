@@ -19,7 +19,8 @@
     "./calendar-day": "./src/calendar-day.ts",
     "./attendance": "./src/attendance.ts",
     "./lesson-plans": "./src/lesson-plans.ts",
-    "./student-roster": "./src/student-roster.ts"
+    "./student-roster": "./src/student-roster.ts",
+    "./platform-settings": "./src/platform-settings.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

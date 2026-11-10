@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Archive, ArchiveRestore, ArrowRightLeft, Building2, CalendarClock, CalendarCog, CalendarX2, ClipboardPen, CalendarPlus, CalendarRange, CalendarX, CirclePause, CirclePlay, Crown, KeyRound, Layers, Lock, Mail, MailCheck, MailX, MapPin, MapPinOff, MapPinPen, Network, Power, PowerOff, Send, Settings, SquarePen, Trash2, TreePalm, UserMinus, UserPen, UserPlus, UserRoundCheck, UserRoundMinus, UserRoundPen, UserRoundPlus, UserRoundX, UsersRound } from 'lucide-react'
+import { Archive, ArchiveRestore, ArrowRightLeft, Building2, CalendarClock, CalendarCog, CalendarX2, ClipboardPen, CalendarPlus, CalendarRange, CalendarX, CirclePause, CirclePlay, Crown, KeyRound, Layers, Lock, Mail, MailCheck, MailX, MapPin, MapPinOff, MapPinPen, Network, Power, PowerOff, Send, Settings, SlidersHorizontal, SquarePen, Trash2, TreePalm, UserMinus, UserPen, UserPlus, UserRoundCheck, UserRoundMinus, UserRoundPen, UserRoundPlus, UserRoundX, UsersRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ActivityAction, ActivityEntry, ActivityUser } from '@shigjetademy/shared/activity'
 import { useFormatDateTime } from '#/lib/use-format-date'
@@ -61,6 +61,7 @@ const ACTION_ICONS = {
   INVITATION_RESENT: Send,
   INVITATION_REVOKED: MailX,
   INVITATION_ACCEPTED: MailCheck,
+  PLATFORM_SETTINGS_UPDATED: SlidersHorizontal,
 } as const satisfies Record<ActivityAction, LucideIcon>
 
 type FullNameParams = {
@@ -288,6 +289,8 @@ function ActivitySentence({ entry, shouldLinkOrganization }: ActivityRowProps) {
           {fullName({ user: entry.actor, fallback: DELETED_ACTOR })} accepted the invitation and joined {organization}
         </>
       )
+    case 'PLATFORM_SETTINGS_UPDATED':
+      return <>{fullName({ user: entry.actor, fallback: DELETED_ACTOR })} updated the platform settings</>
     default: {
       const unknown: never = entry.action
       throw new Error(`Unknown activity action: ${String(unknown)}`)

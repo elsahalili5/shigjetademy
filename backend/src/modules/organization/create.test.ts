@@ -1,6 +1,8 @@
 import request from 'supertest'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { app } from '../../app.ts'
+import { prisma } from '@lib/prisma.ts'
+import { clearPlatformSettingsCache } from '@modules/platform-settings/platform-settings.service.ts'
 import { createOrganization, createUser, loginAs } from '../../../test/factories.ts'
 
 const YLLKA = { name: 'Yllka Kindergarten', type: 'Kindergarten', country: 'XK', currency: 'EUR' } as const
@@ -44,5 +46,27 @@ describe('POST /api/organizations', () => {
       (await request(app).get(`/api/organizations/${organizationId}/overview`).set('Authorization', ownerAuth)).body.data.activity.map((entry: { action: string }) => entry.action)
     expect(await activity(yllkaId)).toEqual(['LOCATION_CREATED'])
     expect(await activity(oxfordId)).toEqual([])
+  })
+
+  it('sets trial_ends_at from the platform’s current default trial days, and leaves it null when there’s no trial', async () => {
+    await prisma.platformSettings.create({ data: { id: 1, default_trial_days: 30 } })
+    clearPlatformSettingsCache()
+
+    const before = Date.now()
+    const withTrial = (await request(app).post('/api/organizations').set('Authorization', ownerAuth).send(YLLKA)).body.data.id
+    const trialEndsAt = (await prisma.organization.findUniqueOrThrow({ where: { id: withTrial }, select: { trial_ends_at: true } })).trial_ends_at
+    expect(trialEndsAt).not.toBeNull()
+    const daysOut = (trialEndsAt!.getTime() - before) / (24 * 60 * 60 * 1000)
+    expect(daysOut).toBeGreaterThan(29.9)
+    expect(daysOut).toBeLessThan(30.1)
+
+    await prisma.platformSettings.update({ where: { id: 1 }, data: { default_trial_days: 0 } })
+    clearPlatformSettingsCache()
+    const withoutTrial = (await request(app).post('/api/organizations').set('Authorization', ownerAuth).send({ ...YLLKA, name: 'Another Org' })).body.data.id
+    expect((await prisma.organization.findUniqueOrThrow({ where: { id: withoutTrial }, select: { trial_ends_at: true } })).trial_ends_at).toBeNull()
+
+    // Changing the setting afterward never touches an existing organization
+    await prisma.platformSettings.update({ where: { id: 1 }, data: { default_trial_days: 60 } })
+    expect((await prisma.organization.findUniqueOrThrow({ where: { id: withTrial }, select: { trial_ends_at: true } })).trial_ends_at).toEqual(trialEndsAt)
   })
 })

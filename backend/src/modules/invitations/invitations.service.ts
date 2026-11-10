@@ -3,13 +3,13 @@ import type { Prisma } from '@generated/prisma/client.ts'
 import type { InvitationStatus, MemberRole, Permission } from '@generated/prisma/enums.ts'
 import { INVITATION_VALID_DAYS } from '@shigjetademy/shared/invitations'
 import { resolveOrganizationSettings } from '@shigjetademy/shared/organization-settings'
+import { DAY_MS } from '@lib/constants.ts'
 import { HttpError } from '@lib/httpError.ts'
 import { sendInvitationEmail } from '@lib/mailer.ts'
 import { lockOrganization } from '@lib/organization-lock.ts'
 import type { OrganizationScope } from '@lib/organization-lock.ts'
 import { prisma } from '@lib/prisma.ts'
 
-const DAY_MS = 24 * 60 * 60 * 1000
 const HOUR_MS = 60 * 60 * 1000
 /** Invitations (sent or resent) one organization may email per hour */
 const SEND_LIMIT_PER_HOUR = 50

@@ -11,6 +11,8 @@ const EMPTY_OVERVIEW: OrganizationOverview = {
   counts: { members: 1, admins: 0, pending_invitations: 0 },
   pending_invitations: [],
   activity: [],
+  members_by_role: { OWNER: 1, ADMIN: 0, LECTURER: 0, STUDENT: 0, GUARDIAN: 0 },
+  members_per_week: [],
 }
 
 // Owner of Oxford and school admin of Yllka; the admin membership comes first so the owner fallback is visible

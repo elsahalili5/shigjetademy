@@ -15,6 +15,8 @@ const EMPTY_OVERVIEW: OrganizationOverview = {
   counts: { members: 1, admins: 0, pending_invitations: 0 },
   pending_invitations: [],
   activity: [],
+  members_by_role: { OWNER: 1, ADMIN: 0, LECTURER: 0, STUDENT: 0, GUARDIAN: 0 },
+  members_per_week: [{ week_start: '2026-10-26T00:00:00.000Z', count: 1 }],
 }
 
 const BUSY_OVERVIEW: OrganizationOverview = {
@@ -26,6 +28,11 @@ const BUSY_OVERVIEW: OrganizationOverview = {
   activity: [
     { id: 'a-2', action: 'MEMBER_REMOVED', created_at: '2026-10-31T10:00:00.000Z', actor: OWNER, organization: OXFORD, target_user: ADMIN, subject_name: null },
     { id: 'a-1', action: 'MEMBER_UPDATED', created_at: '2026-10-31T09:00:00.000Z', actor: OWNER, organization: OXFORD, target_user: ADMIN, subject_name: null },
+  ],
+  members_by_role: { OWNER: 1, ADMIN: 2, LECTURER: 1, STUDENT: 0, GUARDIAN: 0 },
+  members_per_week: [
+    { week_start: '2026-10-19T00:00:00.000Z', count: 1 },
+    { week_start: '2026-10-26T00:00:00.000Z', count: 3 },
   ],
 }
 
@@ -52,10 +59,25 @@ describe('owner Overview', () => {
     signInAsOwnerWithOverview(BUSY_OVERVIEW)
     renderRoute('/dashboard/overview')
 
-    const organization = await screen.findByRole('region', { name: 'Organization' })
-    const labels = await within(organization).findAllByRole('term')
+    const labels = await screen.findAllByRole('term')
     expect(labels.map((label) => label.textContent)).toEqual(['Members', 'School admins', 'Pending invitations'])
-    expect(within(organization).getAllByRole('definition').map((value) => value.textContent)).toEqual(['4', '2', '3'])
+    const tileValue = (label: string) => screen.getByText(label).nextElementSibling?.textContent
+    expect(tileValue('Members')).toBe('4')
+    expect(tileValue('School admins')).toBe('2')
+    expect(tileValue('Pending invitations')).toBe('3')
+  })
+
+  it('shows members per week and the role breakdown from the server', async () => {
+    signInAsOwnerWithOverview(BUSY_OVERVIEW)
+    renderRoute('/dashboard/overview')
+
+    const growth = await screen.findByRole('region', { name: 'Growth' })
+    expect(await within(growth).findByRole('img')).toHaveAccessibleName(/New members per week.*Oct 19: 1.*Oct 26: 3/)
+
+    const roles = screen.getByRole('region', { name: 'Team by role' })
+    expect(within(roles).getByText('owners')).toBeInTheDocument()
+    expect(within(roles).getByText('school admins')).toBeInTheDocument()
+    expect(within(roles).getByText('lecturers')).toBeInTheDocument()
   })
 
   it('lists open admin invitations and marks the ones about to expire', async () => {

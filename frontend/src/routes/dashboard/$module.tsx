@@ -12,6 +12,7 @@ import { useAuth } from '#/modules/auth/hooks/use-auth'
 import { isOrganizationOwner, isPlatformAdmin } from '#/modules/auth/utils/session-user'
 import { ClientsModule } from '#/modules/organization/components/clients-module'
 import { StatisticsModule } from '#/modules/organization/components/statistics-module'
+import { PlatformSettingsPage } from '#/modules/platform-settings/components/platform-settings-page'
 
 export const Route = createFileRoute('/dashboard/$module')({
   // The platform admin only has the platform modules, organization staff only the school ones, students only My school and lecturers only My teaching
@@ -57,6 +58,8 @@ function AdminModulePage({ module }: AdminModulePageProps) {
       return <StatisticsModule />
     case 'activity':
       return <ActivityModule />
+    case 'settings':
+      return <PlatformSettingsPage />
     default: {
       const unknown: never = module.slug
       throw new Error(`Unknown admin module: ${String(unknown)}`)

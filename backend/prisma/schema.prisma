@@ -131,6 +131,7 @@ enum ActivityAction {
   INVITATION_RESENT
   INVITATION_REVOKED
   INVITATION_ACCEPTED
+  PLATFORM_SETTINGS_UPDATED
 }
 
 enum StudentStatus {
@@ -287,6 +288,8 @@ model Organization {
   /// Shigjetademy's share of each student payment, in hundredths of a percent (300 = 3%)
   fee_rate_bps Int                @default(300)
   status       OrganizationStatus @default(ACTIVE)
+  /// Set once, from the platform's default trial days, when the organization is created; never changed afterward by a platform settings change
+  trial_ends_at DateTime?
 
   created_at   DateTime           @default(now())
   updated_at   DateTime           @updatedAt
@@ -316,6 +319,20 @@ model OrganizationSettings {
   updated_at      DateTime     @updatedAt
 
   organization    Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+}
+
+/// How the whole platform runs: one row, written on its first save. Reading it when it doesn't exist yet returns the defaults.
+model PlatformSettings {
+  id                  Int      @id @default(1)
+  platform_name       String   @default("Shigjetademy")
+  logo_url            String?
+  maintenance_mode    Boolean  @default(false)
+  maintenance_message String?
+  /// How many days a new organization's trial runs; 0 means no trial
+  default_trial_days  Int      @default(14)
+
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
 }
 
 /// A campus or branch. While an organization has any, exactly one is its main location (kept by the location service).

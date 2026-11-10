@@ -49,7 +49,19 @@ const preferences = () => screen.findByRole('region', { name: 'General preferenc
 describe('organization settings: general preferences', () => {
   it('opens from the owner’s sidebar, right under Messages at the end of Organization', async () => {
     signInAsOwner()
-    server.use(http.get('*/api/organizations/org-1/overview', () => HttpResponse.json({ data: { counts: { members: 1, admins: 0, pending_invitations: 0 }, pending_invitations: [], activity: [] } })))
+    server.use(
+      http.get('*/api/organizations/org-1/overview', () =>
+        HttpResponse.json({
+          data: {
+            counts: { members: 1, admins: 0, pending_invitations: 0 },
+            pending_invitations: [],
+            activity: [],
+            members_by_role: { OWNER: 1, ADMIN: 0, LECTURER: 0, STUDENT: 0, GUARDIAN: 0 },
+            members_per_week: [],
+          },
+        }),
+      ),
+    )
     const { user, router } = renderRoute('/dashboard/overview')
 
     const organization = await screen.findByRole('group', { name: 'Organization' })
@@ -239,7 +251,17 @@ describe('organization settings: deactivate and reactivate', () => {
     serveSettings()
     serveMembers([OWNER, ADMIN])
     server.use(
-      http.get('*/api/organizations/org-1/overview', () => HttpResponse.json({ data: { counts: { members: 2, admins: 1, pending_invitations: 0 }, pending_invitations: [], activity: [] } })),
+      http.get('*/api/organizations/org-1/overview', () =>
+        HttpResponse.json({
+          data: {
+            counts: { members: 2, admins: 1, pending_invitations: 0 },
+            pending_invitations: [],
+            activity: [],
+            members_by_role: { OWNER: 1, ADMIN: 1, LECTURER: 0, STUDENT: 0, GUARDIAN: 0 },
+            members_per_week: [],
+          },
+        }),
+      ),
       http.post('*/api/organizations/org-1/settings/deactivate', async ({ request }) => {
         deactivateOrganizationSchema.parse(await request.json())
         me = buildUser({ memberships: withStatus('DEACTIVATED') })

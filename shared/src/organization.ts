@@ -149,11 +149,14 @@ export type OverviewInvitation = {
   is_expiring_soon: boolean
 }
 
-/** The owner's Overview: real counts, open admin invitations (soonest to expire first) and the latest activity */
+/** The owner's Overview: real counts, open admin invitations (soonest to expire first), the latest activity and two growth charts */
 export type OrganizationOverview = {
   counts: { members: number; admins: number; pending_invitations: number }
   pending_invitations: OverviewInvitation[]
   activity: ActivityEntry[]
+  members_by_role: MemberCounts
+  /** Members who joined per week, oldest first, the current week last */
+  members_per_week: { week_start: string; count: number }[]
 }
 
 // ─── Organization profile ───

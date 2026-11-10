@@ -2,6 +2,7 @@ import type { NextFunction, Response } from 'express'
 import { prisma } from '@lib/prisma.ts'
 import { safeUserSelect } from '@lib/constants.ts'
 import { verifyAccessToken } from '@lib/jwt.ts'
+import { getMaintenanceRefusal } from '@lib/maintenance.ts'
 import type { AuthRequest } from '@lib/types.ts'
 
 export const authMiddleware = async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -23,9 +24,14 @@ export const authMiddleware = async (req: AuthRequest, res: Response, next: Next
   }
 
   switch (user.status) {
-    case 'ACTIVE':
+    case 'ACTIVE': {
       req.user = user
+      const maintenanceMessage = await getMaintenanceRefusal(user)
+      if (maintenanceMessage) {
+        return res.status(503).json({ error: maintenanceMessage })
+      }
       return next()
+    }
     case 'LOCKED':
       return res.status(403).json({ error: 'Forbidden: Account is locked' })
     case 'DISABLED':
