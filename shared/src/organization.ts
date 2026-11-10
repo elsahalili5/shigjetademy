@@ -90,6 +90,7 @@ export type ClientOrganizationDetail = Omit<ClientOrganization, 'owner'> & {
     first_name: string
     last_name: string
     email: string
+    avatar_url: string | null
     role: MemberRole
     joined_at: string
   }[]
@@ -110,6 +111,7 @@ export type OrganizationMember = {
   first_name: string
   last_name: string
   email: string
+  avatar_url: string | null
   role: MemberRole
   permissions: Permission[]
   joined_at: string

@@ -206,6 +206,7 @@ model User {
   access_failed_count Int       @default(0)
   locked_until        DateTime?
   email_confirmed     Boolean   @default(false)
+  avatar_url          String?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

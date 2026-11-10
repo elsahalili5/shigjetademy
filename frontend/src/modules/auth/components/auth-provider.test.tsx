@@ -20,7 +20,7 @@ describe('AuthProvider', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Try again' }))
 
-    expect(await screen.findByRole('heading', { name: 'Your profile' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Elsa Halili' })).toBeInTheDocument()
     expect(readStoredTokens()).not.toBeNull()
   })
 })

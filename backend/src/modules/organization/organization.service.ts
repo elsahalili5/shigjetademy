@@ -76,7 +76,7 @@ const memberSelect = {
   role: true,
   permissions: true,
   created_at: true,
-  user: { select: { id: true, first_name: true, last_name: true, email: true } },
+  user: { select: { id: true, first_name: true, last_name: true, email: true, avatar_url: true } },
 } satisfies Prisma.MembershipSelect
 
 type MemberRecord = Prisma.MembershipGetPayload<{ select: typeof memberSelect }>
@@ -225,7 +225,7 @@ export const OrganizationService = {
         memberships: {
           where: { status: 'ACTIVE' },
           orderBy: { created_at: 'asc' },
-          select: { id: true, role: true, created_at: true, user: { select: { id: true, first_name: true, last_name: true, email: true } } },
+          select: { id: true, role: true, created_at: true, user: { select: { id: true, first_name: true, last_name: true, email: true, avatar_url: true } } },
         },
         invitations: {
           where: { status: 'PENDING' },

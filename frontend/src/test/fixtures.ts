@@ -12,6 +12,7 @@ export const buildUser = (overrides: Partial<AuthUser> = {}): AuthUser => ({
   email: 'elsa@school.test',
   status: 'ACTIVE',
   email_confirmed: true,
+  avatar_url: null,
   created_at: '2026-10-01T09:00:00.000Z',
   user_roles: [],
   memberships: [],

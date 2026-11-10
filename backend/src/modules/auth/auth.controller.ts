@@ -1,8 +1,40 @@
 import type { Response } from 'express'
-import { sendError } from '@lib/httpError.ts'
+import multer, { MulterError } from 'multer'
+import { ALLOWED_AVATAR_MIME_TYPES, AVATAR_MAX_BYTES } from '@lib/avatar-storage.ts'
+import { HttpError, sendError } from '@lib/httpError.ts'
 import type { AuthRequest, TypedRequest } from '@lib/types.ts'
 import { AuthService } from './auth.service.ts'
 import type { ChangePasswordInput, LoginUserInput, LogoutInput, RefreshTokenInput, RegisterUserInput, UpdateProfileInput } from './auth.types.ts'
+
+const AVATAR_FIELD_NAME = 'avatar'
+
+const avatarUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: AVATAR_MAX_BYTES },
+  fileFilter: (_req, file, callback) => {
+    if (!(ALLOWED_AVATAR_MIME_TYPES as readonly string[]).includes(file.mimetype)) {
+      return callback(new HttpError(400, 'Upload a JPEG, PNG or WEBP image.'))
+    }
+    callback(null, true)
+  },
+}).single(AVATAR_FIELD_NAME)
+
+// multer calls back instead of throwing; this turns that callback into a promise the controller can await and catch
+const runAvatarUpload = (req: AuthRequest, res: Response) =>
+  new Promise<void>((resolve, reject) => {
+    avatarUpload(req, res, (error: unknown) => {
+      if (!error) {
+        return resolve()
+      }
+      if (error instanceof HttpError) {
+        return reject(error)
+      }
+      if (error instanceof MulterError && error.code === 'LIMIT_FILE_SIZE') {
+        return reject(new HttpError(400, 'Images must be 2MB or smaller.'))
+      }
+      return reject(new HttpError(400, 'Could not process the uploaded file.'))
+    })
+  })
 
 export const AuthController = {
   registerUser: async (req: TypedRequest<RegisterUserInput>, res: Response) => {
@@ -77,6 +109,36 @@ export const AuthController = {
       return res.status(200).json({ message: 'Password changed', data: tokens })
     } catch (error) {
       return sendError({ res, error, fallback: 'Failed to change password' })
+    }
+  },
+
+  uploadAvatar: async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.id
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' })
+      }
+      await runAvatarUpload(req, res)
+      if (!req.file) {
+        throw new HttpError(400, 'Choose an image to upload.')
+      }
+      const user = await AuthService.uploadAvatar({ userId, mimeType: req.file.mimetype, buffer: req.file.buffer })
+      return res.status(200).json({ message: 'Avatar updated', data: user })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to upload avatar' })
+    }
+  },
+
+  removeAvatar: async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.id
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' })
+      }
+      const user = await AuthService.removeAvatar(userId)
+      return res.status(200).json({ message: 'Avatar removed', data: user })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to remove avatar' })
     }
   },
 }

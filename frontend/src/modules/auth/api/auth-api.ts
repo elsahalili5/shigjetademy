@@ -18,4 +18,10 @@ export const authApi = {
   updateProfile: (payload: UpdateProfileInput) => apiClient.put<AuthUser, UpdateProfileInput>('/auth/me', payload),
   changePassword: (payload: ChangePasswordInput) => apiClient.post<AuthTokens, ChangePasswordInput>('/auth/change-password', payload),
   logout: (refreshToken: string) => apiClient.post<unknown, LogoutInput>('/auth/logout', { refreshToken }),
+  uploadAvatar: (file: File) => {
+    const formData = new FormData()
+    formData.append('avatar', file)
+    return apiClient.post<AuthUser, FormData>('/auth/avatar', formData)
+  },
+  removeAvatar: () => apiClient.delete<AuthUser>('/auth/avatar'),
 }
