@@ -12,6 +12,7 @@ type TargetIds = {
   organizationId: string
   membershipId: string
   locationId: string
+  roomId: string
   departmentId: string
   yearId: string
   termId: string
@@ -35,6 +36,7 @@ type ScopedEndpoint = {
 
 const PROFILE = { name: 'Taken over', type: 'School', country: 'XK', currency: 'EUR' } as const
 const LOCATION = { name: 'Taken over', address: '', city: '', phone: '', is_main: true } as const
+const ROOM = { name: 'Taken over', capacity: null } as const
 const SETTINGS = { time_zone: 'America/New_York', week_start: 'SUNDAY', date_format: 'MONTH_DAY_YEAR' } as const
 const YEAR = { name: 'Taken over', start_date: '2030-09-01', end_date: '2031-06-30', is_current: true } as const
 const TERM = { name: 'Taken over', start_date: '2026-09-01', end_date: '2026-12-20' } as const
@@ -58,7 +60,7 @@ const COURSE = { name: 'Taken over', code: '', description: '', level: 'B2', dep
 const SCHEDULE = [{ weekday: 'MONDAY', start_time: '17:00', end_time: '18:30' }]
 
 /** A group body with the given organization's own ids, which tests swap one at a time */
-const groupBody = (ids: TargetIds) => ({ course_id: ids.courseId, name: 'Taken over', academic_year_id: ids.yearId, academic_term_id: null, location_id: null, capacity: null, lecturer_id: null, lecturer_effective_from: null, schedule: SCHEDULE })
+const groupBody = (ids: TargetIds) => ({ course_id: ids.courseId, name: 'Taken over', academic_year_id: ids.yearId, academic_term_id: null, room_id: null, capacity: null, lecturer_id: null, lecturer_effective_from: null, schedule: SCHEDULE })
 
 // Well-formed ids, so the sweep passes validation and reaches the organization checks
 const SUBSTITUTION = { lecturer_id: '00000000-0000-4000-8000-000000000003', start_date: '2027-10-01', end_date: '2027-10-02', note: '' } as const
@@ -80,7 +82,7 @@ const COVERED = { covered: 'Taken over' } as const
 // A Wednesday session of the seeded group, moved to the Friday; well-formed, so the sweep reaches the organization checks
 const RESCHEDULE = { original_date: '2027-11-24', original_start_time: '17:00', new_date: '2027-11-26', new_start_time: '17:00', new_end_time: '18:30', reason: '' } as const
 
-const GROUP = { course_id: '00000000-0000-4000-8000-000000000001', name: 'Taken over', academic_year_id: '00000000-0000-4000-8000-000000000002', academic_term_id: null, location_id: null, capacity: null, lecturer_id: null, lecturer_effective_from: null, schedule: SCHEDULE } as const
+const GROUP = { course_id: '00000000-0000-4000-8000-000000000001', name: 'Taken over', academic_year_id: '00000000-0000-4000-8000-000000000002', academic_term_id: null, room_id: null, capacity: null, lecturer_id: null, lecturer_effective_from: null, schedule: SCHEDULE } as const
 
 // One line per organization-scoped endpoint; the coverage test below fails when a route is missing here
 const SCOPED_ENDPOINTS: ScopedEndpoint[] = [
@@ -101,6 +103,12 @@ const SCOPED_ENDPOINTS: ScopedEndpoint[] = [
   { method: 'post', route: '/:organizationId/locations', body: LOCATION },
   { method: 'put', route: '/:organizationId/locations/:locationId', body: LOCATION },
   { method: 'delete', route: '/:organizationId/locations/:locationId' },
+  { method: 'get', route: '/:organizationId/rooms' },
+  { method: 'get', route: '/:organizationId/locations/:locationId/rooms' },
+  { method: 'post', route: '/:organizationId/locations/:locationId/rooms', body: ROOM },
+  { method: 'put', route: '/:organizationId/locations/:locationId/rooms/:roomId', body: ROOM },
+  { method: 'delete', route: '/:organizationId/locations/:locationId/rooms/:roomId' },
+  { method: 'get', route: '/:organizationId/schedule' },
   { method: 'get', route: '/:organizationId/departments' },
   { method: 'post', route: '/:organizationId/departments', body: { name: 'Taken over', description: '', location_id: null } },
   { method: 'put', route: '/:organizationId/departments/:departmentId', body: { name: 'Taken over', description: '', location_id: null } },
@@ -190,6 +198,7 @@ const toPath = ({ route, ids }: ToPathParams) =>
     .replace(':organizationId', ids.organizationId)
     .replace(':membershipId', ids.membershipId)
     .replace(':locationId', ids.locationId)
+    .replace(':roomId', ids.roomId)
     .replace(':departmentId', ids.departmentId)
     .replace(':yearId', ids.yearId)
     .replace(':termId', ids.termId)
@@ -258,9 +267,10 @@ const seedOrganization = async ({ name, slug }: SeedOrganizationParams) => {
     },
   })
   const course = await prisma.course.create({ data: { organization_id: organization.id, name: `${name} course`, level: 'B2', department_id: department.id } })
+  const room = await prisma.room.create({ data: { location_id: location.id, name: `${name} room` } })
   // In a year of its own, so the current year stays free to delete
   const groupYear = await prisma.academicYear.create({ data: { organization_id: organization.id, name: `${name} 2027–28`, start_date: new Date('2027-09-01'), end_date: new Date('2028-06-30') } })
-  const group = await prisma.group.create({ data: { organization_id: organization.id, course_id: course.id, name: `${name} group`, academic_year_id: groupYear.id, location_id: location.id } })
+  const group = await prisma.group.create({ data: { organization_id: organization.id, course_id: course.id, name: `${name} group`, academic_year_id: groupYear.id, room_id: room.id } })
   await prisma.groupMeeting.create({ data: { group_id: group.id, weekday: 'WEDNESDAY', start_time: new Date('1970-01-01T17:00:00.000Z'), end_time: new Date('1970-01-01T18:30:00.000Z') } })
   await prisma.groupLecturerAssignment.create({ data: { group_id: group.id, lecturer_id: lecturer.id, start_date: new Date('2027-09-01') } })
   const substitute = await prisma.lecturer.create({ data: { organization_id: organization.id, first_name: name, last_name: 'Substitute', employment_type: 'PART_TIME' } })
@@ -295,7 +305,7 @@ const seedOrganization = async ({ name, slug }: SeedOrganizationParams) => {
       expires_at: new Date(Date.now() + 86_400_000),
     },
   })
-  return { organizationId: organization.id, membershipId: adminMembership.id, locationId: location.id, departmentId: department.id, yearId: year.id, termId: term.id, holidayId: holiday.id, studentId: student.id, lecturerId: lecturer.id, courseId: course.id, groupId: group.id, substitutionId: substitution.id, enrolmentId: enrolment.id, rescheduleId: reschedule.id, invitationId: invitation.id }
+  return { organizationId: organization.id, membershipId: adminMembership.id, locationId: location.id, roomId: room.id, departmentId: department.id, yearId: year.id, termId: term.id, holidayId: holiday.id, studentId: student.id, lecturerId: lecturer.id, courseId: course.id, groupId: group.id, substitutionId: substitution.id, enrolmentId: enrolment.id, rescheduleId: reschedule.id, invitationId: invitation.id }
 }
 
 let oxford: TargetIds
@@ -371,7 +381,7 @@ describe('organization isolation', () => {
     // Oxford's own organization id with Yllka's member, location, department, academic period, student, lecturer, course, group, substitution, enrolment, reschedule and invitation ids
     const mixed: TargetIds = { ...yllka, organizationId: oxford.organizationId }
 
-    for (const endpoint of SCOPED_ENDPOINTS.filter((item) => /:(membership|location|department|year|term|holiday|student|lecturer|course|group|substitution|enrolment|reschedule|invitation)Id/.test(item.route))) {
+    for (const endpoint of SCOPED_ENDPOINTS.filter((item) => /:(membership|location|room|department|year|term|holiday|student|lecturer|course|group|substitution|enrolment|reschedule|invitation)Id/.test(item.route))) {
       const response = await send({ ...endpoint, ids: mixed, auth: oxfordOwnerAuth })
       expect(response.status, `${endpoint.method.toUpperCase()} ${endpoint.route} answered ${response.status}`).toBe(404)
     }
@@ -404,7 +414,7 @@ describe('organization isolation', () => {
       { ...ownGroup, course_id: yllka.courseId },
       { ...ownGroup, academic_year_id: yllka.yearId },
       { ...ownGroup, academic_term_id: yllka.termId },
-      { ...ownGroup, location_id: yllka.locationId },
+      { ...ownGroup, room_id: yllka.roomId },
       { ...ownGroup, lecturer_id: yllka.lecturerId, lecturer_effective_from: '2027-10-01' },
     ]
     const addedGroups = await Promise.all(groupsWithYllkaIds.map((body) => send({ method: 'post', route: '/:organizationId/groups', body, ids: oxford, auth: oxfordOwnerAuth })))
@@ -444,7 +454,7 @@ describe('organization isolation', () => {
     expect(await prisma.group.count({ where: { organization_id: oxford.organizationId } })).toBe(1)
     expect(await prisma.groupLecturerAssignment.count({ where: { lecturer_id: yllka.lecturerId, group: { organization_id: oxford.organizationId } } })).toBe(0)
     expect(await prisma.group.count({ where: { OR: [{ academic_year_id: yllka.yearId }, { academic_term_id: yllka.termId }] } })).toBe(0)
-    expect(await prisma.group.count({ where: { OR: [{ course_id: yllka.courseId }, { location_id: yllka.locationId }] } })).toBe(1)
+    expect(await prisma.group.count({ where: { OR: [{ course_id: yllka.courseId }, { room_id: yllka.roomId }] } })).toBe(1)
     expect(editedYllkaSubstitution.status).toBe(404)
     expect(cancelledYllkaSubstitution.status).toBe(404)
     expect(enrolmentWithYllkaStudent.status).toBe(400)

@@ -169,7 +169,7 @@ export const LessonPlanService = {
           group_id: group.id,
           name: group.name,
           course: group.course.name,
-          location: group.location?.name ?? null,
+          location: group.room?.name ?? null,
           start_time: session.start_time,
           end_time: session.end_time,
           rescheduled_from: session.rescheduled_from,

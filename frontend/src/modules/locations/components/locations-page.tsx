@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { MapPin, Plus } from 'lucide-react'
 import type { OrganizationDepartment, OrganizationLocation } from '@shigjetademy/shared/location'
+import type { OrganizationRoom } from '@shigjetademy/shared/rooms'
 import { DashboardPageHeader } from '#/components/DashboardPageHeader'
 import { NoticeBar } from '#/components/NoticeBar'
 import type { Notice } from '#/components/NoticeBar'
@@ -101,6 +102,14 @@ export function LocationsPage({ organizationId, organizationName, isOwner }: Loc
     )
   }
 
+  const handleRoomSaved = (saved: OrganizationRoom) => {
+    setNotice({ tone: 'success', text: `Saved ${saved.name}.` })
+  }
+
+  const handleRoomRemoved = (room: OrganizationRoom) => {
+    setNotice({ tone: 'success', text: `Removed ${room.name}.` })
+  }
+
   return (
     <div className="flex h-full min-w-0 flex-col overflow-y-auto">
       <DashboardPageHeader
@@ -114,12 +123,15 @@ export function LocationsPage({ organizationId, organizationName, isOwner }: Loc
 
         <SectionCard title="Locations" action={canAddLocation ? <AddButton label="Add location" onClick={handleAddLocation} /> : null}>
           <LocationList
+            organizationId={organizationId}
             status={locations.status}
             locations={locations.data}
             isOwner={isOwner}
             onRetry={() => void locations.refetch()}
             onEdit={handleEditLocation}
             onRemove={handleRemoveLocation}
+            onRoomSaved={handleRoomSaved}
+            onRoomRemoved={handleRoomRemoved}
           />
         </SectionCard>
 

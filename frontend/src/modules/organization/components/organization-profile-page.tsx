@@ -27,6 +27,7 @@ export function OrganizationProfilePage({ organizationId, organizationName, isOw
         icon={Building2}
         title="Organization profile"
         subtitle={isOwner ? organizationName : `${organizationName} · only the owner can change these details`}
+        backTo={{ to: '/dashboard', label: 'Back' }}
       />
       <div className="grid max-w-[1040px] gap-6 px-[clamp(20px,3.4vw,44px)] pb-10">
         <ProfileContent status={profile.status} profile={profile.data} isOwner={isOwner} onRetry={() => void profile.refetch()} />

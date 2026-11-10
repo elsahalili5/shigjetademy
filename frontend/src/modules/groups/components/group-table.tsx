@@ -20,8 +20,8 @@ const getPeriod = (group: Group) => [group.academic_year.name, group.academic_te
 
 const getSeats = (capacity: number) => (capacity === 1 ? '1 seat' : `${capacity} seats`)
 
-/** "Main campus · 20 seats", or what of it is recorded */
-const getWhere = (group: Group) => [group.location?.name, group.capacity === null ? null : getSeats(group.capacity)].filter(Boolean).join(' · ')
+/** "Room 101 · 20 seats", or what of it is recorded */
+const getWhere = (group: Group) => [group.room?.name, group.capacity === null ? null : getSeats(group.capacity)].filter(Boolean).join(' · ')
 
 interface GroupTableProps {
   groups: Group[]

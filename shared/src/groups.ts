@@ -74,13 +74,13 @@ const scheduleSchema = z
 
 export const SCHEDULE_REQUIRED_MESSAGE = 'Add at least one day and time.'
 
-/** An edit of a group. The location stands in for a room. An empty schedule is only kept by a group that never had one; the service checks that. */
+/** An edit of a group. An empty schedule is only kept by a group that never had one; the service checks that. */
 export const groupSchema = z.object({
   course_id: z.uuid('Choose a course.'),
   name: nameSchema('Enter the group name.'),
   academic_year_id: z.uuid('Choose a school year.'),
   academic_term_id: z.uuid('Choose a term.').nullable(),
-  location_id: z.uuid('Choose a location.').nullable(),
+  room_id: z.uuid('Choose a room.').nullable(),
   capacity: z.number('Enter a whole number.').int('Enter a whole number.').min(1, 'Enter at least 1 seat.').max(CAPACITY_MAX, `Keep it to ${CAPACITY_MAX} seats.`).nullable(),
   /** The permanent lecturer; null for none */
   lecturer_id: z.uuid('Choose a lecturer.').nullable(),
@@ -196,7 +196,7 @@ export type Group = {
   course: CourseOption
   academic_year: GroupRelation
   academic_term: GroupRelation | null
-  location: GroupRelation | null
+  room: GroupRelation | null
   /** The permanent lecturer on the organization's today */
   lecturer: GroupLecturer | null
   /** The change still to come, with its first day; lecturer is null when the group is left without one */

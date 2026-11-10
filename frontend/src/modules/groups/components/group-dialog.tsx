@@ -5,7 +5,7 @@ import type { AcademicYear } from '@shigjetademy/shared/academic-periods'
 import type { CourseOption } from '@shigjetademy/shared/courses'
 import type { Group, GroupInput, GroupLecturerOption } from '@shigjetademy/shared/groups'
 import { todayIn } from '@shigjetademy/shared/calendar-day'
-import type { OrganizationLocation } from '@shigjetademy/shared/location'
+import type { GroupRoomOption } from '@shigjetademy/shared/rooms'
 import { FormAlert } from '#/components/FormAlert'
 import { FormDialog } from '#/components/FormDialog'
 import { SelectField } from '#/components/SelectField'
@@ -20,11 +20,11 @@ import { getGroupLecturerName, getLecturerChoices, getPlannedLecturer } from '..
 
 export type GroupDialogMode = { kind: 'add'; openCount: number } | { kind: 'edit'; group: Group; openCount: number }
 
-/** The organization's courses, years, locations and lecturers the form offers */
+/** The organization's courses, years, rooms and lecturers the form offers */
 export type GroupFormOptions = {
   courses: CourseOption[]
   years: AcademicYear[]
-  locations: OrganizationLocation[]
+  rooms: GroupRoomOption[]
   lecturers: GroupLecturerOption[]
 }
 
@@ -67,7 +67,7 @@ interface GroupFormProps {
 function GroupForm({ organizationId, group, options, timeZone, onSaved, onCancel }: GroupFormProps) {
   const form = useGroupForm({ group, defaultYearId: options.years.find((year) => year.is_current)?.id ?? '' })
   const saveGroup = useSaveGroup(organizationId)
-  const ids = { course: useId(), name: useId(), year: useId(), term: useId(), location: useId(), capacity: useId(), lecturer: useId(), effectiveFrom: useId() }
+  const ids = { course: useId(), name: useId(), year: useId(), term: useId(), room: useId(), capacity: useId(), lecturer: useId(), effectiveFrom: useId() }
   const { errors } = form.formState
   const isPending = saveGroup.isPending
   const yearId = form.watch('academic_year_id')
@@ -166,23 +166,23 @@ function GroupForm({ organizationId, group, options, timeZone, onSaved, onCancel
         <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
           <Controller
             control={form.control}
-            name="location_id"
+            name="room_id"
             render={({ field }) => (
               <SelectField
-                id={ids.location}
-                label="Location"
+                id={ids.room}
+                label="Room"
                 hint="(optional)"
                 disabled={isPending}
-                error={fieldError('location_id')}
+                error={fieldError('room_id')}
                 name={field.name}
                 value={field.value ?? ''}
                 onBlur={field.onBlur}
                 onChange={(event) => field.onChange(event.target.value || null)}
               >
-                <option value="">No location</option>
-                {options.locations.map((location) => (
-                  <option key={location.id} value={location.id}>
-                    {location.name}
+                <option value="">No room</option>
+                {options.rooms.map((room) => (
+                  <option key={room.id} value={room.id}>
+                    {room.name} · {room.location.name}
                   </option>
                 ))}
               </SelectField>

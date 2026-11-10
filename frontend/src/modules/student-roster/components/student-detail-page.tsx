@@ -1,5 +1,4 @@
-import { ArrowLeft, CalendarX, UserRound } from 'lucide-react'
-import { Link } from '@tanstack/react-router'
+import { CalendarX, UserRound } from 'lucide-react'
 import type { StudentAttendanceSummary, StudentRosterDetail } from '@shigjetademy/shared/student-roster'
 import { getStudentName } from '@shigjetademy/shared/students'
 import type { UseQueryResult } from '@tanstack/react-query'
@@ -29,12 +28,12 @@ export function StudentDetailPage({ organizationId, studentId }: StudentDetailPa
 
   return (
     <div className="flex h-full min-w-0 flex-col overflow-y-auto">
-      <DashboardPageHeader icon={UserRound} title={detail.data ? getStudentName(detail.data.student) : 'Student'} subtitle="Their attendance in the groups you teach.">
-        <Link className="button button--ghost min-h-11 px-4 text-base" to="/dashboard/my-students">
-          <ArrowLeft size={17} strokeWidth={2.2} aria-hidden="true" />
-          Back to Students
-        </Link>
-      </DashboardPageHeader>
+      <DashboardPageHeader
+        icon={UserRound}
+        title={detail.data ? getStudentName(detail.data.student) : 'Student'}
+        subtitle="Their attendance in the groups you teach."
+        backTo={{ to: '/dashboard/my-students', label: 'Back to Students' }}
+      />
       <div className="grid max-w-[880px] min-w-0 gap-5 px-[clamp(20px,3.4vw,44px)] pb-10">
         <StudentDetailContent detail={detail} isNotFound={isNotFound} />
       </div>

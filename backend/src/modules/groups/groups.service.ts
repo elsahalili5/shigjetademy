@@ -26,7 +26,7 @@ const groupFields = {
   course: { select: { id: true, name: true, status: true } },
   academic_year: { select: relationSelect },
   academic_term: { select: relationSelect },
-  location: { select: relationSelect },
+  room: { select: relationSelect },
 } as const satisfies Prisma.GroupSelect
 
 /** The organization's day and the first day of its week, which every group answer depends on */
@@ -80,7 +80,7 @@ const readGroup = async ({ tx, groupId, calendar }: ReadGroupParams) => {
 }
 
 /** The columns of the group itself; the lecturer lives in rows of its own */
-const toGroupColumns = ({ course_id, name, academic_year_id, academic_term_id, location_id, capacity }: GroupInput) => ({ course_id, name, academic_year_id, academic_term_id, location_id, capacity })
+const toGroupColumns = ({ course_id, name, academic_year_id, academic_term_id, room_id, capacity }: GroupInput) => ({ course_id, name, academic_year_id, academic_term_id, room_id, capacity })
 
 type CheckGroupParams = OrganizationScope & {
   data: GroupInput
@@ -88,7 +88,7 @@ type CheckGroupParams = OrganizationScope & {
   current?: { id: string; courseId: string }
 }
 
-/** The course, year and location must be the organization's own, the term must be of the chosen year, and an archived course takes no new groups */
+/** The course, year and room must be the organization's own, the term must be of the chosen year, and an archived course takes no new groups */
 const checkGroup = async ({ tx, organizationId, data, current }: CheckGroupParams) => {
   const course = await tx.course.findFirst({ where: { id: data.course_id, organization_id: organizationId }, select: { status: true } })
   if (!course) {
@@ -107,10 +107,10 @@ const checkGroup = async ({ tx, organizationId, data, current }: CheckGroupParam
       throw refuseField({ field: 'academic_term_id', status: 400, message: 'Choose a term of this school year.' })
     }
   }
-  if (data.location_id) {
-    const location = await tx.location.findFirst({ where: { id: data.location_id, organization_id: organizationId }, select: { id: true } })
-    if (!location) {
-      throw refuseField({ field: 'location_id', status: 400, message: 'Choose one of your organization’s locations.' })
+  if (data.room_id) {
+    const room = await tx.room.findFirst({ where: { id: data.room_id, location: { organization_id: organizationId } }, select: { id: true } })
+    if (!room) {
+      throw refuseField({ field: 'room_id', status: 400, message: 'Choose one of your organization’s rooms.' })
     }
   }
   const sameName = await tx.group.findFirst({

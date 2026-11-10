@@ -21,7 +21,7 @@ const GROUP_A: Group = {
   course: { id: '7c1c2f43-0d1e-4c55-9a3e-6b1f0c2a2b01', name: 'Mathematics', status: 'ACTIVE' },
   academic_year: { id: '6c3f5d4d-9e4c-4f88-8d6b-3a4bce4f5a01', name: '2026–27' },
   academic_term: { id: '5b2e4c3c-8d3b-4e77-9c5a-2f3abd3e4f01', name: 'Autumn term' },
-  location: { id: '3f0c2a1a-6b1f-4c55-9a3e-0d1e9b1c2f01', name: 'Main campus' },
+  room: { id: '3f0c2a1a-6b1f-4c55-9a3e-0d1e9b1c2f01', name: 'Room 101' },
   lecturer: TEUTA,
   lecturer_change: null,
   schedule: [
@@ -364,7 +364,7 @@ describe('GroupDetailPage', () => {
     expect(screen.queryByRole('table', { name: 'Groups' })).not.toBeInTheDocument()
   })
 
-  it('shows the course, year, term, location, capacity, lecturer history and substitutions', async () => {
+  it('shows the course, year, term, room, capacity, lecturer history and substitutions', async () => {
     signInAsOwner()
     serveGroup()
     renderRoute(GROUP_PAGE_PATH)
@@ -373,7 +373,7 @@ describe('GroupDetailPage', () => {
     expect(await within(details).findByText('Mathematics')).toBeInTheDocument()
     expect(within(details).getByText('2026–27')).toBeInTheDocument()
     expect(within(details).getByText('Autumn term')).toBeInTheDocument()
-    expect(within(details).getByText('Main campus')).toBeInTheDocument()
+    expect(within(details).getByText('Room 101')).toBeInTheDocument()
     expect(within(details).getByText('20 seats')).toBeInTheDocument()
     const history = await screen.findByRole('list', { name: 'Permanent lecturers' })
     expect(within(history).getAllByRole('listitem').map((item) => item.textContent)).toEqual(['Teuta KrasniqiFrom 10 Nov 2026', 'Arben Hoxha1 Sep 2026 – 9 Nov 2026'])
@@ -382,14 +382,14 @@ describe('GroupDetailPage', () => {
     expect(within(substitutions).getByRole('listitem')).toHaveTextContent('Sick leave')
   })
 
-  it('says what isn’t set for a group without a term, location or capacity', async () => {
+  it('says what isn’t set for a group without a term, room or capacity', async () => {
     signInAsOwner()
-    serveGroup({ group: { ...GROUP_A, academic_term: null, location: null, capacity: null } })
+    serveGroup({ group: { ...GROUP_A, academic_term: null, room: null, capacity: null } })
     renderRoute(GROUP_PAGE_PATH)
 
     const details = await screen.findByRole('region', { name: 'Details' })
     expect(await within(details).findByText('No term')).toBeInTheDocument()
-    expect(within(details).getByText('No location')).toBeInTheDocument()
+    expect(within(details).getByText('No room')).toBeInTheDocument()
     expect(within(details).getByText('No limit')).toBeInTheDocument()
   })
 

@@ -20,7 +20,9 @@
     "./attendance": "./src/attendance.ts",
     "./lesson-plans": "./src/lesson-plans.ts",
     "./student-roster": "./src/student-roster.ts",
-    "./platform-settings": "./src/platform-settings.ts"
+    "./platform-settings": "./src/platform-settings.ts",
+    "./rooms": "./src/rooms.ts",
+    "./schedule": "./src/schedule.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

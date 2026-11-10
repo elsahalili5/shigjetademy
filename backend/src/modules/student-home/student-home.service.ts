@@ -16,7 +16,7 @@ const schoolGroupSelect = {
   course: { select: { name: true } },
   academic_year: { select: { name: true } },
   academic_term: { select: { name: true } },
-  location: { select: { name: true } },
+  room: { select: { name: true } },
   meetings: meetingsSelect,
 } as const
 
@@ -63,7 +63,7 @@ export const StudentHomeService = {
         course: group.course.name,
         academic_year: group.academic_year.name,
         academic_term: group.academic_term?.name ?? null,
-        location: group.location?.name ?? null,
+        location: group.room?.name ?? null,
         schedule: toScheduleJson({ meetings: group.meetings, weekStart: settings.week_start }),
       })),
       rescheduled_lessons: reschedules.map(toRescheduledLesson),

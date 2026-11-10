@@ -17,7 +17,7 @@ const coverGroupSelect = {
   name: true,
   course: { select: { name: true } },
   academic_year: { select: { name: true } },
-  location: { select: { name: true } },
+  room: { select: { name: true } },
   meetings: meetingsSelect,
 } as const satisfies Prisma.GroupSelect
 
@@ -41,7 +41,7 @@ const toCoverGroup = ({ group, weekStart }: ToCoverGroupParams): MyTeachingCover
   name: group.name,
   course: group.course.name,
   academic_year: group.academic_year.name,
-  location: group.location?.name ?? null,
+  location: group.room?.name ?? null,
   schedule: toScheduleJson({ meetings: group.meetings, weekStart }),
 })
 

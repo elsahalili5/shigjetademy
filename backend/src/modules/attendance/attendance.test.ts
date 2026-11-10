@@ -107,9 +107,10 @@ afterEach(() => {
 describe('lesson sessions on a day', () => {
   it('shows a lecturer each session they teach that day, so a group meeting twice shows twice, earliest first', async () => {
     const north = await prisma.location.create({ data: { organization_id: organizationId, name: 'North campus' } })
+    const northRoom = await prisma.room.create({ data: { location_id: north.id, name: 'North campus' } })
     const late = await addGroup({ name: 'Group B', lecturerId: arbenId, schedule: [{ weekday: 'MONDAY', start_time: '19:00', end_time: '20:00' }] })
     const twice = await addGroup({ name: 'Group A', lecturerId: arbenId, schedule: [{ weekday: 'MONDAY', start_time: '17:00', end_time: '18:00' }, { weekday: 'MONDAY', start_time: '18:15', end_time: '18:45' }, { weekday: 'TUESDAY', start_time: '09:00', end_time: '10:00' }] })
-    await prisma.group.update({ where: { id: late.id }, data: { location_id: north.id } })
+    await prisma.group.update({ where: { id: late.id }, data: { room_id: northRoom.id } })
     await addGroup({ name: 'Tuesdays', lecturerId: arbenId, schedule: [{ weekday: 'TUESDAY', start_time: '17:00', end_time: '18:30' }] })
     await addGroup({ name: 'Teuta’s group', lecturerId: teutaId })
 

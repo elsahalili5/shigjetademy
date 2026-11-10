@@ -34,6 +34,7 @@ const BUILT_MODULE_PAGES = {
   lecturers: '/dashboard/lecturers',
   courses: '/dashboard/courses',
   groups: '/dashboard/groups',
+  schedule: '/dashboard/schedule',
   attendance: '/dashboard/attendance',
   lessons: '/dashboard/lessons',
 } as const
@@ -47,6 +48,7 @@ const MODULE_PERMISSIONS = {
   courses: ['MANAGE_COURSES'],
   // Timetable admins read groups to move their lessons
   groups: ['MANAGE_COURSES', 'MANAGE_SCHEDULES'],
+  schedule: ['MANAGE_SCHEDULES'],
   attendance: ['MANAGE_ATTENDANCE'],
   lessons: ['MANAGE_COURSES'],
 } as const satisfies Partial<Record<ModuleSlug, readonly Permission[]>>

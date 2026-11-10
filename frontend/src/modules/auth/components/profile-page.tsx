@@ -13,7 +13,7 @@ interface ProfilePageProps {
 export function ProfilePage({ user }: ProfilePageProps) {
   return (
     <div className="flex h-full min-w-0 flex-col overflow-y-auto">
-      <DashboardPageHeader icon={UserRound} title="Your profile" subtitle="Your name, email and password" />
+      <DashboardPageHeader icon={UserRound} title="Your profile" subtitle="Your name, email and password" backTo={{ to: '/dashboard', label: 'Back' }} />
 
       <div className="grid max-w-[760px] gap-5 px-[clamp(20px,3.4vw,44px)] pb-10">
         <section className="rounded-card border border-rule p-[clamp(20px,2.4vw,28px)]">

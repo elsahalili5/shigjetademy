@@ -40,6 +40,7 @@ import { Route as DashboardOrganizationProfileRouteImport } from './routes/dashb
 import { Route as DashboardOrganizationSettingsRouteImport } from './routes/dashboard/organization-settings'
 import { Route as DashboardOverviewRouteImport } from './routes/dashboard/overview'
 import { Route as DashboardProfileRouteImport } from './routes/dashboard/profile'
+import { Route as DashboardScheduleRouteImport } from './routes/dashboard/schedule'
 import { Route as DashboardStudentsRouteImport } from './routes/dashboard/students'
 import { Route as InviteTokenRouteImport } from './routes/invite/$token'
 import { Route as OrganizationsNewRouteImport } from './routes/organizations/new'
@@ -206,6 +207,11 @@ const DashboardProfileRoute = DashboardProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
+const DashboardScheduleRoute = DashboardScheduleRouteImport.update({
+  id: '/schedule',
+  path: '/schedule',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
 const DashboardStudentsRoute = DashboardStudentsRouteImport.update({
   id: '/students',
   path: '/students',
@@ -283,6 +289,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/organization-settings': typeof DashboardOrganizationSettingsRoute
   '/dashboard/overview': typeof DashboardOverviewRoute
   '/dashboard/profile': typeof DashboardProfileRoute
+  '/dashboard/schedule': typeof DashboardScheduleRoute
   '/dashboard/students': typeof DashboardStudentsRoute
   '/invite/$token': typeof InviteTokenRoute
   '/organizations/new': typeof OrganizationsNewRoute
@@ -322,6 +329,7 @@ export interface FileRoutesByTo {
   '/dashboard/organization-settings': typeof DashboardOrganizationSettingsRoute
   '/dashboard/overview': typeof DashboardOverviewRoute
   '/dashboard/profile': typeof DashboardProfileRoute
+  '/dashboard/schedule': typeof DashboardScheduleRoute
   '/dashboard/students': typeof DashboardStudentsRoute
   '/invite/$token': typeof InviteTokenRoute
   '/organizations/new': typeof OrganizationsNewRoute
@@ -365,6 +373,7 @@ export interface FileRoutesById {
   '/dashboard/organization-settings': typeof DashboardOrganizationSettingsRoute
   '/dashboard/overview': typeof DashboardOverviewRoute
   '/dashboard/profile': typeof DashboardProfileRoute
+  '/dashboard/schedule': typeof DashboardScheduleRoute
   '/dashboard/students': typeof DashboardStudentsRoute
   '/invite/$token': typeof InviteTokenRoute
   '/organizations/new': typeof OrganizationsNewRoute
@@ -407,6 +416,7 @@ export interface FileRouteTypes {
     | '/dashboard/organization-settings'
     | '/dashboard/overview'
     | '/dashboard/profile'
+    | '/dashboard/schedule'
     | '/dashboard/students'
     | '/invite/$token'
     | '/organizations/new'
@@ -446,6 +456,7 @@ export interface FileRouteTypes {
     | '/dashboard/organization-settings'
     | '/dashboard/overview'
     | '/dashboard/profile'
+    | '/dashboard/schedule'
     | '/dashboard/students'
     | '/invite/$token'
     | '/organizations/new'
@@ -488,6 +499,7 @@ export interface FileRouteTypes {
     | '/dashboard/organization-settings'
     | '/dashboard/overview'
     | '/dashboard/profile'
+    | '/dashboard/schedule'
     | '/dashboard/students'
     | '/invite/$token'
     | '/organizations/new'
@@ -729,6 +741,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardProfileRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
+    '/dashboard/schedule': {
+      id: '/dashboard/schedule'
+      path: '/schedule'
+      fullPath: '/dashboard/schedule'
+      preLoaderRoute: typeof DashboardScheduleRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
     '/dashboard/students': {
       id: '/dashboard/students'
       path: '/students'
@@ -856,6 +875,7 @@ interface DashboardRouteRouteChildren {
   DashboardOrganizationSettingsRoute: typeof DashboardOrganizationSettingsRoute
   DashboardOverviewRoute: typeof DashboardOverviewRoute
   DashboardProfileRoute: typeof DashboardProfileRoute
+  DashboardScheduleRoute: typeof DashboardScheduleRoute
   DashboardStudentsRoute: typeof DashboardStudentsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardClientsOrganizationIdRoute: typeof DashboardClientsOrganizationIdRoute
@@ -881,6 +901,7 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardOrganizationSettingsRoute: DashboardOrganizationSettingsRoute,
   DashboardOverviewRoute: DashboardOverviewRoute,
   DashboardProfileRoute: DashboardProfileRoute,
+  DashboardScheduleRoute: DashboardScheduleRoute,
   DashboardStudentsRoute: DashboardStudentsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardClientsOrganizationIdRoute: DashboardClientsOrganizationIdRoute,
