@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Archive, ArchiveRestore, ArrowRightLeft, Building2, CalendarClock, CalendarCog, CalendarX2, ClipboardPen, CalendarPlus, CalendarRange, CalendarX, CirclePause, CirclePlay, Crown, DoorClosed, DoorOpen, KeyRound, Layers, Lock, Mail, MailCheck, MailX, MapPin, MapPinOff, MapPinPen, Network, Power, PowerOff, Send, Settings, SlidersHorizontal, SquarePen, Trash2, TreePalm, UserMinus, UserPen, UserPlus, UserRoundCheck, UserRoundMinus, UserRoundPen, UserRoundPlus, UserRoundX, UsersRound } from 'lucide-react'
+import { Archive, ArchiveRestore, ArrowRightLeft, Building2, CalendarClock, CalendarCog, CalendarX2, ClipboardPen, CalendarPlus, CalendarRange, CalendarX, CirclePause, CirclePlay, Crown, DoorClosed, DoorOpen, KeyRound, Layers, Link2, Lock, Mail, MailCheck, MailX, MapPin, MapPinOff, MapPinPen, Network, Power, PowerOff, Send, Settings, SlidersHorizontal, SquarePen, Trash2, TreePalm, Unlink, UserMinus, UserPen, UserPlus, UserRoundCheck, UserRoundMinus, UserRoundPen, UserRoundPlus, UserRoundX, UsersRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ActivityAction, ActivityEntry, ActivityUser } from '@shigjetademy/shared/activity'
 import { useFormatDateTime } from '#/lib/use-format-date'
@@ -65,6 +65,10 @@ const ACTION_ICONS = {
   INVITATION_REVOKED: MailX,
   INVITATION_ACCEPTED: MailCheck,
   PLATFORM_SETTINGS_UPDATED: SlidersHorizontal,
+  GUARDIAN_ADDED: UserPlus,
+  GUARDIAN_UPDATED: UserPen,
+  GUARDIAN_LINKED: Link2,
+  GUARDIAN_UNLINKED: Unlink,
 } as const satisfies Record<ActivityAction, LucideIcon>
 
 type FullNameParams = {
@@ -300,6 +304,14 @@ function ActivitySentence({ entry, shouldLinkOrganization }: ActivityRowProps) {
       )
     case 'PLATFORM_SETTINGS_UPDATED':
       return <>{fullName({ user: entry.actor, fallback: DELETED_ACTOR })} updated the platform settings</>
+    case 'GUARDIAN_ADDED':
+      return <SubjectSentence entry={entry} verb="added" noun="guardian" organization={subjectOrganization} />
+    case 'GUARDIAN_UPDATED':
+      return <SubjectSentence entry={entry} verb="changed" noun="guardian" organization={subjectOrganization} />
+    case 'GUARDIAN_LINKED':
+      return <GuardianLinkSentence entry={entry} verb="linked" organization={subjectOrganization} />
+    case 'GUARDIAN_UNLINKED':
+      return <GuardianLinkSentence entry={entry} verb="unlinked" organization={subjectOrganization} />
     default: {
       const unknown: never = entry.action
       throw new Error(`Unknown activity action: ${String(unknown)}`)
@@ -310,7 +322,7 @@ function ActivitySentence({ entry, shouldLinkOrganization }: ActivityRowProps) {
 interface SubjectSentenceProps {
   entry: ActivityEntry
   verb: 'added' | 'changed' | 'removed' | 'archived' | 'restored'
-  noun: 'location' | 'room' | 'department' | 'school year' | 'term' | 'holiday' | 'student' | 'lecturer' | 'course' | 'group'
+  noun: 'location' | 'room' | 'department' | 'school year' | 'term' | 'holiday' | 'student' | 'lecturer' | 'course' | 'group' | 'guardian'
   organization: ReactNode
 }
 
@@ -358,6 +370,28 @@ function GroupStudentSentence({ entry, verb, organization }: GroupStudentSentenc
   return (
     <>
       {fullName({ user: entry.actor, fallback: DELETED_ACTOR })} {verb} {entry.subject_name ?? UNNAMED_GROUP_STUDENT[verb]}
+      {organization ? <> at {organization}</> : null}
+    </>
+  )
+}
+
+interface GuardianLinkSentenceProps {
+  entry: ActivityEntry
+  verb: 'linked' | 'unlinked'
+  organization: ReactNode
+}
+
+// The service always stores the guardian and student; this only covers a null column
+const UNNAMED_GUARDIAN_LINK = {
+  linked: 'a guardian to a student',
+  unlinked: 'a guardian from a student',
+} as const satisfies Record<GuardianLinkSentenceProps['verb'], string>
+
+/** "Elsa Halili linked Drita Gashi to Arta Gashi", with the names stored when it happened, plus "at Oxford Academy" when the organization is given */
+function GuardianLinkSentence({ entry, verb, organization }: GuardianLinkSentenceProps) {
+  return (
+    <>
+      {fullName({ user: entry.actor, fallback: DELETED_ACTOR })} {verb} {entry.subject_name ?? UNNAMED_GUARDIAN_LINK[verb]}
       {organization ? <> at {organization}</> : null}
     </>
   )

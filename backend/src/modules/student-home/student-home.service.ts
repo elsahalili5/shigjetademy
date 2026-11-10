@@ -1,24 +1,10 @@
-import type { Prisma } from '@generated/prisma/client.ts'
 import { todayIn } from '@shigjetademy/shared/calendar-day'
 import { resolveOrganizationSettings } from '@shigjetademy/shared/organization-settings'
 import type { MySchool } from '@shigjetademy/shared/students'
 import { toDate } from '@lib/calendar-day.ts'
 import { periodSelect, toPeriodJson } from '@lib/current-period.ts'
 import { prisma } from '@lib/prisma.ts'
-import { activeEnrolments } from '@modules/groups/group-selects.ts'
-import { byNewSlot, rescheduledLessonSelect, toRescheduledLesson, upcomingReschedules } from '@modules/groups/rescheduled-lessons.ts'
-import { meetingsSelect, toScheduleJson } from '@modules/groups/group-schedule.ts'
-
-// What a student reads of a group: no lecturer history, staff notes or other students
-const schoolGroupSelect = {
-  id: true,
-  name: true,
-  course: { select: { name: true } },
-  academic_year: { select: { name: true } },
-  academic_term: { select: { name: true } },
-  room: { select: { name: true } },
-  meetings: meetingsSelect,
-} as const
+import { getStudentGroups } from './student-groups.ts'
 
 type GetMySchoolParams = {
   organizationId: string
@@ -42,31 +28,14 @@ export const StudentHomeService = {
       }),
     ])
     const term = year?.terms[0]
-    // The active groups they are in now, in a school year that includes today, like My teaching
-    const groupsWhere = student
-      ? ({ organization_id: organizationId, status: 'ACTIVE', academic_year: { start_date: { lte: today }, end_date: { gte: today } }, enrolments: { some: { student_id: student.id, ...activeEnrolments } } } satisfies Prisma.GroupWhereInput)
-      : null
-    const [groups, reschedules] = groupsWhere
-      ? await Promise.all([
-          prisma.group.findMany({ where: groupsWhere, orderBy: [{ name: 'asc' }, { id: 'asc' }], select: schoolGroupSelect }),
-          prisma.lessonReschedule.findMany({ where: { ...upcomingReschedules(today), group: groupsWhere }, orderBy: byNewSlot, select: rescheduledLessonSelect }),
-        ])
-      : [[], []]
+    const { groups, rescheduled_lessons } = student ? await getStudentGroups({ organizationId, studentId: student.id, today, weekStart: settings.week_start }) : { groups: [], rescheduled_lessons: [] }
     return {
       organization: { id: organization.id, name: organization.name },
       student: student && { first_name: student.first_name, last_name: student.last_name, student_number: student.student_number },
       academic_year: year ? toPeriodJson(year) : null,
       term: term ? toPeriodJson(term) : null,
-      groups: groups.map((group) => ({
-        id: group.id,
-        name: group.name,
-        course: group.course.name,
-        academic_year: group.academic_year.name,
-        academic_term: group.academic_term?.name ?? null,
-        location: group.room?.name ?? null,
-        schedule: toScheduleJson({ meetings: group.meetings, weekStart: settings.week_start }),
-      })),
-      rescheduled_lessons: reschedules.map(toRescheduledLesson),
+      groups,
+      rescheduled_lessons,
     }
   },
 }

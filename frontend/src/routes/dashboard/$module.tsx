@@ -15,7 +15,7 @@ import { StatisticsModule } from '#/modules/organization/components/statistics-m
 import { PlatformSettingsPage } from '#/modules/platform-settings/components/platform-settings-page'
 
 export const Route = createFileRoute('/dashboard/$module')({
-  // The platform admin only has the platform modules, organization staff only the school ones, students only My school and lecturers only My teaching
+  // The platform admin only has the platform modules, organization staff only the school ones, students only My school, lecturers only My teaching and guardians only My children
   beforeLoad: ({ context, params }) => {
     refuseHomeOnlyMember(context.queryClient)
     const user = getSessionUser(context.queryClient)

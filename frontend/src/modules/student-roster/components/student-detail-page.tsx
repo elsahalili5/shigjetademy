@@ -1,6 +1,7 @@
 import { CalendarX, UserRound } from 'lucide-react'
 import type { StudentAttendanceSummary, StudentRosterDetail } from '@shigjetademy/shared/student-roster'
 import { getStudentName } from '@shigjetademy/shared/students'
+import type { ReactNode } from 'react'
 import type { UseQueryResult } from '@tanstack/react-query'
 import { isApiError } from '#/api/client'
 import { DashboardPageHeader } from '#/components/DashboardPageHeader'
@@ -17,8 +18,8 @@ import { useStudentRosterDetail } from '../hooks/use-student-roster-detail'
 // A malformed id is refused as invalid; to the person it is a student that doesn't exist or isn't theirs
 const NOT_FOUND_STATUSES = [400, 404, 403]
 
-/** Who opened the page: a lecturer from My students, or the owner or an admin from Students */
-type StudentDetailViewer = 'MANAGER' | 'TEACHER'
+/** Who opened the page: a lecturer from My students, the owner or an admin from Students, or a guardian from My children */
+export type StudentDetailViewer = 'MANAGER' | 'TEACHER' | 'GUARDIAN'
 
 type StudentDetailCopy = {
   subtitle: string
@@ -43,17 +44,37 @@ const STUDENT_DETAIL_COPY = {
     noGroups: 'No groups with you right now.',
     noHistory: 'Marks from the groups you teach will show up here.',
   },
+  GUARDIAN: {
+    subtitle: 'Their groups, timetable and attendance.',
+    backTo: { to: '/dashboard/my-children', label: 'Back to My children' },
+    notFound: 'This child isn’t linked to you, or the link is old.',
+    noGroups: 'Not in any group right now.',
+    noHistory: 'Marks from their groups will show up here.',
+  },
 } as const satisfies Record<StudentDetailViewer, StudentDetailCopy>
 
 interface StudentDetailPageProps {
   organizationId: string
   studentId: string
-  viewer: StudentDetailViewer
+  viewer: Exclude<StudentDetailViewer, 'GUARDIAN'>
+  /** Sections only this viewer has, like Guardians, shown under Groups once the student has loaded */
+  renderExtraSections?: (detail: StudentRosterDetail) => ReactNode
 }
 
-/** One student's groups this viewer may read, and their attendance in them */
-export function StudentDetailPage({ organizationId, studentId, viewer }: StudentDetailPageProps) {
+/** One student's groups this staff viewer may read, and their attendance in them */
+export function StudentDetailPage({ organizationId, studentId, viewer, renderExtraSections }: StudentDetailPageProps) {
   const detail = useStudentRosterDetail({ organizationId, studentId })
+  return <StudentDetailView detail={detail} viewer={viewer} renderExtraSections={renderExtraSections} />
+}
+
+interface StudentDetailViewProps<TDetail extends StudentRosterDetail> {
+  detail: UseQueryResult<TDetail>
+  viewer: StudentDetailViewer
+  renderExtraSections?: (detail: TDetail) => ReactNode
+}
+
+/** The student detail layout over any viewer's answer: header, groups, the viewer's own sections, then attendance */
+export function StudentDetailView<TDetail extends StudentRosterDetail>({ detail, viewer, renderExtraSections }: StudentDetailViewProps<TDetail>) {
   const copy = STUDENT_DETAIL_COPY[viewer]
   const isNotFound = isApiError(detail.error) && NOT_FOUND_STATUSES.includes(detail.error.response?.status ?? 0)
 
@@ -61,19 +82,20 @@ export function StudentDetailPage({ organizationId, studentId, viewer }: Student
     <div className="flex h-full min-w-0 flex-col overflow-y-auto">
       <DashboardPageHeader icon={UserRound} title={detail.data ? getStudentName(detail.data.student) : 'Student'} subtitle={copy.subtitle} backTo={copy.backTo} />
       <div className="grid max-w-[880px] min-w-0 gap-5 px-[clamp(20px,3.4vw,44px)] pb-10">
-        <StudentDetailContent detail={detail} isNotFound={isNotFound} copy={copy} />
+        <StudentDetailContent detail={detail} isNotFound={isNotFound} copy={copy} renderExtraSections={renderExtraSections} />
       </div>
     </div>
   )
 }
 
-interface StudentDetailContentProps {
-  detail: UseQueryResult<StudentRosterDetail>
+interface StudentDetailContentProps<TDetail extends StudentRosterDetail> {
+  detail: UseQueryResult<TDetail>
   isNotFound: boolean
   copy: StudentDetailCopy
+  renderExtraSections?: (detail: TDetail) => ReactNode
 }
 
-function StudentDetailContent({ detail, isNotFound, copy }: StudentDetailContentProps) {
+function StudentDetailContent<TDetail extends StudentRosterDetail>({ detail, isNotFound, copy, renderExtraSections }: StudentDetailContentProps<TDetail>) {
   if (!detail.data) {
     if (isNotFound) return <EmptyMessage icon={UserRound} title="Student not found." text={copy.notFound} />
     if (detail.status === 'error') return <LoadError what="student" onRetry={() => void detail.refetch()} />
@@ -85,6 +107,7 @@ function StudentDetailContent({ detail, isNotFound, copy }: StudentDetailContent
       <SectionCard title="Groups">
         <GroupChips groups={detail.data.groups} emptyText={copy.noGroups} />
       </SectionCard>
+      {renderExtraSections?.(detail.data)}
       <SectionCard title="Attendance rate">
         <AttendanceSummary summary={detail.data.summary} />
       </SectionCard>

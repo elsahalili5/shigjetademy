@@ -1,4 +1,4 @@
-import { ClipboardCheck, GraduationCap, LogOut, Presentation, School, Users } from 'lucide-react'
+import { ClipboardCheck, GraduationCap, LogOut, Presentation, School, Users, UsersRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { hasOrganizationPermission } from '@shigjetademy/shared/auth'
 import type { Permission } from '@shigjetademy/shared/auth'
@@ -14,7 +14,7 @@ import type { OwnerNavItem } from '#/lib/owner-navigation'
 import { requireOrganization } from '#/lib/route-guard'
 import { useActiveMembership } from '#/modules/auth/hooks/use-active-membership'
 import { useAuth } from '#/modules/auth/hooks/use-auth'
-import { isOrganizationLecturer, isOrganizationOwner, isOrganizationStudent, isPlatformAdmin } from '#/modules/auth/utils/session-user'
+import { isOrganizationGuardian, isOrganizationLecturer, isOrganizationOwner, isOrganizationStudent, isPlatformAdmin } from '#/modules/auth/utils/session-user'
 import type { SessionMembership } from '#/modules/auth/utils/session-user'
 import { ROLE_LABELS } from '#/modules/auth/utils/role-labels'
 import { OrganizationSuspended } from '#/modules/organization/components/organization-suspended'
@@ -188,11 +188,12 @@ interface SidebarNavigationProps {
   isAdmin: boolean
 }
 
-/** The owner's areas, a student's My school, a lecturer's My teaching, or the module list for everyone else */
+/** The owner's areas, a student's My school, a lecturer's My teaching, a guardian's My children, or the module list for everyone else */
 function SidebarNavigation({ membership, isAdmin }: SidebarNavigationProps) {
   if (isOrganizationOwner(membership)) return <OwnerNavigation />
   if (isOrganizationStudent(membership)) return <StudentNavigation />
   if (isOrganizationLecturer(membership)) return <LecturerNavigation />
+  if (isOrganizationGuardian(membership)) return <GuardianNavigation />
   return <ModuleNavigation isAdmin={isAdmin} hiddenSlugs={getHiddenModuleSlugs(membership)} />
 }
 
@@ -205,6 +206,20 @@ function StudentNavigation() {
       </span>
       <Link to="/dashboard/my-school" className={SIDEBAR_LINK_CLASS}>
         <SidebarLinkContent icon={School} label="My school" />
+      </Link>
+    </>
+  )
+}
+
+/** Guardians only have My children; their profile is at the bottom of the sidebar like everyone's */
+function GuardianNavigation() {
+  return (
+    <>
+      <span className={SIDEBAR_HEADING_CLASS} aria-hidden="true">
+        Dashboard
+      </span>
+      <Link to="/dashboard/my-children" className={SIDEBAR_LINK_CLASS}>
+        <SidebarLinkContent icon={UsersRound} label="My children" />
       </Link>
     </>
   )

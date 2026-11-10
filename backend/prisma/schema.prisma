@@ -135,6 +135,19 @@ enum ActivityAction {
   INVITATION_REVOKED
   INVITATION_ACCEPTED
   PLATFORM_SETTINGS_UPDATED
+  GUARDIAN_ADDED
+  GUARDIAN_UPDATED
+  GUARDIAN_LINKED
+  GUARDIAN_UNLINKED
+}
+
+/// How a guardian is related to one student; it lives on the link, so one guardian can be a mother to one child and a legal guardian to another
+enum GuardianRelationship {
+  MOTHER
+  FATHER
+  LEGAL_GUARDIAN
+  GRANDPARENT
+  OTHER
 }
 
 enum StudentStatus {
@@ -223,6 +236,7 @@ model User {
   lesson_plans_written LessonPlan[]
   student_records      Student[]
   lecturer_records     Lecturer[]
+  guardian_records     Guardian[]
 }
 
 /// Platform-wide roles (PLATFORM_ADMIN); organization roles live on Membership
@@ -309,6 +323,7 @@ model Organization {
   lecturers      Lecturer[]
   courses        Course[]
   groups         Group[]
+  guardians      Guardian[]
 }
 
 /// How one organization runs. An organization without a row reads the defaults; the row is written on its first save.
@@ -483,11 +498,58 @@ model Student {
   invitations      Invitation[]
   group_enrolments GroupEnrolment[]
   attendance       AttendanceRecord[]
+  guardians        StudentGuardian[]
 
   @@unique([organization_id, student_number])
   @@unique([organization_id, user_id])
   @@index([organization_id, status])
   @@index([organization_id, last_name])
+}
+
+// ─────────────────────────────────────────
+// GUARDIANS
+// ─────────────────────────────────────────
+
+/// A parent or guardian the organization keeps a record of, like a lecturer: login optional, linked later by an invitation.
+/// One record per person in an organization, however many of its students they are linked to; unique by email when it has one
+/// (Postgres lets many rows share a null email). The email is stored trimmed and lowercased.
+model Guardian {
+  id              String  @id @default(uuid()) @db.Uuid
+  organization_id String  @db.Uuid
+  first_name      String
+  last_name       String
+  email           String?
+  phone           String?
+  /// The login linked to this record, at most one
+  user_id         String? @db.Uuid
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  organization Organization      @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  user         User?             @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  students     StudentGuardian[]
+  invitations  Invitation[]
+
+  @@unique([organization_id, email])
+  @@unique([organization_id, user_id])
+  @@index([organization_id, last_name])
+}
+
+/// A guardian linked to one student. Unlinking removes only this row: the guardian, their login and their other children stay.
+model StudentGuardian {
+  student_id   String               @db.Uuid
+  guardian_id  String               @db.Uuid
+  relationship GuardianRelationship
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  student  Student  @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  guardian Guardian @relation(fields: [guardian_id], references: [id], onDelete: Cascade)
+
+  @@id([student_id, guardian_id])
+  @@index([guardian_id])
 }
 
 // ─────────────────────────────────────────
@@ -802,7 +864,7 @@ model Membership {
 }
 
 /// An invitation to join an organization by email. The link's token is stored only as its sha256 hash.
-/// At most one PENDING invitation per (organization, email), per student and per lecturer, kept by the invitation service.
+/// At most one PENDING invitation per (organization, email), per student, per lecturer and per guardian, kept by the invitation service.
 model Invitation {
   id              String           @id @default(uuid()) @db.Uuid
   organization_id String           @db.Uuid
@@ -813,6 +875,8 @@ model Invitation {
   student_id      String?          @db.Uuid
   /// Set for a lecturer invitation, the same way
   lecturer_id     String?          @db.Uuid
+  /// Set for a guardian invitation, the same way
+  guardian_id     String?          @db.Uuid
   token_hash      String           @unique
   status          InvitationStatus @default(PENDING)
   expires_at      DateTime
@@ -827,11 +891,13 @@ model Invitation {
   /// Cascade: an invitation for a deleted record could never be accepted correctly
   student      Student?     @relation(fields: [student_id], references: [id], onDelete: Cascade)
   lecturer     Lecturer?    @relation(fields: [lecturer_id], references: [id], onDelete: Cascade)
+  guardian     Guardian?    @relation(fields: [guardian_id], references: [id], onDelete: Cascade)
 
   @@index([organization_id, status])
   @@index([email])
   @@index([student_id])
   @@index([lecturer_id])
+  @@index([guardian_id])
 }
 
 // ─────────────────────────────────────────

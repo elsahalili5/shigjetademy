@@ -95,8 +95,12 @@ const emailInvitation = async ({ invitationId, token, actorId }: EmailInvitation
   }
 }
 
-/** Who an invitation lets in: a school admin with chosen permissions, or the login for one existing student or lecturer record */
-export type InvitationTarget = { role: 'ADMIN'; permissions: Permission[] } | { role: 'STUDENT'; studentId: string } | { role: 'LECTURER'; lecturerId: string }
+/** Who an invitation lets in: a school admin with chosen permissions, or the login for one existing student, lecturer or guardian record */
+export type InvitationTarget =
+  | { role: 'ADMIN'; permissions: Permission[] }
+  | { role: 'STUDENT'; studentId: string }
+  | { role: 'LECTURER'; lecturerId: string }
+  | { role: 'GUARDIAN'; guardianId: string }
 
 type CreateInvitationParams = {
   organizationId: string
@@ -107,13 +111,25 @@ type CreateInvitationParams = {
 
 const emailTaken = (message: string) => new HttpError(409, message, { fieldErrors: { email: [message] } })
 
-/** A student or lecturer record an invitation logs in to */
-export type RecordRef = { kind: 'STUDENT' | 'LECTURER'; id: string }
+/** A student, lecturer or guardian record an invitation logs in to */
+export type RecordRef = { kind: 'STUDENT' | 'LECTURER' | 'GUARDIAN'; id: string }
 
-const toRecord = (target: Exclude<InvitationTarget, { role: 'ADMIN' }>): RecordRef =>
-  target.role === 'STUDENT' ? { kind: 'STUDENT', id: target.studentId } : { kind: 'LECTURER', id: target.lecturerId }
+const toRecord = (target: Exclude<InvitationTarget, { role: 'ADMIN' }>): RecordRef => {
+  switch (target.role) {
+    case 'STUDENT':
+      return { kind: 'STUDENT', id: target.studentId }
+    case 'LECTURER':
+      return { kind: 'LECTURER', id: target.lecturerId }
+    case 'GUARDIAN':
+      return { kind: 'GUARDIAN', id: target.guardianId }
+    default: {
+      const unhandled: never = target
+      throw new Error(`Unhandled invitation target: ${JSON.stringify(unhandled)}`)
+    }
+  }
+}
 
-/** What differs between the two kinds of record: their words, and whether an account linked elsewhere is refused already when inviting */
+/** What differs between the kinds of record: their words, and whether an account linked elsewhere is refused already when inviting */
 const RECORD_KINDS = {
   STUDENT: {
     noun: 'student',
@@ -127,14 +143,20 @@ const RECORD_KINDS = {
     otherRoleMessage: 'This email belongs to someone with another role in your organization.',
     isLinkedElsewhereRefusedOnInvite: true,
   },
+  GUARDIAN: {
+    noun: 'guardian',
+    notFoundMessage: 'Guardian not found',
+    otherRoleMessage: 'This email belongs to a staff member or student here.',
+    isLinkedElsewhereRefusedOnInvite: true,
+  },
 } as const satisfies Record<RecordRef['kind'], { noun: string; notFoundMessage: string; otherRoleMessage: string; isLinkedElsewhereRefusedOnInvite: boolean }>
 
 type RecordScope = OrganizationScope & {
   record: RecordRef
 }
 
-/** The organization's record of this kind, with its status and login, or null */
-const findRecord = ({ tx, organizationId, record }: RecordScope) => {
+/** The organization's record of this kind, with its status and login, or null; a guardian is never archived */
+const findRecord = async ({ tx, organizationId, record }: RecordScope) => {
   const where = { id: record.id, organization_id: organizationId }
   const select = { status: true, user_id: true } as const
   switch (record.kind) {
@@ -142,6 +164,10 @@ const findRecord = ({ tx, organizationId, record }: RecordScope) => {
       return tx.student.findFirst({ where, select })
     case 'LECTURER':
       return tx.lecturer.findFirst({ where, select })
+    case 'GUARDIAN': {
+      const guardian = await tx.guardian.findFirst({ where, select: { user_id: true } })
+      return guardian && { status: 'ACTIVE' as const, user_id: guardian.user_id }
+    }
     default: {
       const unhandled: never = record.kind
       throw new Error(`Unhandled record kind: ${String(unhandled)}`)
@@ -161,6 +187,8 @@ const findLinkedElsewhere = ({ tx, organizationId, record, user }: FindLinkedEls
       return tx.student.findFirst({ where, select: { id: true } })
     case 'LECTURER':
       return tx.lecturer.findFirst({ where, select: { id: true } })
+    case 'GUARDIAN':
+      return tx.guardian.findFirst({ where, select: { id: true } })
     default: {
       const unhandled: never = record.kind
       throw new Error(`Unhandled record kind: ${String(unhandled)}`)
@@ -181,6 +209,8 @@ const setRecordLogin = async ({ tx, organizationId, record, userId }: SetRecordL
       return (await tx.student.updateMany({ where, data })).count
     case 'LECTURER':
       return (await tx.lecturer.updateMany({ where, data })).count
+    case 'GUARDIAN':
+      return (await tx.guardian.updateMany({ where, data })).count
     default: {
       const unhandled: never = record.kind
       throw new Error(`Unhandled record kind: ${String(unhandled)}`)
@@ -188,7 +218,20 @@ const setRecordLogin = async ({ tx, organizationId, record, userId }: SetRecordL
   }
 }
 
-const recordInvitationWhere = (record: RecordRef): Prisma.InvitationWhereInput => (record.kind === 'STUDENT' ? { student_id: record.id } : { lecturer_id: record.id })
+const recordInvitationWhere = (record: RecordRef): Prisma.InvitationWhereInput => {
+  switch (record.kind) {
+    case 'STUDENT':
+      return { student_id: record.id }
+    case 'LECTURER':
+      return { lecturer_id: record.id }
+    case 'GUARDIAN':
+      return { guardian_id: record.id }
+    default: {
+      const unhandled: never = record.kind
+      throw new Error(`Unhandled record kind: ${String(unhandled)}`)
+    }
+  }
+}
 
 type RefuseUninvitableRecordParams = RecordScope & {
   email: string
@@ -248,6 +291,7 @@ const refuseUninvitable = async ({ tx, organizationId, email, target }: RefuseTa
     }
     case 'STUDENT':
     case 'LECTURER':
+    case 'GUARDIAN':
       return refuseUninvitableRecord({ tx, organizationId, email, record: toRecord(target) })
     default: {
       const unhandled: never = target
@@ -259,11 +303,13 @@ const refuseUninvitable = async ({ tx, organizationId, email, target }: RefuseTa
 const targetData = (target: InvitationTarget) => {
   switch (target.role) {
     case 'ADMIN':
-      return { role: target.role, permissions: target.permissions, student_id: null, lecturer_id: null }
+      return { role: target.role, permissions: target.permissions, student_id: null, lecturer_id: null, guardian_id: null }
     case 'STUDENT':
-      return { role: target.role, permissions: [], student_id: target.studentId, lecturer_id: null }
+      return { role: target.role, permissions: [], student_id: target.studentId, lecturer_id: null, guardian_id: null }
     case 'LECTURER':
-      return { role: target.role, permissions: [], student_id: null, lecturer_id: target.lecturerId }
+      return { role: target.role, permissions: [], student_id: null, lecturer_id: target.lecturerId, guardian_id: null }
+    case 'GUARDIAN':
+      return { role: target.role, permissions: [], student_id: null, lecturer_id: null, guardian_id: target.guardianId }
     default: {
       const unhandled: never = target
       throw new Error(`Unhandled invitation target: ${JSON.stringify(unhandled)}`)
@@ -305,13 +351,14 @@ const findPending = async ({ tx, where }: { tx: Transaction; where: Prisma.Invit
 type InvitationChangeParams = {
   organizationId: string
   actorId: string
-  /** Which of the organization's invitations: an admin invitation by id, or a student's or lecturer's by their record */
-  match: { invitationId: string } | { studentId: string } | { lecturerId: string }
+  /** Which of the organization's invitations: an admin invitation by id, or a student's, lecturer's or guardian's by their record */
+  match: { invitationId: string } | { studentId: string } | { lecturerId: string } | { guardianId: string }
 }
 
 const matchWhere = ({ organizationId, match }: Pick<InvitationChangeParams, 'organizationId' | 'match'>): Prisma.InvitationWhereInput => {
-  if ('invitationId' in match) return { id: match.invitationId, organization_id: organizationId, student_id: null, lecturer_id: null }
+  if ('invitationId' in match) return { id: match.invitationId, organization_id: organizationId, student_id: null, lecturer_id: null, guardian_id: null }
   if ('studentId' in match) return { student_id: match.studentId, organization_id: organizationId }
+  if ('guardianId' in match) return { guardian_id: match.guardianId, organization_id: organizationId }
   return { lecturer_id: match.lecturerId, organization_id: organizationId }
 }
 
@@ -334,9 +381,10 @@ const joinOrganization = async ({ tx, organizationId, userId, role, permissions 
 }
 
 /** The record a stored invitation logs in to, if any */
-const recordOf = ({ student_id, lecturer_id }: { student_id: string | null; lecturer_id: string | null }): RecordRef | null => {
+const recordOf = ({ student_id, lecturer_id, guardian_id }: { student_id: string | null; lecturer_id: string | null; guardian_id: string | null }): RecordRef | null => {
   if (student_id) return { kind: 'STUDENT', id: student_id }
   if (lecturer_id) return { kind: 'LECTURER', id: lecturer_id }
+  if (guardian_id) return { kind: 'GUARDIAN', id: guardian_id }
   return null
 }
 
@@ -464,7 +512,7 @@ export const InvitationService = {
       // Read again under the lock, so two accepts at once can't both pass, and a resend in between (new hash) kills this link
       const invitation = await tx.invitation.findFirst({
         where: { id: found.id, token_hash: hashToken(token) },
-        select: { id: true, email: true, role: true, permissions: true, status: true, expires_at: true, student_id: true, lecturer_id: true, organization: { select: { name: true, status: true } } },
+        select: { id: true, email: true, role: true, permissions: true, status: true, expires_at: true, student_id: true, lecturer_id: true, guardian_id: true, organization: { select: { name: true, status: true } } },
       })
       if (!invitation) {
         throw new HttpError(404, INVALID_LINK_MESSAGE)

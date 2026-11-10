@@ -4,7 +4,7 @@ import type { AuthUser } from '@shigjetademy/shared/auth'
 import { ME_QUERY_KEY } from '#/modules/auth/hooks/use-me-query'
 import { readActiveOrganizationId } from '#/modules/auth/utils/active-organization-storage'
 import { readStoredTokens } from '#/modules/auth/utils/auth-storage'
-import { getActiveMembership, getHomePath, hasOrganization, isOrganizationLecturer, isOrganizationManager, isOrganizationOwner, isOrganizationStudent, isPlatformAdmin } from '#/modules/auth/utils/session-user'
+import { getActiveMembership, getHomePath, hasOrganization, isOrganizationGuardian, isOrganizationLecturer, isOrganizationManager, isOrganizationOwner, isOrganizationStudent, isPlatformAdmin } from '#/modules/auth/utils/session-user'
 
 // Guards read the query cache, not React state, so a navigate right after login already sees the new session
 export const getSessionUser = (queryClient: QueryClient) =>
@@ -76,7 +76,14 @@ export function requireOrganizationLecturer(queryClient: QueryClient) {
   }
 }
 
-/** The school module pages, which students and lecturers can't use yet; they go to My school or My teaching instead */
+/** My children is for the active organization's guardians; anyone else goes back to their dashboard */
+export function requireOrganizationGuardian(queryClient: QueryClient) {
+  if (!isOrganizationGuardian(getSessionMembership(queryClient))) {
+    throw redirect({ to: '/dashboard' })
+  }
+}
+
+/** The school module pages, which students, lecturers and guardians can't use yet; they go to My school, My teaching or My children instead */
 export function refuseHomeOnlyMember(queryClient: QueryClient) {
   const membership = getSessionMembership(queryClient)
   if (isOrganizationStudent(membership)) {
@@ -84,5 +91,8 @@ export function refuseHomeOnlyMember(queryClient: QueryClient) {
   }
   if (isOrganizationLecturer(membership)) {
     throw redirect({ to: '/dashboard/my-teaching' })
+  }
+  if (isOrganizationGuardian(membership)) {
+    throw redirect({ to: '/dashboard/my-children' })
   }
 }
