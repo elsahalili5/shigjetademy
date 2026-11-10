@@ -112,6 +112,20 @@ describe('GET /api/organizations/:organizationId/overview', () => {
     expect(response.body.data.activity).toHaveLength(10)
   })
 
+  it('breaks active members down by role', async () => {
+    const response = await getOverview()
+
+    expect(response.body.data.members_by_role).toEqual({ OWNER: 1, ADMIN: 1, LECTURER: 1, STUDENT: 0, GUARDIAN: 0 })
+  })
+
+  it('buckets members who joined into the last 12 weeks, the current week last', async () => {
+    const response = await getOverview()
+
+    expect(response.body.data.members_per_week).toHaveLength(12)
+    // The owner, the admin and the lecturer all joined when the organization was created, this week
+    expect(response.body.data.members_per_week.at(-1).count).toBe(3)
+  })
+
   it("refuses a school admin and the owner of another organization", async () => {
     const otherOwner = await createUser({ email: 'owner@yllka.test' })
     await createOrganization({ name: 'Yllka Kindergarten', ownerId: otherOwner.id })

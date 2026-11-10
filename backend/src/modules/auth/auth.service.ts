@@ -3,6 +3,7 @@ import { prisma } from '@lib/prisma.ts'
 import { SALT_ROUNDS, safeUserSelect } from '@lib/constants.ts'
 import { HttpError } from '@lib/httpError.ts'
 import { generateAccessToken, generateRefreshToken, REFRESH_TOKEN_EXPIRY_MS, verifyRefreshToken } from '@lib/jwt.ts'
+import { getMaintenanceRefusal } from '@lib/maintenance.ts'
 import { toSessionUser } from '@lib/session-user.ts'
 import type { SessionUser } from '@lib/session-user.ts'
 import type {
@@ -131,6 +132,10 @@ export const AuthService = {
     }
 
     const safeUser = await prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: safeUserSelect })
+    const maintenanceMessage = await getMaintenanceRefusal(safeUser)
+    if (maintenanceMessage) {
+      throw new HttpError(503, maintenanceMessage)
+    }
     return { user: toSessionUser(safeUser), ...(await issueTokens(user.id)) }
   },
 

@@ -1,6 +1,8 @@
 import request from 'supertest'
 import { describe, expect, it } from 'vitest'
 import { app } from '../../app.ts'
+import { prisma } from '@lib/prisma.ts'
+import { clearPlatformSettingsCache } from '@modules/platform-settings/platform-settings.service.ts'
 import { createUser, TEST_PASSWORD } from '../../../test/factories.ts'
 import { AuthService } from './auth.service.ts'
 
@@ -76,5 +78,32 @@ describe('auth', () => {
 
     expect(locking.body.error).toBe('Too many failed attempts. Try again in 15 minutes.')
     expect(locked.body.error).toBe('Too many failed attempts. Try again in 15 minutes.')
+  })
+
+  describe('maintenance mode', () => {
+    const login = (email: string) => request(app).post('/api/auth/login').send({ email, password: TEST_PASSWORD })
+
+    it('refuses a non-admin login with 503 and the maintenance message, and succeeds once maintenance is off', async () => {
+      await createUser({ email: 'owner@school.test' })
+      await prisma.platformSettings.create({ data: { id: 1, maintenance_mode: true, maintenance_message: 'Down for an upgrade' } })
+      clearPlatformSettingsCache()
+
+      const duringMaintenance = await login('owner@school.test')
+
+      expect(duringMaintenance.status).toBe(503)
+      expect(duringMaintenance.body.error).toBe('Down for an upgrade')
+
+      await prisma.platformSettings.update({ where: { id: 1 }, data: { maintenance_mode: false } })
+      clearPlatformSettingsCache()
+      expect((await login('owner@school.test')).status).toBe(200)
+    })
+
+    it('lets a platform admin log in during maintenance', async () => {
+      await createUser({ email: 'admin@platform.test', isPlatformAdmin: true })
+      await prisma.platformSettings.create({ data: { id: 1, maintenance_mode: true } })
+      clearPlatformSettingsCache()
+
+      expect((await login('admin@platform.test')).status).toBe(200)
+    })
   })
 })

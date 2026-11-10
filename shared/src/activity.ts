@@ -54,6 +54,7 @@ export const ACTIVITY_ACTIONS = [
   'INVITATION_RESENT',
   'INVITATION_REVOKED',
   'INVITATION_ACCEPTED',
+  'PLATFORM_SETTINGS_UPDATED',
 ] as const
 
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number]

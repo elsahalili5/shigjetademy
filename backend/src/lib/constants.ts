@@ -2,6 +2,8 @@ import type { Prisma } from '@generated/prisma/client.ts'
 
 export const SALT_ROUNDS = 10
 
+export const DAY_MS = 24 * 60 * 60 * 1000
+
 /** Everything the app may send about a user: never the password hash or lockout counters */
 export const safeUserSelect = {
   id: true,

@@ -1,15 +1,18 @@
 import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { AlertCircle, Circle, CircleCheck, History, LayoutDashboard, Mail, RotateCw, ShieldCheck } from 'lucide-react'
+import { MEMBER_ROLES } from '@shigjetademy/shared/auth'
 import type { OrganizationOverview as Overview, OverviewInvitation } from '@shigjetademy/shared/organization'
 import type { ModuleSlug } from '#/lib/modules'
 import { useFormatDate } from '#/lib/use-format-date'
 import { ActivityRow, ActivityRowSkeleton } from '#/modules/activity/components/activity-row'
 import { useOrganizationOverview } from '../hooks/use-organization-overview'
+import { MEMBER_ROLE_NOUNS } from '../utils/labels'
+import { BreakdownList } from './breakdown-list'
+import { StatTile } from './stat-tile'
+import { WeeklyChart } from './weekly-chart'
 
 const SKELETON_ROWS = 3
-
-const numberFormat = new Intl.NumberFormat()
 
 const STEP_LINK_CLASS = 'flex items-center gap-3 px-5 py-4 text-ink no-underline transition-colors duration-150 hover:bg-mist'
 
@@ -74,21 +77,43 @@ function OverviewContent({ status, overview, onRetry }: OverviewContentProps) {
   }
 
   return (
-    <div className="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] items-start gap-6 max-[1100px]:grid-cols-1">
-      <div className="grid gap-6">
-        <OverviewCard id="overview-organization" title="Organization">
-          {overview ? <OrganizationCounts counts={overview.counts} /> : <SkeletonRows />}
-        </OverviewCard>
-        <OverviewCard id="overview-attention" title="Needs attention">
-          {overview ? <AttentionList invitations={overview.pending_invitations} /> : <SkeletonRows />}
-        </OverviewCard>
-        <OverviewCard id="overview-activity" title="Recent activity">
-          {overview ? <RecentActivity activity={overview.activity} /> : <SkeletonRows />}
+    <div className="grid gap-6">
+      {overview ? <OrganizationCounts counts={overview.counts} /> : <StatTilesSkeleton />}
+
+      <div className="grid grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] gap-5 max-[1100px]:grid-cols-1">
+        <section className="rounded-card border border-rule p-5" aria-labelledby="overview-growth">
+          <h2 id="overview-growth" className="text-[1.15rem] font-[650]">
+            Growth
+          </h2>
+          <p className="mt-1 text-[0.93rem] text-ink-3">Members who joined, last 12 weeks</p>
+          {overview ? <WeeklyChart metricLabel="New members" weeks={overview.members_per_week} /> : <ChartSkeleton />}
+        </section>
+
+        <section className="rounded-card border border-rule p-5" aria-labelledby="overview-roles">
+          <h2 id="overview-roles" className="text-[1.15rem] font-[650]">
+            Team by role
+          </h2>
+          {overview ? (
+            <BreakdownList rows={MEMBER_ROLES.map((role) => ({ key: role, label: MEMBER_ROLE_NOUNS[role].other, count: overview.members_by_role[role] }))} />
+          ) : (
+            <ChartSkeleton />
+          )}
+        </section>
+      </div>
+
+      <div className="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] items-start gap-6 max-[1100px]:grid-cols-1">
+        <div className="grid gap-6">
+          <OverviewCard id="overview-attention" title="Needs attention">
+            {overview ? <AttentionList invitations={overview.pending_invitations} /> : <SkeletonRows />}
+          </OverviewCard>
+          <OverviewCard id="overview-activity" title="Recent activity">
+            {overview ? <RecentActivity activity={overview.activity} /> : <SkeletonRows />}
+          </OverviewCard>
+        </div>
+        <OverviewCard id="overview-getting-started" title="Getting started">
+          {overview ? <GettingStarted hasAdmin={overview.counts.admins > 0} /> : <SkeletonRows />}
         </OverviewCard>
       </div>
-      <OverviewCard id="overview-getting-started" title="Getting started">
-        {overview ? <GettingStarted hasAdmin={overview.counts.admins > 0} /> : <SkeletonRows />}
-      </OverviewCard>
     </div>
   )
 }
@@ -115,19 +140,11 @@ interface OrganizationCountsProps {
 }
 
 function OrganizationCounts({ counts }: OrganizationCountsProps) {
-  const stats = [
-    { label: 'Members', value: counts.members },
-    { label: 'School admins', value: counts.admins },
-    { label: 'Pending invitations', value: counts.pending_invitations },
-  ]
   return (
-    <dl className="grid grid-cols-3 max-[520px]:grid-cols-1">
-      {stats.map((stat) => (
-        <div key={stat.label} className="grid gap-1 border-rule px-5 py-4 not-last:border-r max-[520px]:not-last:border-r-0 max-[520px]:not-last:border-b">
-          <dt className="text-[0.93rem] text-ink-3">{stat.label}</dt>
-          <dd className="tabular font-display text-[1.9rem] leading-none font-[680] tracking-[-0.02em]">{numberFormat.format(stat.value)}</dd>
-        </div>
-      ))}
+    <dl className="grid grid-cols-3 gap-3 max-[640px]:grid-cols-1">
+      <StatTile label="Members" value={counts.members} detail="Active across every role" />
+      <StatTile label="School admins" value={counts.admins} detail="Can manage the organization" />
+      <StatTile label="Pending invitations" value={counts.pending_invitations} detail="School admins not accepted yet" />
     </dl>
   )
 }
@@ -236,4 +253,18 @@ function SkeletonRows() {
       ))}
     </ul>
   )
+}
+
+function StatTilesSkeleton() {
+  return (
+    <div className="grid grid-cols-3 gap-3 max-[640px]:grid-cols-1" aria-busy="true" aria-label="Loading">
+      {Array.from({ length: 3 }, (_, index) => (
+        <div key={index} className="h-[124px] animate-pulse rounded-card bg-mist" />
+      ))}
+    </div>
+  )
+}
+
+function ChartSkeleton() {
+  return <div className="mt-4 h-[200px] animate-pulse rounded-xl bg-mist" aria-busy="true" aria-label="Loading" />
 }

@@ -2,7 +2,9 @@ import type { Prisma } from '@generated/prisma/client.ts'
 import type { ActivityAction, MemberRole, OrganizationType } from '@generated/prisma/enums.ts'
 import { prisma } from '@lib/prisma.ts'
 import { HttpError } from '@lib/httpError.ts'
+import { DAY_MS } from '@lib/constants.ts'
 import { ActivityService } from '@modules/activity/activity.service.ts'
+import { PlatformSettingsService } from '@modules/platform-settings/platform-settings.service.ts'
 import type { CreateOrganizationInput, UpdateMemberInput, UpdateOrganizationProfileInput, UpdateOrganizationStatusInput } from './organization.types.ts'
 
 // The form sends readable labels; the database stores enum values
@@ -17,7 +19,7 @@ const ORGANIZATION_TYPE_VALUES = {
 
 const STATS_WEEKS = 12
 const HOUR_MS = 60 * 60 * 1000
-const WEEK_MS = 7 * 24 * HOUR_MS
+const WEEK_MS = 7 * DAY_MS
 const EXPIRING_SOON_MS = 48 * HOUR_MS
 const OVERVIEW_ACTIVITY_LIMIT = 10
 
@@ -27,6 +29,22 @@ const emptyMemberCounts = (): Record<MemberRole, number> => ({ OWNER: 0, ADMIN: 
 const startOfWeek = (date: Date) => {
   const daysSinceMonday = (date.getUTCDay() + 6) % 7
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() - daysSinceMonday))
+}
+
+const membersByRoleFrom = (groups: { role: MemberRole; _count: { _all: number } }[]) => {
+  const counts = emptyMemberCounts()
+  for (const group of groups) counts[group.role] = group._count._all
+  return counts
+}
+
+/** One bucket per week from firstWeek to now, each counting the records whose created_at falls in it */
+const weeklyBuckets = (records: { created_at: Date }[], firstWeek: Date) => {
+  const weeks = Array.from({ length: STATS_WEEKS }, (_, index) => ({ week_start: new Date(firstWeek.getTime() + index * WEEK_MS), count: 0 }))
+  for (const record of records) {
+    const week = weeks[Math.floor((startOfWeek(record.created_at).getTime() - firstWeek.getTime()) / WEEK_MS)]
+    if (week) week.count += 1
+  }
+  return weeks
 }
 
 type UpdateOrganizationStatusParams = {
@@ -108,19 +126,23 @@ type CreateOrganizationParams = {
 }
 
 export const OrganizationService = {
-  // The creator becomes the owner in the same transaction, so an organization never exists without one
-  createOrganization: ({ userId, data }: CreateOrganizationParams) =>
-    prisma.organization.create({
+  // The creator becomes the owner in the same transaction, so an organization never exists without one.
+  // The trial length is a snapshot of the platform's current default: later changes to that default never touch an existing organization.
+  createOrganization: async ({ userId, data }: CreateOrganizationParams) => {
+    const { default_trial_days } = await PlatformSettingsService.getSettings()
+    return prisma.organization.create({
       data: {
         name: data.name,
         type: ORGANIZATION_TYPE_VALUES[data.type],
         country: data.country,
         currency: data.currency,
         size: data.size ?? null,
+        trial_ends_at: default_trial_days > 0 ? new Date(Date.now() + default_trial_days * DAY_MS) : null,
         memberships: { create: { user_id: userId, role: 'OWNER' } },
       },
       select: { id: true, name: true, type: true, country: true, currency: true, status: true, created_at: true },
-    }),
+    })
+  },
 
   // Platform admin: every client with its owner and how many active members it has per role
   listOrganizations: async () => {
@@ -173,14 +195,6 @@ export const OrganizationService = {
     ])
 
     const countForStatus = (status: 'ACTIVE' | 'SUSPENDED') => statusGroups.find((group) => group.status === status)?._count._all ?? 0
-    const membersByRole = emptyMemberCounts()
-    for (const group of roleGroups) membersByRole[group.role] = group._count._all
-
-    const weeks = Array.from({ length: STATS_WEEKS }, (_, index) => ({ week_start: new Date(firstWeek.getTime() + index * WEEK_MS), count: 0 }))
-    for (const organization of recentOrganizations) {
-      const week = weeks[Math.floor((startOfWeek(organization.created_at).getTime() - firstWeek.getTime()) / WEEK_MS)]
-      if (week) week.count += 1
-    }
 
     return {
       organizations: {
@@ -190,8 +204,8 @@ export const OrganizationService = {
       },
       new_organizations_this_month: newThisMonth,
       users_total: usersTotal,
-      members_by_role: membersByRole,
-      organizations_per_week: weeks,
+      members_by_role: membersByRoleFrom(roleGroups),
+      organizations_per_week: weeklyBuckets(recentOrganizations, firstWeek),
       organizations_by_type: typeGroups.map((group) => ({ type: group.type, count: group._count._all })),
     }
   },
@@ -298,8 +312,9 @@ export const OrganizationService = {
 
   getOverview: async (organizationId: string) => {
     const now = new Date()
+    const firstWeek = new Date(startOfWeek(now).getTime() - (STATS_WEEKS - 1) * WEEK_MS)
     const openInvitation = { organization_id: organizationId, status: 'PENDING', expires_at: { gt: now } } as const
-    const [members, admins, pendingInvitations, adminInvitations, activity] = await Promise.all([
+    const [members, admins, pendingInvitations, adminInvitations, activity, roleGroups, recentMembers] = await Promise.all([
       prisma.membership.count({ where: { organization_id: organizationId, status: 'ACTIVE' } }),
       prisma.membership.count({ where: { organization_id: organizationId, status: 'ACTIVE', role: 'ADMIN' } }),
       prisma.invitation.count({ where: openInvitation }),
@@ -309,6 +324,8 @@ export const OrganizationService = {
         select: { id: true, email: true, expires_at: true },
       }),
       ActivityService.listOrganizationActivity({ organizationId, limit: OVERVIEW_ACTIVITY_LIMIT }),
+      prisma.membership.groupBy({ by: ['role'], where: { organization_id: organizationId, status: 'ACTIVE' }, _count: { _all: true } }),
+      prisma.membership.findMany({ where: { organization_id: organizationId, status: 'ACTIVE', created_at: { gte: firstWeek } }, select: { created_at: true } }),
     ])
 
     return {
@@ -318,6 +335,8 @@ export const OrganizationService = {
         is_expiring_soon: invitation.expires_at.getTime() - now.getTime() <= EXPIRING_SOON_MS,
       })),
       activity,
+      members_by_role: membersByRoleFrom(roleGroups),
+      members_per_week: weeklyBuckets(recentMembers, firstWeek),
     }
   },
 

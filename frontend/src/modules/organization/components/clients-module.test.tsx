@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import type { ClientOrganization } from '@shigjetademy/shared/organization'
-import { buildUser, OWNER_MEMBERSHIPS, PLATFORM_ADMIN_ROLES, signInAs } from '#/test/fixtures'
+import { buildUser, DEFAULT_PLATFORM_SETTINGS, OWNER_MEMBERSHIPS, PLATFORM_ADMIN_ROLES, signInAs } from '#/test/fixtures'
 import { renderRoute } from '#/test/render-route'
 import { server } from '#/test/server'
 
@@ -41,6 +41,17 @@ describe('platform admin dashboard', () => {
     expect(within(sidebar).getByRole('link', { name: 'Statistics' })).toBeInTheDocument()
     expect(within(sidebar).queryByRole('link', { name: 'Students & enrolment' })).not.toBeInTheDocument()
     await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/clients'))
+  })
+
+  it('opens the platform settings from Settings', async () => {
+    signInAs(buildUser({ first_name: 'Dafina', last_name: 'Berisha', email: 'admin@shigjetademy.com', user_roles: PLATFORM_ADMIN_ROLES }))
+    server.use(http.get('*/api/platform/settings', () => HttpResponse.json({ data: DEFAULT_PLATFORM_SETTINGS })))
+    const { user } = renderRoute('/dashboard')
+
+    const sidebar = await screen.findByRole('navigation', { name: 'Modules' })
+    await user.click(within(sidebar).getByRole('link', { name: 'Settings' }))
+
+    expect(await screen.findByRole('heading', { name: 'Platform settings' })).toBeInTheDocument()
   })
 
   it('lists every client and filters by status and search', async () => {

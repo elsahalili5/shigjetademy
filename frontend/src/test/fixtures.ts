@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw'
 import type { AuthUser } from '@shigjetademy/shared/auth'
 import type { OrganizationSettings } from '@shigjetademy/shared/organization-settings'
+import type { PlatformSettings } from '@shigjetademy/shared/platform-settings'
 import { storeTokens } from '#/modules/auth/utils/auth-storage'
 import { server } from './server'
 
@@ -19,6 +20,15 @@ export const buildUser = (overrides: Partial<AuthUser> = {}): AuthUser => ({
 
 /** What an organization's settings are until its owner saves their own */
 export const DEFAULT_SETTINGS: OrganizationSettings = { time_zone: 'Europe/Belgrade', week_start: 'MONDAY', date_format: 'DAY_MONTH_YEAR' }
+
+/** What the platform's settings are until a platform admin saves their own */
+export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
+  platform_name: 'Shigjetademy',
+  logo_url: null,
+  maintenance_mode: false,
+  maintenance_message: null,
+  default_trial_days: 14,
+}
 
 export const PLATFORM_ADMIN_ROLES: AuthUser['user_roles'] = [{ role: { name: 'PLATFORM_ADMIN' } }]
 
