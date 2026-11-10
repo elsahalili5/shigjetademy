@@ -73,7 +73,7 @@ export function AvatarUploadControl({ user }: AvatarUploadControlProps) {
           onClick={handleChoosePhoto}
           disabled={isBusy}
           aria-label={user.avatar_url ? 'Change photo' : 'Add photo'}
-          className="absolute -right-2 -bottom-2 grid size-9 place-items-center rounded-full border-2 border-white bg-navy text-white shadow-[0_2px_6px_rgba(22,34,46,0.3)] transition-transform duration-150 hover:scale-105 disabled:cursor-progress disabled:opacity-60"
+          className="absolute -right-2 -bottom-2 grid size-9 place-items-center rounded-full border-2 border-white bg-navy text-white shadow-[0_2px_6px_rgba(22,34,46,0.3)] transition-transform duration-150 ease-out hover:scale-105 active:scale-90 disabled:cursor-progress disabled:opacity-60"
         >
           <Camera size={15} strokeWidth={2} aria-hidden="true" />
         </button>
@@ -83,7 +83,7 @@ export function AvatarUploadControl({ user }: AvatarUploadControlProps) {
             onClick={handleRemove}
             disabled={isBusy}
             aria-label="Remove photo"
-            className="absolute -top-2 -right-2 grid size-7 place-items-center rounded-full border-2 border-white bg-coral-deep text-white shadow-[0_2px_6px_rgba(22,34,46,0.3)] transition-transform duration-150 hover:scale-105 disabled:cursor-progress disabled:opacity-60"
+            className="absolute -top-2 -right-2 grid size-7 place-items-center rounded-full border-2 border-white bg-coral-deep text-white shadow-[0_2px_6px_rgba(22,34,46,0.3)] transition-transform duration-150 ease-out hover:scale-105 active:scale-90 disabled:cursor-progress disabled:opacity-60"
           >
             <Trash2 size={12} strokeWidth={2} aria-hidden="true" />
           </button>
