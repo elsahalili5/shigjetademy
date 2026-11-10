@@ -2,7 +2,7 @@ import { fireEvent, screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { attendanceMarkSchema } from '@shigjetademy/shared/attendance'
-import type { AttendanceRegister, AttendanceSession } from '@shigjetademy/shared/attendance'
+import type { AttendanceHistoryEntry, AttendanceRegister, AttendanceSession } from '@shigjetademy/shared/attendance'
 import type { AuthUser } from '@shigjetademy/shared/auth'
 import { buildUser, DEFAULT_SETTINGS, OWNER_MEMBERSHIPS, signInAs, YLLKA_ADMIN_MEMBERSHIP } from '#/test/fixtures'
 import { renderRoute } from '#/test/render-route'
@@ -105,9 +105,19 @@ const openRegister = async ({ register = REGISTER }: OpenRegisterParams = {}) =>
   return { ...rendered, fake, section: await screen.findByRole('region', { name: 'Group A' }) }
 }
 
+type ServeHistoryParams = {
+  organizationId?: string
+  entries?: AttendanceHistoryEntry[]
+}
+
+/** Answers the organization's attendance history; empty by default, so every test gets one without asking for it */
+const serveHistory = ({ organizationId = 'org-1', entries = [] }: ServeHistoryParams = {}) =>
+  server.use(http.get(`*/api/organizations/${organizationId}/attendance/history`, () => HttpResponse.json({ data: entries })))
+
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date(MONDAY_MORNING))
+  serveHistory()
 })
 
 afterEach(() => {
@@ -247,43 +257,58 @@ describe('AttendancePage: the register', () => {
 })
 
 describe('AttendancePage: marking students', () => {
-  it('saves a status on each tap, shows it pressed, and reads the register again once saved', async () => {
+  it('stages a tap as unsaved, offers Save Attendance, and only saves once it is clicked', async () => {
     const { section, user, fake } = await openRegister()
     const besa = within(section).getByRole('group', { name: 'Attendance for Besa Berisha' })
     expect(within(section).getByRole('listitem', { name: 'Besa Berisha' })).toHaveTextContent('Not marked')
+    expect(within(section).queryByRole('button', { name: 'Save Attendance' })).not.toBeInTheDocument()
 
     await user.click(within(besa).getByRole('button', { name: 'Tardy' }))
 
-    await vi.waitFor(() => expect(within(besa).getByRole('button', { name: 'Tardy' })).toHaveAttribute('aria-pressed', 'true'))
-    expect(within(besa).getByRole('button', { name: 'Present' })).toHaveAttribute('aria-pressed', 'false')
-    expect(within(section).getByRole('listitem', { name: 'Besa Berisha' })).not.toHaveTextContent('Not marked')
+    expect(within(besa).getByRole('button', { name: 'Tardy' })).toHaveAttribute('aria-pressed', 'true')
+    expect(within(section).getByRole('listitem', { name: 'Besa Berisha' })).toHaveTextContent('Unsaved')
+    expect(fake.markBodies).toEqual([])
+
+    await user.click(within(section).getByRole('button', { name: 'Save Attendance' }))
+
     expect(fake.markBodies).toEqual([{ status: 'TARDY' }])
+    // Besa is now saved, so (without Edit Attendance) her row shows the plain, read-only status instead of the buttons
+    await vi.waitFor(() => expect(within(section).getByRole('listitem', { name: 'Besa Berisha' })).toHaveTextContent('Tardy'))
+    expect(within(section).getByRole('listitem', { name: 'Besa Berisha' })).not.toHaveTextContent('Unsaved')
     await vi.waitFor(() => expect(fake.reads).toBe(2))
+    expect(within(section).queryByRole('button', { name: 'Save Attendance' })).not.toBeInTheDocument()
   })
 
-  it('keeps focus on the pressed button and ignores taps while its save is pending', async () => {
-    const { section, user, fake } = await openRegister()
-    const held = holdResponse()
-    server.use(
-      http.put(`${REGISTER_PATH}/students/student-arta`, async () => {
-        fake.markBodies.push('held')
-        await held.released
-        fake.register = { ...fake.register, students: fake.register.students.map((student) => (student.id === 'student-arta' ? { ...student, status: 'ABSENT' } : student)) }
-        return HttpResponse.json({ data: fake.register.students[0] })
-      }),
-    )
+  it('offers Save Changes, not Save Attendance, when a pending mark edits an already-saved student', async () => {
+    const { section, user } = await openRegister()
+    await user.click(within(section).getByRole('button', { name: 'Edit Attendance' }))
     const arta = within(section).getByRole('group', { name: 'Attendance for Arta Gashi' })
 
     await user.click(within(arta).getByRole('button', { name: 'Absent' }))
-    await vi.waitFor(() => expect(within(arta).getByRole('button', { name: 'Absent' })).toHaveAttribute('aria-disabled', 'true'))
-    expect(within(arta).getByRole('button', { name: 'Absent' })).toHaveFocus()
-    await user.click(within(arta).getByRole('button', { name: 'Tardy' }))
+
+    expect(within(section).getByRole('button', { name: 'Save Changes' })).toBeInTheDocument()
+    expect(within(section).queryByRole('button', { name: 'Save Attendance' })).not.toBeInTheDocument()
+  })
+
+  it('disables marking and the save button itself while a save is in flight', async () => {
+    const { section, user, fake } = await openRegister()
+    const held = holdResponse()
+    server.use(
+      http.put(`${REGISTER_PATH}/students/student-besa`, async () => {
+        await held.released
+        fake.register = { ...fake.register, students: fake.register.students.map((student) => (student.id === 'student-besa' ? { ...student, status: 'TARDY' } : student)) }
+        return HttpResponse.json({ data: fake.register.students[1] })
+      }),
+    )
+    const besa = within(section).getByRole('group', { name: 'Attendance for Besa Berisha' })
+    await user.click(within(besa).getByRole('button', { name: 'Tardy' }))
+
+    await user.click(within(section).getByRole('button', { name: 'Save Attendance' }))
+    expect(within(section).getByRole('button', { name: 'Save Attendance' })).toBeDisabled()
+    expect(within(besa).getByRole('button', { name: 'Present' })).toHaveAttribute('aria-disabled', 'true')
     held.release()
 
-    await vi.waitFor(() => expect(within(arta).getByRole('button', { name: 'Absent' })).toHaveAttribute('aria-pressed', 'true'))
-    expect(within(arta).getByRole('button', { name: 'Absent' })).toHaveAttribute('aria-disabled', 'false')
-    expect(within(arta).getByRole('button', { name: 'Tardy' })).toHaveAttribute('aria-pressed', 'false')
-    expect(fake.markBodies).toEqual(['held'])
+    await vi.waitFor(() => expect(within(section).queryByRole('button', { name: 'Save Attendance' })).not.toBeInTheDocument())
   })
 
   it('shows what the server holds after a save, even when the save answers with an older mark', async () => {
@@ -295,65 +320,66 @@ describe('AttendancePage: marking students', () => {
       }),
     )
     const besa = within(section).getByRole('group', { name: 'Attendance for Besa Berisha' })
-
     await user.click(within(besa).getByRole('button', { name: 'Tardy' }))
 
-    await vi.waitFor(() => expect(within(besa).getByRole('button', { name: 'Absent' })).toHaveAttribute('aria-pressed', 'true'))
-    expect(within(besa).getByRole('button', { name: 'Tardy' })).toHaveAttribute('aria-pressed', 'false')
+    await user.click(within(section).getByRole('button', { name: 'Save Attendance' }))
+
+    // The register's refetch says Absent, which wins over the save's own (older) Tardy answer
+    await vi.waitFor(() => expect(within(section).getByRole('listitem', { name: 'Besa Berisha' })).toHaveTextContent('Absent'))
   })
 
-  it('keeps the old status and shows why when a save fails', async () => {
-    const { section, user } = await openRegister()
-    server.use(http.put(`${REGISTER_PATH}/students/student-arta`, () => HttpResponse.json({ error: 'This register locked at 18:30.' }, { status: 409 })))
-    const arta = within(section).getByRole('group', { name: 'Attendance for Arta Gashi' })
-
-    await user.click(within(arta).getByRole('button', { name: 'Absent' }))
-
-    expect(await within(section).findByRole('alert')).toHaveTextContent('This register locked at 18:30.')
-    expect(within(arta).getByRole('button', { name: 'Present' })).toHaveAttribute('aria-pressed', 'true')
-    expect(within(arta).getByRole('button', { name: 'Absent' })).toHaveAttribute('aria-pressed', 'false')
-  })
-
-  it('marks everyone unmarked present at once', async () => {
+  it('keeps a failed mark pending with its error, and saves it on a retry', async () => {
     const { section, user, fake } = await openRegister()
-
-    await user.click(within(section).getByRole('button', { name: 'Mark all present' }))
-
-    const besa = within(section).getByRole('group', { name: 'Attendance for Besa Berisha' })
-    await vi.waitFor(() => expect(within(besa).getByRole('button', { name: 'Present' })).toHaveAttribute('aria-pressed', 'true'))
-    expect(within(within(section).getByRole('group', { name: 'Attendance for Genta Rama' })).getByRole('button', { name: 'Absent' })).toHaveAttribute('aria-pressed', 'true')
-    expect(fake.markAllCalls).toBe(1)
-  })
-
-  it('ignores single marks while marking everyone present', async () => {
-    const { section, user, fake } = await openRegister()
-    const held = holdResponse()
+    let shouldFail = true
     server.use(
-      http.put(`${REGISTER_PATH}/mark-all-present`, async () => {
-        await held.released
-        fake.register = { ...fake.register, students: fake.register.students.map((student) => ({ ...student, status: student.status ?? 'PRESENT' })) }
-        return HttpResponse.json({ data: fake.register })
+      http.put(`${REGISTER_PATH}/students/student-arta`, async ({ request }) => {
+        if (shouldFail) return HttpResponse.json({ error: 'This register locked at 18:30.' }, { status: 409 })
+        const body: unknown = await request.json()
+        fake.markBodies.push(body)
+        return HttpResponse.json({ data: { ...REGISTER.students[0], status: 'ABSENT' } })
       }),
     )
-    const besa = within(section).getByRole('group', { name: 'Attendance for Besa Berisha' })
+    await user.click(within(section).getByRole('button', { name: 'Edit Attendance' }))
+    const arta = within(section).getByRole('group', { name: 'Attendance for Arta Gashi' })
+    await user.click(within(arta).getByRole('button', { name: 'Absent' }))
 
-    await user.click(within(section).getByRole('button', { name: 'Mark all present' }))
-    await vi.waitFor(() => expect(within(besa).getByRole('button', { name: 'Tardy' })).toHaveAttribute('aria-disabled', 'true'))
-    await user.click(within(besa).getByRole('button', { name: 'Tardy' }))
-    held.release()
-
-    await vi.waitFor(() => expect(within(besa).getByRole('button', { name: 'Present' })).toHaveAttribute('aria-pressed', 'true'))
-    expect(fake.markBodies).toEqual([])
-  })
-
-  it('shows the error when marking everyone present fails', async () => {
-    const { section, user } = await openRegister()
-    server.use(http.put(`${REGISTER_PATH}/mark-all-present`, () => HttpResponse.json({ error: 'This register locked at 18:30.' }, { status: 409 })))
-
-    await user.click(within(section).getByRole('button', { name: 'Mark all present' }))
+    await user.click(within(section).getByRole('button', { name: 'Save Changes' }))
 
     expect(await within(section).findByRole('alert')).toHaveTextContent('This register locked at 18:30.')
-    expect(within(within(section).getByRole('group', { name: 'Attendance for Besa Berisha' })).getByRole('button', { name: 'Present' })).toHaveAttribute('aria-pressed', 'false')
+    expect(within(arta).getByRole('button', { name: 'Absent' })).toHaveAttribute('aria-pressed', 'true')
+    expect(within(section).getByRole('listitem', { name: 'Arta Gashi' })).toHaveTextContent('Unsaved')
+
+    shouldFail = false
+    await user.click(within(section).getByRole('button', { name: 'Save Changes' }))
+
+    await vi.waitFor(() => expect(within(section).getByRole('listitem', { name: 'Arta Gashi' })).not.toHaveTextContent('Unsaved'))
+    expect(fake.markBodies).toEqual([{ status: 'ABSENT' }])
+  })
+
+  it('stages present for everyone unmarked at once, without touching anyone already saved or pending', async () => {
+    const { section, user, fake } = await openRegister()
+
+    await user.click(within(section).getByRole('button', { name: 'Mark all present' }))
+
+    const besa = within(section).getByRole('group', { name: 'Attendance for Besa Berisha' })
+    expect(within(besa).getByRole('button', { name: 'Present' })).toHaveAttribute('aria-pressed', 'true')
+    expect(within(section).getByRole('listitem', { name: 'Besa Berisha' })).toHaveTextContent('Unsaved')
+    expect(fake.markBodies).toEqual([])
+
+    await user.click(within(section).getByRole('button', { name: 'Save Attendance' }))
+
+    await vi.waitFor(() => expect(fake.markBodies).toEqual([{ status: 'PRESENT' }]))
+  })
+
+  it('needs Edit Attendance turned on before an already-saved student can be re-marked, but not a never-marked one', async () => {
+    const { section, user } = await openRegister()
+
+    expect(within(within(section).getByRole('listitem', { name: 'Arta Gashi' })).queryByRole('group')).not.toBeInTheDocument()
+    expect(within(section).getByRole('group', { name: 'Attendance for Besa Berisha' })).toBeInTheDocument()
+
+    await user.click(within(section).getByRole('button', { name: 'Edit Attendance' }))
+
+    expect(within(section).getByRole('group', { name: 'Attendance for Arta Gashi' })).toBeInTheDocument()
   })
 })
 
@@ -365,7 +391,7 @@ describe('AttendancePage: opening and locking while the page is open', () => {
     expect(within(section).getByText('Opens at 17:00')).toBeInTheDocument()
     fake.register = REGISTER
 
-    expect(await within(section).findByRole('group', { name: 'Attendance for Arta Gashi' }, { timeout: 4000 })).toBeInTheDocument()
+    expect(await within(section).findByRole('group', { name: 'Attendance for Besa Berisha' }, { timeout: 4000 })).toBeInTheDocument()
     expect(within(section).queryByText('Opens at 17:00')).not.toBeInTheDocument()
   })
 
@@ -390,10 +416,13 @@ describe('AttendancePage: corrections', () => {
     const section = await screen.findByRole('region', { name: 'Group A' })
 
     expect(within(section).getByText('Locked at 18:30. Changes now are logged as corrections.')).toBeInTheDocument()
+    await user.click(within(section).getByRole('button', { name: 'Edit Attendance' }))
     const arta = within(section).getByRole('group', { name: 'Attendance for Arta Gashi' })
     await user.click(within(arta).getByRole('button', { name: 'Absent' }))
+    await user.click(within(section).getByRole('button', { name: 'Save Changes' }))
 
     await vi.waitFor(() => expect(within(arta).getByRole('button', { name: 'Absent' })).toHaveAttribute('aria-pressed', 'true'))
+    await vi.waitFor(() => expect(within(section).queryByRole('button', { name: 'Save Changes' })).not.toBeInTheDocument())
   })
 })
 
@@ -441,5 +470,74 @@ describe('AttendancePage: access', () => {
     const { router } = renderRoute('/dashboard/attendance')
 
     await vi.waitFor(() => expect(router.state.location.pathname).toBe('/dashboard/my-school'))
+  })
+})
+
+describe('AttendancePage: auto-selecting the session', () => {
+  it('opens a day’s only session on its own, without a manual pick', async () => {
+    signInAs(LECTURER)
+    serveGroups({ groupsByDate: { [MONDAY]: [GROUP_A] } })
+    serveRegister()
+    renderRoute('/dashboard/attendance')
+
+    expect(await screen.findByRole('region', { name: 'Group A' })).toBeInTheDocument()
+  })
+
+  it('still asks when a day has more than one session', async () => {
+    signInAs(LECTURER)
+    serveGroups()
+    renderRoute('/dashboard/attendance')
+
+    await screen.findByRole('combobox', { name: 'Group' })
+    expect(screen.queryByRole('region', { name: 'Group A' })).not.toBeInTheDocument()
+  })
+
+  it('auto-selects the new day’s only session once the date changes', async () => {
+    signInAs(LECTURER)
+    serveGroups({ groupsByDate: { [MONDAY]: [GROUP_A, GROUP_B], '2026-11-10': [GROUP_B] } })
+    server.use(http.get(`*/api/organizations/org-1/attendance/groups/group-b/2026-11-10/19\\:00`, () => HttpResponse.json({ data: { ...REGISTER, group: { ...REGISTER.group, name: 'Group B' }, date: '2026-11-10', start_time: '19:00', end_time: '20:00' } })))
+    renderRoute('/dashboard/attendance')
+    await screen.findByRole('combobox', { name: 'Group' })
+
+    fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-11-10' } })
+
+    expect(await screen.findByRole('region', { name: 'Group B' })).toBeInTheDocument()
+  })
+})
+
+describe('AttendancePage: attendance history', () => {
+  const HISTORY_ENTRY: AttendanceHistoryEntry = { group_id: 'group-a', name: 'Group A', course: 'Mathematics', date: '2026-11-02', start_time: '17:00', end_time: '18:30', marked: 2, total: 3 }
+
+  it('shows the history before any date or group is picked', async () => {
+    signInAs(LECTURER)
+    serveGroups()
+    serveHistory({ entries: [HISTORY_ENTRY] })
+    renderRoute('/dashboard/attendance')
+
+    const history = await screen.findByRole('region', { name: 'Attendance history' })
+    expect(await within(history).findByText('2/3 marked')).toBeInTheDocument()
+  })
+
+  it('opens that session’s register when a history row is clicked', async () => {
+    signInAs(LECTURER)
+    serveGroups()
+    serveHistory({ entries: [HISTORY_ENTRY] })
+    serveRegister({ ...REGISTER, date: '2026-11-02' })
+    server.use(http.get(`*/api/organizations/org-1/attendance/groups/group-a/2026-11-02/17\\:00`, () => HttpResponse.json({ data: { ...REGISTER, date: '2026-11-02' } })))
+    const { user } = renderRoute('/dashboard/attendance')
+
+    const history = await screen.findByRole('region', { name: 'Attendance history' })
+    await user.click(await within(history).findByRole('button', { name: /Group A/ }))
+
+    expect(await screen.findByRole('region', { name: 'Group A' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Date')).toHaveValue('2026-11-02')
+  })
+
+  it('says when there’s no attendance history yet', async () => {
+    signInAs(LECTURER)
+    serveGroups()
+    renderRoute('/dashboard/attendance')
+
+    expect(await screen.findByText('No attendance taken yet')).toBeInTheDocument()
   })
 })

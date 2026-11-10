@@ -188,6 +188,7 @@ const SCOPED_ENDPOINTS: ScopedEndpoint[] = [
   { method: 'post', route: '/:organizationId/groups/:groupId/archive' },
   { method: 'post', route: '/:organizationId/groups/:groupId/restore' },
   { method: 'get', route: '/:organizationId/attendance/groups' },
+  { method: 'get', route: '/:organizationId/attendance/history' },
   { method: 'get', route: '/:organizationId/attendance/groups/:groupId/:date/:startTime' },
   { method: 'put', route: '/:organizationId/attendance/groups/:groupId/:date/:startTime/students/:studentId', body: MARK },
   { method: 'put', route: '/:organizationId/attendance/groups/:groupId/:date/:startTime/mark-all-present' },

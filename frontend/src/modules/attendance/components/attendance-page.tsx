@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { CalendarX, ClipboardCheck } from 'lucide-react'
 import type { AttendanceSession } from '@shigjetademy/shared/attendance'
@@ -13,6 +13,7 @@ import { useFormatLessonSlot } from '#/lib/use-format-date'
 import { AuthField } from '#/modules/auth/components/auth-field'
 import { useAttendanceSessions } from '../hooks/use-attendance-sessions'
 import { getAttendanceSessionKey, getAttendanceSessionLabel } from '../utils/session-label'
+import { AttendanceHistory } from './attendance-history'
 import { AttendanceRegister } from './attendance-register'
 
 interface AttendancePageProps {
@@ -33,6 +34,11 @@ export function AttendancePage({ organizationId, timeZone }: AttendancePageProps
     setSession(null)
   }
 
+  const handleSelectHistory = ({ date: historyDate, session: historySession }: { date: string; session: AttendanceSession }) => {
+    setDate(historyDate)
+    setSession(historySession)
+  }
+
   return (
     <div className="flex h-full min-w-0 flex-col overflow-y-auto">
       <DashboardPageHeader icon={ClipboardCheck} title="Attendance" subtitle="Take the register for a group’s lesson." />
@@ -45,6 +51,9 @@ export function AttendancePage({ organizationId, timeZone }: AttendancePageProps
             </div>
             <AttendanceSessionPicker organizationId={organizationId} date={date} session={session} onChange={setSession} />
           </div>
+        </SectionCard>
+        <SectionCard title="Attendance history">
+          <AttendanceHistory organizationId={organizationId} onSelect={handleSelectHistory} />
         </SectionCard>
         {date && session ? <AttendanceRegister organizationId={organizationId} groupId={session.group_id} date={date} startTime={session.start_time} timeZone={timeZone} /> : null}
       </div>
@@ -64,6 +73,11 @@ function AttendanceSessionPicker({ organizationId, date, session, onChange }: At
   const pickerId = useId()
   const sessions = useAttendanceSessions({ organizationId, date })
   const formatLessonSlot = useFormatLessonSlot()
+
+  // The day's only session needs no manual pick; a day with none or several still does
+  useEffect(() => {
+    if (session === null && sessions.data?.length === 1) onChange(sessions.data[0])
+  }, [sessions.data, session, onChange])
 
   const handleChange = (event: ChangeEvent<HTMLSelectElement>) => onChange(sessions.data?.find((item) => getAttendanceSessionKey(item) === event.target.value) ?? null)
 
