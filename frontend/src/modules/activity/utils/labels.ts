@@ -60,4 +60,8 @@ export const ACTIVITY_ACTION_LABELS = {
   INVITATION_REVOKED: 'Invitation withdrawn',
   INVITATION_ACCEPTED: 'Invitation accepted',
   PLATFORM_SETTINGS_UPDATED: 'Platform settings updated',
+  GUARDIAN_ADDED: 'Guardian added',
+  GUARDIAN_UPDATED: 'Guardian changed',
+  GUARDIAN_LINKED: 'Guardian linked',
+  GUARDIAN_UNLINKED: 'Guardian unlinked',
 } as const satisfies Record<ActivityAction, string>

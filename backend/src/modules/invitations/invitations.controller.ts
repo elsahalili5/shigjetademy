@@ -2,6 +2,8 @@ import type { Response } from 'express'
 import { sendError } from '@lib/httpError.ts'
 import type { AuthRequest, TypedRequest } from '@lib/types.ts'
 import type { OrganizationIdParam } from '@modules/organization/organization.types.ts'
+import { GuardianService } from '@modules/guardians/guardians.service.ts'
+import type { GuardianParam } from '@modules/guardians/guardians.types.ts'
 import { LecturerService } from '@modules/lecturers/lecturers.service.ts'
 import type { LecturerParam } from '@modules/lecturers/lecturers.types.ts'
 import { StudentService } from '@modules/students/students.service.ts'
@@ -20,6 +22,10 @@ type StudentInvitationRequest = AuthRequest & TypedRequest<unknown, StudentParam
 type InviteLecturerRequest = AuthRequest & TypedRequest<InviteRecordInput, LecturerParam>
 
 type LecturerInvitationRequest = AuthRequest & TypedRequest<unknown, LecturerParam>
+
+type GuardianInvitationRequest = AuthRequest & TypedRequest<unknown, GuardianParam>
+
+const NO_EMAIL_MESSAGE = 'Add an email for this guardian before inviting them.'
 
 export const InvitationController = {
   inviteAdmin: async (req: InviteAdminRequest, res: Response) => {
@@ -162,6 +168,53 @@ export const InvitationController = {
       const { organizationId, lecturerId } = req.params
       await InvitationService.revokeInvitation({ organizationId, actorId, match: { lecturerId } })
       return res.status(200).json({ data: await LecturerService.getLecturer({ organizationId, lecturerId }) })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to revoke the invitation' })
+    }
+  },
+
+  // A guardian is invited at the email on their record, so there's no body; one without an email can't be invited yet
+  inviteGuardian: async (req: GuardianInvitationRequest, res: Response) => {
+    try {
+      const actorId = req.user?.id
+      if (!actorId) {
+        return res.status(401).json({ error: 'Unauthorized' })
+      }
+      const { organizationId, guardianId } = req.params
+      const guardian = await GuardianService.getGuardian({ organizationId, guardianId })
+      if (!guardian.email) {
+        return res.status(400).json({ error: NO_EMAIL_MESSAGE, details: { formErrors: [], fieldErrors: { email: [NO_EMAIL_MESSAGE] } } })
+      }
+      await InvitationService.createInvitation({ organizationId, actorId, email: guardian.email, target: { role: 'GUARDIAN', guardianId } })
+      return res.status(201).json({ data: await GuardianService.getGuardian({ organizationId, guardianId }) })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to send the invitation' })
+    }
+  },
+
+  resendGuardianInvitation: async (req: GuardianInvitationRequest, res: Response) => {
+    try {
+      const actorId = req.user?.id
+      if (!actorId) {
+        return res.status(401).json({ error: 'Unauthorized' })
+      }
+      const { organizationId, guardianId } = req.params
+      await InvitationService.resendInvitation({ organizationId, actorId, match: { guardianId } })
+      return res.status(200).json({ data: await GuardianService.getGuardian({ organizationId, guardianId }) })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to resend the invitation' })
+    }
+  },
+
+  revokeGuardianInvitation: async (req: GuardianInvitationRequest, res: Response) => {
+    try {
+      const actorId = req.user?.id
+      if (!actorId) {
+        return res.status(401).json({ error: 'Unauthorized' })
+      }
+      const { organizationId, guardianId } = req.params
+      await InvitationService.revokeInvitation({ organizationId, actorId, match: { guardianId } })
+      return res.status(200).json({ data: await GuardianService.getGuardian({ organizationId, guardianId }) })
     } catch (error) {
       return sendError({ res, error, fallback: 'Failed to revoke the invitation' })
     }

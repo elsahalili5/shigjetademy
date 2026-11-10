@@ -2,6 +2,7 @@ import { useId, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Plus, Search, Users } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import { useNavigate } from '@tanstack/react-router'
 import { getStudentName, STUDENT_STATUSES } from '@shigjetademy/shared/students'
 import type { Student, StudentStatus } from '@shigjetademy/shared/students'
 import { DashboardPageHeader } from '#/components/DashboardPageHeader'
@@ -39,6 +40,7 @@ interface StudentsPageProps {
 export function StudentsPage({ organizationId, organizationName }: StudentsPageProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const inviteDialogRef = useRef<HTMLDialogElement>(null)
+  const navigate = useNavigate()
   const searchId = useId()
   const studentSearch = useDebouncedSearch()
   const [status, setStatus] = useState<StudentStatus>('ACTIVE')
@@ -61,7 +63,13 @@ export function StudentsPage({ organizationId, organizationName }: StudentsPageP
 
   const handleSaved = (saved: Student) => {
     const name = getStudentName(saved)
-    setNotice({ tone: 'success', text: dialogMode.kind === 'add' ? `Added ${name} as ${saved.student_number}.` : `Saved ${name}.` })
+    if (dialogMode.kind === 'add') {
+      // A new student's page is where their guardians get added
+      toast.success(`Added ${name} as ${saved.student_number}.`)
+      void navigate({ to: '/dashboard/students/$studentId', params: { studentId: saved.id } })
+      return
+    }
+    setNotice({ tone: 'success', text: `Saved ${name}.` })
   }
 
   const handleSetStatus = ({ student, status: nextStatus }: StudentStatusChange) => {

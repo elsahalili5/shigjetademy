@@ -22,7 +22,8 @@
     "./student-roster": "./src/student-roster.ts",
     "./platform-settings": "./src/platform-settings.ts",
     "./rooms": "./src/rooms.ts",
-    "./schedule": "./src/schedule.ts"
+    "./schedule": "./src/schedule.ts",
+    "./guardians": "./src/guardians.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

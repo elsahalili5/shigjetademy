@@ -8,12 +8,14 @@ import attendanceRoutes from '@modules/attendance/attendance.routes.ts'
 import authRoutes from '@modules/auth/auth.routes.ts'
 import courseRoutes from '@modules/courses/courses.routes.ts'
 import groupRoutes from '@modules/groups/groups.routes.ts'
+import guardianRoutes from '@modules/guardians/guardians.routes.ts'
 import invitationRoutes from '@modules/invitations/invitations.routes.ts'
 import organizationInvitationRoutes from '@modules/invitations/organization-invitations.routes.ts'
 import lecturerHomeRoutes from '@modules/lecturer-home/lecturer-home.routes.ts'
 import lecturerRoutes from '@modules/lecturers/lecturers.routes.ts'
 import lessonPlanRoutes from '@modules/attendance/lesson-plans.routes.ts'
 import locationRoutes from '@modules/location/location.routes.ts'
+import myChildrenRoutes from '@modules/my-children/my-children.routes.ts'
 import organizationRoutes from '@modules/organization/organization.routes.ts'
 import organizationSettingsRoutes from '@modules/organization-settings/organization-settings.routes.ts'
 import platformSettingsRoutes from '@modules/platform-settings/platform-settings.routes.ts'
@@ -49,6 +51,7 @@ app.use('/api/organizations', scheduleRoutes)
 app.use('/api/organizations', academicPeriodsRoutes)
 app.use('/api/organizations', organizationSettingsRoutes)
 app.use('/api/organizations', studentRoutes)
+app.use('/api/organizations', guardianRoutes)
 app.use('/api/organizations', lecturerRoutes)
 app.use('/api/organizations', courseRoutes)
 app.use('/api/organizations', groupRoutes)
@@ -57,6 +60,7 @@ app.use('/api/organizations', lessonPlanRoutes)
 app.use('/api/organizations', organizationInvitationRoutes)
 app.use('/api/organizations', studentHomeRoutes)
 app.use('/api/organizations', lecturerHomeRoutes)
+app.use('/api/organizations', myChildrenRoutes)
 app.use('/api/organizations', studentRosterRoutes)
 app.use('/api/users', userRoutes)
 

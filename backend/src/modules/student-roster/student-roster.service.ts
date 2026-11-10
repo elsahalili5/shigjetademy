@@ -2,15 +2,14 @@
 // The owner and admins with MANAGE_COURSES or MANAGE_STUDENTS reach every active group's students, the same access pattern as lesson plans and attendance,
 // and a student's whole history in the organization.
 import type { Prisma } from '@generated/prisma/client.ts'
-import { ATTENDANCE_STATUSES } from '@shigjetademy/shared/attendance'
-import type { AttendanceStatus } from '@shigjetademy/shared/attendance'
-import type { RosterEntry, StudentAttendanceSummary, StudentRosterDetail } from '@shigjetademy/shared/student-roster'
-import { toClock, toDate, toDay } from '@lib/calendar-day.ts'
+import type { RosterEntry, StudentRosterDetail } from '@shigjetademy/shared/student-roster'
+import { toDate } from '@lib/calendar-day.ts'
 import { getOrganizationToday } from '@lib/current-period.ts'
 import { HttpError } from '@lib/httpError.ts'
 import { prisma } from '@lib/prisma.ts'
 import { findLecturerId } from '@modules/attendance/lecturer-lookup.ts'
 import { activeEnrolments } from '@modules/groups/group-selects.ts'
+import { getStudentAttendance } from './student-attendance.ts'
 
 /** Who is asking; the route only lets through lecturers and admins with MANAGE_COURSES or MANAGE_STUDENTS */
 export type StudentRosterViewer = {
@@ -54,22 +53,6 @@ const studentGroupsFilter = async ({ organizationId, viewer, studentId }: Studen
   return groups ? { ...groups, enrolments: { some: { student_id: studentId, ...activeEnrolments } } } : null
 }
 
-type StoredAttendanceRecord = {
-  date: Date
-  start_time: Date
-  status: AttendanceStatus
-  group: { id: string; name: string }
-}
-
-const toAttendanceEntry = (record: StoredAttendanceRecord) => ({ date: toDay(record.date), start_time: toClock(record.start_time), status: record.status, group: record.group })
-
-/** Marked sessions only; present and tardy both count as attended, so the rate never blames a late arrival as absence */
-const toSummary = (records: StoredAttendanceRecord[]): StudentAttendanceSummary => {
-  const counts = Object.fromEntries(ATTENDANCE_STATUSES.map((status) => [status, records.filter((record) => record.status === status).length])) as Record<AttendanceStatus, number>
-  const total = records.length
-  return { present: counts.PRESENT, tardy: counts.TARDY, absent: counts.ABSENT, rate: total === 0 ? null : Math.round(((counts.PRESENT + counts.TARDY) / total) * 100) }
-}
-
 export const StudentRosterService = {
   // One row per student per group, so a student in two of the viewer's groups appears twice
   listRoster: async ({ organizationId, viewer }: ListRosterParams): Promise<RosterEntry[]> => {
@@ -94,11 +77,7 @@ export const StudentRosterService = {
     if (!viewer.isManager && visibleGroups.length === 0) {
       throw new HttpError(403, 'You don’t teach this student.')
     }
-    const records = await prisma.attendanceRecord.findMany({
-      where: { student_id: studentId, group_id: { in: visibleGroups.map((group) => group.id) } },
-      orderBy: [{ date: 'desc' }, { start_time: 'desc' }],
-      select: { date: true, start_time: true, status: true, group: { select: { id: true, name: true } } },
-    })
-    return { student, groups: visibleGroups, attendance: records.map(toAttendanceEntry), summary: toSummary(records) }
+    const { attendance, summary } = await getStudentAttendance({ studentId, groupIds: visibleGroups.map((group) => group.id) })
+    return { student, groups: visibleGroups, attendance, summary }
   },
 }

@@ -32,5 +32,8 @@ export const isOrganizationManager = (membership: SessionMembership | undefined)
 /** Students only have My school; staff and owner pages aren't theirs */
 export const isOrganizationStudent = (membership: SessionMembership | undefined) => membership?.role === 'STUDENT'
 
+/** Guardians only have My children; staff and owner pages aren't theirs */
+export const isOrganizationGuardian = (membership: SessionMembership | undefined) => membership?.role === 'GUARDIAN'
+
 /** Lecturers only have My teaching for now; staff and owner pages aren't theirs */
 export const isOrganizationLecturer = (membership: SessionMembership | undefined) => membership?.role === 'LECTURER'

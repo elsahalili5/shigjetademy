@@ -1,9 +1,9 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { getSessionMembership, getSessionUser } from '#/lib/route-guard'
-import { isOrganizationLecturer, isOrganizationOwner, isOrganizationStudent, isPlatformAdmin } from '#/modules/auth/utils/session-user'
+import { isOrganizationGuardian, isOrganizationLecturer, isOrganizationOwner, isOrganizationStudent, isPlatformAdmin } from '#/modules/auth/utils/session-user'
 import { isStudentsManager } from '#/modules/students/utils/permissions'
 
-// The dashboard opens on Clients for the platform admin, the Overview for the active organization's owner, My school for students, My teaching for lecturers,
+// The dashboard opens on Clients for the platform admin, the Overview for the active organization's owner, My school for students, My teaching for lecturers, My children for guardians,
 // Students for school admins who keep student records, and the calendar, which every member reads, for everyone else
 export const Route = createFileRoute('/dashboard/')({
   beforeLoad: ({ context }) => {
@@ -20,6 +20,9 @@ export const Route = createFileRoute('/dashboard/')({
     }
     if (isOrganizationLecturer(membership)) {
       throw redirect({ to: '/dashboard/my-teaching' })
+    }
+    if (isOrganizationGuardian(membership)) {
+      throw redirect({ to: '/dashboard/my-children' })
     }
     if (isStudentsManager(membership)) {
       throw redirect({ to: '/dashboard/students' })

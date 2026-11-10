@@ -176,18 +176,21 @@ describe('StudentsPage: list states', () => {
 })
 
 describe('StudentsPage: add, edit, archive', () => {
-  it('adds a student with no email, numbered automatically', async () => {
+  it('adds a student with no email, numbered automatically, and opens their page to add guardians', async () => {
     signInAsOwner({ active: [] })
     const added: Student = { ...ARTA, date_of_birth: '2019-03-14' }
     let sent: unknown
     server.use(
       http.post(STUDENTS_PATH, async ({ request }) => {
         sent = createStudentSchema.parse(await request.json())
-        serveStudents({ active: [added] })
         return HttpResponse.json({ data: added }, { status: 201 })
       }),
+      http.get(`*/api/organizations/org-1/my-students/${ARTA.id}`, () =>
+        HttpResponse.json({ data: { student: { id: ARTA.id, first_name: 'Arta', last_name: 'Gashi' }, groups: [], attendance: [], summary: { present: 0, tardy: 0, absent: 0, rate: null } } }),
+      ),
+      http.get(`*/api/organizations/org-1/students/${ARTA.id}/guardians`, () => HttpResponse.json({ data: [] })),
     )
-    const { user } = renderRoute('/dashboard/students')
+    const { router, user } = renderRoute('/dashboard/students')
 
     await user.click(await screen.findByRole('button', { name: 'Add student' }))
     const dialog = screen.getByRole('dialog', { name: 'Add a student' })
@@ -198,10 +201,10 @@ describe('StudentsPage: add, edit, archive', () => {
     await user.type(within(dialog).getByLabelText('Date of birth (optional)'), '2019-03-14')
     await user.click(within(dialog).getByRole('button', { name: 'Add student' }))
 
-    expect(await screen.findByText('Added Arta Gashi as STU-0001.')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Arta Gashi' })).toBeInTheDocument()
     expect(sent).toMatchObject({ first_name: 'Arta', last_name: 'Gashi', date_of_birth: '2019-03-14', enrolled_on: '2026-10-31', student_number: '' })
-    expect(dialog).not.toBeVisible()
-    expect(await screen.findByText('Arta Gashi')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe(`/dashboard/students/${ARTA.id}`)
+    expect(await screen.findByRole('region', { name: 'Guardians' })).toBeInTheDocument()
   })
 
   it('asks for the names, and keeps the dialog open with the server’s error', async () => {
