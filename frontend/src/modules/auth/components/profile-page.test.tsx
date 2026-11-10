@@ -51,7 +51,18 @@ describe('ProfilePage', () => {
 describe('Avatar', () => {
   it('uploads a photo and shows it in the sidebar', async () => {
     signInAs(owner)
-    server.use(http.post('*/api/auth/avatar', () => HttpResponse.json({ data: { ...owner, avatar_url: '/api/uploads/avatars/user-1-1.png' } })))
+    let uploadedName: string | null = null
+    // Like the real server, refuse anything that isn't a multipart body carrying the file; the raw body is read
+    // because undici's formData() parser rejects jsdom's File in this environment
+    server.use(
+      http.post('*/api/auth/avatar', async ({ request }) => {
+        const isMultipart = request.headers.get('content-type')?.startsWith('multipart/form-data') ?? false
+        const filePart = /name="avatar"; filename="([^"]+)"/.exec(await request.text())
+        if (!isMultipart || !filePart) return HttpResponse.json({ message: 'Choose an image to upload.' }, { status: 400 })
+        uploadedName = filePart[1]
+        return HttpResponse.json({ data: { ...owner, avatar_url: '/api/uploads/avatars/user-1-1.png' } })
+      }),
+    )
     const { user } = renderRoute('/dashboard/profile')
 
     const file = new File(['fake-image-bytes'], 'avatar.png', { type: 'image/png' })
@@ -61,6 +72,7 @@ describe('Avatar', () => {
       const sidebarAvatar = screen.getByRole('link', { name: 'Your profile' }).querySelector('img')
       expect(sidebarAvatar).toHaveAttribute('src', '/api/uploads/avatars/user-1-1.png')
     })
+    expect(uploadedName).toBe('avatar.png')
   })
 
   it('rejects an oversized image before uploading', async () => {

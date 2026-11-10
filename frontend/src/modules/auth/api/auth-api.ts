@@ -21,7 +21,9 @@ export const authApi = {
   uploadAvatar: (file: File) => {
     const formData = new FormData()
     formData.append('avatar', file)
-    return apiClient.post<AuthUser, FormData>('/auth/avatar', formData)
+    // The client defaults to JSON, which makes axios stringify FormData; a multipart type keeps the file, and axios
+    // then drops the header in the browser so it can add the boundary itself
+    return apiClient.post<AuthUser, FormData>('/auth/avatar', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
   },
   removeAvatar: () => apiClient.delete<AuthUser>('/auth/avatar'),
 }
