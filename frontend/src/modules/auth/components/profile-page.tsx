@@ -31,16 +31,18 @@ export function ProfilePage({ user }: ProfilePageProps) {
       <div className="bg-linear-to-b from-green-wash to-white px-[clamp(20px,3.4vw,44px)] pt-6 pb-16" aria-hidden="true" />
 
       <div className="-mt-12 grid max-w-[760px] gap-5 px-[clamp(20px,3.4vw,44px)] pb-10">
-        <div className="flex flex-wrap items-end gap-4">
+        <section className="flex flex-wrap items-end gap-4" aria-labelledby="profile-name">
           <AvatarUploadControl user={user} />
           <div className="grid gap-1.5 pb-1">
-            <h1 className="font-display text-[clamp(1.7rem,2.6vw,2.3rem)] leading-[1.05] font-[680] tracking-[-0.03em]">{name}</h1>
+            <h1 id="profile-name" className="font-display text-[clamp(1.7rem,2.6vw,2.3rem)] leading-[1.05] font-[680] tracking-[-0.03em]">{name}</h1>
             <p className="flex flex-wrap items-center gap-2 text-ink-2">
               {roleLabel ? <span className="chip chip--navy">{roleLabel}</span> : null}
+              {membership ? <span className="font-semibold text-ink">{membership.organization.name}</span> : null}
+              {membership ? <span aria-hidden="true">·</span> : null}
               {user.email}
             </p>
           </div>
-        </div>
+        </section>
 
         <section className="rounded-card border border-rule p-[clamp(20px,2.4vw,28px)]">
           <h2 id="profile-details-title" className="mb-5 text-[1.2rem] font-[650]">
@@ -63,11 +65,12 @@ export function ProfilePage({ user }: ProfilePageProps) {
               Your organizations
             </h2>
             <ul className="grid">
-              {user.memberships.map((membership) => (
-                <li key={membership.id} className="flex items-center gap-3 border-t border-rule px-5 py-3">
-                  <OrganizationMark name={membership.organization.name} />
-                  <span className="min-w-0 flex-1 truncate font-semibold">{membership.organization.name}</span>
-                  <span className="chip chip--navy">{ROLE_LABELS[membership.role]}</span>
+              {user.memberships.map((item) => (
+                <li key={item.id} className="flex items-center gap-3 border-t border-rule px-5 py-3" aria-current={item.id === membership?.id ? 'true' : undefined}>
+                  <OrganizationMark name={item.organization.name} />
+                  <span className="min-w-0 flex-1 truncate font-semibold">{item.organization.name}</span>
+                  {item.id === membership?.id ? <span className="chip chip--green">Current</span> : null}
+                  <span className="chip chip--navy">{ROLE_LABELS[item.role]}</span>
                 </li>
               ))}
             </ul>

@@ -1,7 +1,8 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
-import { buildUser, OWNER_MEMBERSHIPS, signInAs } from '#/test/fixtures'
+import { storeActiveOrganizationId } from '#/modules/auth/utils/active-organization-storage'
+import { buildUser, OWNER_MEMBERSHIPS, signInAs, YLLKA_ADMIN_MEMBERSHIP } from '#/test/fixtures'
 import { renderRoute } from '#/test/render-route'
 import { server } from '#/test/server'
 
@@ -20,6 +21,24 @@ describe('ProfilePage', () => {
 
     expect(await screen.findByText('Your details are saved.')).toBeInTheDocument()
     expect(within(screen.getByRole('link', { name: 'Your profile' })).getByText('Elsa Krasniqi')).toBeInTheDocument()
+  })
+
+  it('shows the active organization and follows a switch to another one', async () => {
+    signInAs(buildUser({ memberships: [...OWNER_MEMBERSHIPS, YLLKA_ADMIN_MEMBERSHIP] }))
+    storeActiveOrganizationId('org-2')
+    renderRoute('/dashboard/profile')
+
+    const identity = await screen.findByRole('region', { name: 'Elsa Halili' })
+    expect(identity).toHaveTextContent('School admin')
+    expect(identity).toHaveTextContent('Yllka Kindergarten')
+    const organizations = screen.getByRole('region', { name: 'Your organizations' })
+    expect(within(organizations).getByRole('listitem', { current: true })).toHaveTextContent('Yllka Kindergarten')
+
+    act(() => storeActiveOrganizationId('org-1'))
+
+    expect(identity).toHaveTextContent('Owner')
+    expect(identity).toHaveTextContent('Oxford Academy')
+    expect(within(organizations).getByRole('listitem', { current: true })).toHaveTextContent('Oxford Academy')
   })
 
   it('checks that the new passwords match before sending', async () => {
