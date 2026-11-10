@@ -4,6 +4,7 @@ import { getStudentName } from '@shigjetademy/shared/students'
 import type { UseQueryResult } from '@tanstack/react-query'
 import { isApiError } from '#/api/client'
 import { DashboardPageHeader } from '#/components/DashboardPageHeader'
+import type { DashboardPageHeaderBackTo } from '#/components/DashboardPageHeader'
 import { Detail } from '#/components/HomeDetails'
 import { EmptyMessage } from '#/components/EmptyMessage'
 import { LoadError } from '#/components/LoadError'
@@ -16,26 +17,51 @@ import { useStudentRosterDetail } from '../hooks/use-student-roster-detail'
 // A malformed id is refused as invalid; to the person it is a student that doesn't exist or isn't theirs
 const NOT_FOUND_STATUSES = [400, 404, 403]
 
+/** Who opened the page: a lecturer from My students, or the owner or an admin from Students */
+type StudentDetailViewer = 'MANAGER' | 'TEACHER'
+
+type StudentDetailCopy = {
+  subtitle: string
+  backTo: DashboardPageHeaderBackTo
+  notFound: string
+  noGroups: string
+  noHistory: string
+}
+
+const STUDENT_DETAIL_COPY = {
+  MANAGER: {
+    subtitle: 'Their groups and attendance.',
+    backTo: { to: '/dashboard/students', label: 'Back to Students' },
+    notFound: 'This student isn’t in your organization, or the link is old.',
+    noGroups: 'Not in any group.',
+    noHistory: 'Marks from any of their groups will show up here.',
+  },
+  TEACHER: {
+    subtitle: 'Their attendance in the groups you teach.',
+    backTo: { to: '/dashboard/my-students', label: 'Back to Students' },
+    notFound: 'They may not be in one of your groups, or the link is old.',
+    noGroups: 'No groups with you right now.',
+    noHistory: 'Marks from the groups you teach will show up here.',
+  },
+} as const satisfies Record<StudentDetailViewer, StudentDetailCopy>
+
 interface StudentDetailPageProps {
   organizationId: string
   studentId: string
+  viewer: StudentDetailViewer
 }
 
-/** One student's groups shared with this viewer, and their attendance in them */
-export function StudentDetailPage({ organizationId, studentId }: StudentDetailPageProps) {
+/** One student's groups this viewer may read, and their attendance in them */
+export function StudentDetailPage({ organizationId, studentId, viewer }: StudentDetailPageProps) {
   const detail = useStudentRosterDetail({ organizationId, studentId })
+  const copy = STUDENT_DETAIL_COPY[viewer]
   const isNotFound = isApiError(detail.error) && NOT_FOUND_STATUSES.includes(detail.error.response?.status ?? 0)
 
   return (
     <div className="flex h-full min-w-0 flex-col overflow-y-auto">
-      <DashboardPageHeader
-        icon={UserRound}
-        title={detail.data ? getStudentName(detail.data.student) : 'Student'}
-        subtitle="Their attendance in the groups you teach."
-        backTo={{ to: '/dashboard/my-students', label: 'Back to Students' }}
-      />
+      <DashboardPageHeader icon={UserRound} title={detail.data ? getStudentName(detail.data.student) : 'Student'} subtitle={copy.subtitle} backTo={copy.backTo} />
       <div className="grid max-w-[880px] min-w-0 gap-5 px-[clamp(20px,3.4vw,44px)] pb-10">
-        <StudentDetailContent detail={detail} isNotFound={isNotFound} />
+        <StudentDetailContent detail={detail} isNotFound={isNotFound} copy={copy} />
       </div>
     </div>
   )
@@ -44,11 +70,12 @@ export function StudentDetailPage({ organizationId, studentId }: StudentDetailPa
 interface StudentDetailContentProps {
   detail: UseQueryResult<StudentRosterDetail>
   isNotFound: boolean
+  copy: StudentDetailCopy
 }
 
-function StudentDetailContent({ detail, isNotFound }: StudentDetailContentProps) {
+function StudentDetailContent({ detail, isNotFound, copy }: StudentDetailContentProps) {
   if (!detail.data) {
-    if (isNotFound) return <EmptyMessage icon={UserRound} title="Student not found." text="They may not be in one of your groups, or the link is old." />
+    if (isNotFound) return <EmptyMessage icon={UserRound} title="Student not found." text={copy.notFound} />
     if (detail.status === 'error') return <LoadError what="student" onRetry={() => void detail.refetch()} />
     return <SkeletonRows />
   }
@@ -56,13 +83,13 @@ function StudentDetailContent({ detail, isNotFound }: StudentDetailContentProps)
   return (
     <>
       <SectionCard title="Groups">
-        <GroupChips groups={detail.data.groups} />
+        <GroupChips groups={detail.data.groups} emptyText={copy.noGroups} />
       </SectionCard>
       <SectionCard title="Attendance rate">
         <AttendanceSummary summary={detail.data.summary} />
       </SectionCard>
       <SectionCard title="Attendance history">
-        <AttendanceHistory detail={detail.data} />
+        <AttendanceHistory detail={detail.data} emptyText={copy.noHistory} />
       </SectionCard>
     </>
   )
@@ -70,10 +97,11 @@ function StudentDetailContent({ detail, isNotFound }: StudentDetailContentProps)
 
 interface GroupChipsProps {
   groups: StudentRosterDetail['groups']
+  emptyText: string
 }
 
-function GroupChips({ groups }: GroupChipsProps) {
-  if (groups.length === 0) return <p className="px-5 py-4 text-ink-2">No groups with you right now.</p>
+function GroupChips({ groups, emptyText }: GroupChipsProps) {
+  if (groups.length === 0) return <p className="px-5 py-4 text-ink-2">{emptyText}</p>
   return (
     <ul className="flex flex-wrap gap-2 px-5 py-4">
       {groups.map((group) => (
@@ -134,12 +162,13 @@ function AttendanceBar({ summary }: AttendanceSummaryProps) {
 
 interface AttendanceHistoryProps {
   detail: StudentRosterDetail
+  emptyText: string
 }
 
-function AttendanceHistory({ detail }: AttendanceHistoryProps) {
+function AttendanceHistory({ detail, emptyText }: AttendanceHistoryProps) {
   const formatDay = useFormatDay()
   if (detail.attendance.length === 0) {
-    return <EmptyMessage icon={CalendarX} title="No attendance recorded yet" text="Marks from the groups you teach will show up here." />
+    return <EmptyMessage icon={CalendarX} title="No attendance recorded yet" text={emptyText} />
   }
   return (
     <ul aria-label="Attendance history">

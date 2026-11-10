@@ -43,6 +43,8 @@ const getStudent = async (email: string, studentId: string) => request(app).get(
 beforeEach(async () => {
   const owner = await createUser({ email: 'owner@oxford.test' })
   const coursesAdmin = await createUser({ email: 'courses@oxford.test' })
+  const studentsAdmin = await createUser({ email: 'students@oxford.test' })
+  const plainAdmin = await createUser({ email: 'plain@oxford.test' })
   const arben = await createUser({ email: 'arben@lecturer.test' })
   const teuta = await createUser({ email: 'teuta@lecturer.test' })
   const unlinked = await createUser({ email: 'unlinked@lecturer.test' })
@@ -54,6 +56,8 @@ beforeEach(async () => {
       ownerId: owner.id,
       members: [
         { userId: coursesAdmin.id, role: 'ADMIN', permissions: ['MANAGE_COURSES'] },
+        { userId: studentsAdmin.id, role: 'ADMIN', permissions: ['MANAGE_STUDENTS'] },
+        { userId: plainAdmin.id, role: 'ADMIN', permissions: [] },
         { userId: arben.id, role: 'LECTURER' },
         { userId: teuta.id, role: 'LECTURER' },
         { userId: unlinked.id, role: 'LECTURER' },
@@ -150,8 +154,19 @@ describe('the roster of a lecturer’s own students', () => {
     expect((await listRoster('arben@lecturer.test')).body.data).toEqual([])
   })
 
-  it('refuses students and other organizations', async () => {
-    for (const email of ['student@oxford.test', 'owner@yllka.test']) {
+  it('shows admins with MANAGE_STUDENTS every active group’s students', async () => {
+    const group = await addGroup({ name: 'Group A', lecturerId: arbenId })
+    const besa = await addStudent('Besa')
+    await enrol(group.id, besa.id)
+
+    const response = await listRoster('students@oxford.test')
+
+    expect(response.status).toBe(200)
+    expect(response.body.data).toHaveLength(1)
+  })
+
+  it('refuses students, admins with neither MANAGE_COURSES nor MANAGE_STUDENTS, and other organizations', async () => {
+    for (const email of ['student@oxford.test', 'plain@oxford.test', 'owner@yllka.test']) {
       expect((await listRoster(email)).status, email).toBe(403)
     }
   })
@@ -254,8 +269,56 @@ describe('a student’s profile with a lecturer', () => {
     const besa = await addStudent('Besa')
     await enrol(group.id, besa.id)
 
-    for (const email of ['student@oxford.test', 'owner@yllka.test']) {
+    for (const email of ['student@oxford.test', 'plain@oxford.test', 'owner@yllka.test']) {
       expect((await getStudent(email, besa.id)).status, email).toBe(403)
     }
+  })
+})
+
+describe('a student’s profile with a manager', () => {
+  it('lets an admin with MANAGE_STUDENTS read a student', async () => {
+    const group = await addGroup({ name: 'Group A', lecturerId: arbenId })
+    const besa = await addStudent('Besa')
+    await enrol(group.id, besa.id)
+    await mark(group.id, besa.id, '2026-09-07', 'PRESENT')
+
+    const response = await getStudent('students@oxford.test', besa.id)
+
+    expect(response.status).toBe(200)
+    expect(response.body.data.groups).toEqual([{ id: group.id, name: 'Group A' }])
+    expect(response.body.data.summary.rate).toBe(100)
+  })
+
+  it('shows a manager every group the student was ever in, ended enrolments and archived groups included, with all their attendance', async () => {
+    const left = await addGroup({ name: 'Group A', lecturerId: arbenId })
+    const archived = await addGroup({ name: 'Archived', lecturerId: teutaId, status: 'ARCHIVED' })
+    const besa = await addStudent('Besa')
+    await prisma.groupEnrolment.create({ data: { group_id: left.id, student_id: besa.id, enrolled_on: new Date('2026-09-01'), withdrawn_on: new Date('2026-10-01') } })
+    await enrol(archived.id, besa.id)
+    await mark(left.id, besa.id, '2026-09-07', 'PRESENT')
+    await mark(archived.id, besa.id, '2026-09-14', 'ABSENT')
+
+    for (const email of ['owner@oxford.test', 'courses@oxford.test', 'students@oxford.test']) {
+      const response = await getStudent(email, besa.id)
+
+      expect(response.status, email).toBe(200)
+      expect(response.body.data.groups, email).toEqual([
+        { id: archived.id, name: 'Archived' },
+        { id: left.id, name: 'Group A' },
+      ])
+      expect(response.body.data.attendance, email).toEqual([
+        { date: '2026-09-14', group: { id: archived.id, name: 'Archived' }, start_time: '17:00', status: 'ABSENT' },
+        { date: '2026-09-07', group: { id: left.id, name: 'Group A' }, start_time: '17:00', status: 'PRESENT' },
+      ])
+      expect(response.body.data.summary, email).toEqual({ present: 1, tardy: 0, absent: 1, rate: 50 })
+    }
+  })
+
+  it('still refuses a lecturer once the student has left their group', async () => {
+    const left = await addGroup({ name: 'Group A', lecturerId: arbenId })
+    const besa = await addStudent('Besa')
+    await prisma.groupEnrolment.create({ data: { group_id: left.id, student_id: besa.id, enrolled_on: new Date('2026-09-01'), withdrawn_on: new Date('2026-10-01') } })
+
+    expect((await getStudent('arben@lecturer.test', besa.id)).status).toBe(403)
   })
 })

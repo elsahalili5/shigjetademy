@@ -1,5 +1,6 @@
 // A lecturer's own students, read from the groups they currently, permanently teach: no notes, guardians or assignments.
-// The owner and admins with MANAGE_COURSES reach every active group's students, the same access pattern as lesson plans and attendance.
+// The owner and admins with MANAGE_COURSES or MANAGE_STUDENTS reach every active group's students, the same access pattern as lesson plans and attendance,
+// and a student's whole history in the organization.
 import type { Prisma } from '@generated/prisma/client.ts'
 import { ATTENDANCE_STATUSES } from '@shigjetademy/shared/attendance'
 import type { AttendanceStatus } from '@shigjetademy/shared/attendance'
@@ -11,10 +12,10 @@ import { prisma } from '@lib/prisma.ts'
 import { findLecturerId } from '@modules/attendance/lecturer-lookup.ts'
 import { activeEnrolments } from '@modules/groups/group-selects.ts'
 
-/** Who is asking; the route only lets through lecturers and admins with MANAGE_COURSES */
+/** Who is asking; the route only lets through lecturers and admins with MANAGE_COURSES or MANAGE_STUDENTS */
 export type StudentRosterViewer = {
   userId: string
-  /** The owner, or a school admin with MANAGE_COURSES */
+  /** The owner, or a school admin with MANAGE_COURSES or MANAGE_STUDENTS */
   isManager: boolean
 }
 
@@ -39,6 +40,18 @@ const currentGroupsFilter = async ({ organizationId, viewer }: CurrentGroupsPara
 type ListRosterParams = {
   organizationId: string
   viewer: StudentRosterViewer
+}
+
+type StudentGroupsParams = ListRosterParams & { studentId: string }
+
+/**
+ * The student's groups this viewer may read: for a manager every group they were ever enrolled in, ended enrolments and archived
+ * groups included; for a lecturer only their current groups the student is actively in. Null when a lecturer isn't linked to a record.
+ */
+const studentGroupsFilter = async ({ organizationId, viewer, studentId }: StudentGroupsParams): Promise<Prisma.GroupWhereInput | null> => {
+  if (viewer.isManager) return { organization_id: organizationId, enrolments: { some: { student_id: studentId } } }
+  const groups = await currentGroupsFilter({ organizationId, viewer })
+  return groups ? { ...groups, enrolments: { some: { student_id: studentId, ...activeEnrolments } } } : null
 }
 
 type StoredAttendanceRecord = {
@@ -71,23 +84,21 @@ export const StudentRosterService = {
   },
 
   // 404 when the student isn't the organization's own; 403 when a lecturer doesn't currently teach any group the student is in
-  getStudentDetail: async ({ organizationId, viewer, studentId }: ListRosterParams & { studentId: string }): Promise<StudentRosterDetail> => {
+  getStudentDetail: async ({ organizationId, viewer, studentId }: StudentGroupsParams): Promise<StudentRosterDetail> => {
     const student = await prisma.student.findFirst({ where: { id: studentId, organization_id: organizationId }, select: { id: true, first_name: true, last_name: true } })
     if (!student) {
       throw new HttpError(404, 'Student not found')
     }
-    const groups = await currentGroupsFilter({ organizationId, viewer })
-    const sharedGroups = groups
-      ? await prisma.group.findMany({ where: { ...groups, enrolments: { some: { student_id: studentId, ...activeEnrolments } } }, select: { id: true, name: true }, orderBy: { name: 'asc' } })
-      : []
-    if (!viewer.isManager && sharedGroups.length === 0) {
+    const groups = await studentGroupsFilter({ organizationId, viewer, studentId })
+    const visibleGroups = groups ? await prisma.group.findMany({ where: groups, select: { id: true, name: true }, orderBy: { name: 'asc' } }) : []
+    if (!viewer.isManager && visibleGroups.length === 0) {
       throw new HttpError(403, 'You don’t teach this student.')
     }
     const records = await prisma.attendanceRecord.findMany({
-      where: { student_id: studentId, group_id: { in: sharedGroups.map((group) => group.id) } },
+      where: { student_id: studentId, group_id: { in: visibleGroups.map((group) => group.id) } },
       orderBy: [{ date: 'desc' }, { start_time: 'desc' }],
       select: { date: true, start_time: true, status: true, group: { select: { id: true, name: true } } },
     })
-    return { student, groups: sharedGroups, attendance: records.map(toAttendanceEntry), summary: toSummary(records) }
+    return { student, groups: visibleGroups, attendance: records.map(toAttendanceEntry), summary: toSummary(records) }
   },
 }

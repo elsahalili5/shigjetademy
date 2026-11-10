@@ -1,8 +1,8 @@
 import type { Response } from 'express'
-import { hasOrganizationPermission } from '@shigjetademy/shared/auth'
 import { sendError } from '@lib/httpError.ts'
 import type { AuthRequest, TypedRequest } from '@lib/types.ts'
 import type { OrganizationIdParam } from '@modules/organization/organization.types.ts'
+import { isRosterManager } from './roster-manager.ts'
 import { StudentRosterService } from './student-roster.service.ts'
 import type { StudentRosterParam } from './student-roster.types.ts'
 
@@ -10,12 +10,12 @@ type RosterRequest = AuthRequest & TypedRequest<unknown, OrganizationIdParam>
 
 type StudentRequest = AuthRequest & TypedRequest<unknown, StudentRosterParam>
 
-/** Who is asking, and whether they manage courses in the organization in the path; the route already let them through */
+/** Who is asking, and whether they manage courses or students in the organization in the path; the route already let them through */
 const getViewer = (req: RosterRequest | StudentRequest) => {
   const user = req.user
   if (!user) return null
   const membership = user.memberships.find((item) => item.organization.id === req.params.organizationId)
-  return { userId: user.id, isManager: !!membership && hasOrganizationPermission({ membership, permission: 'MANAGE_COURSES' }) }
+  return { userId: user.id, isManager: !!membership && isRosterManager(membership) }
 }
 
 export const StudentRosterController = {
