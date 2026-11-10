@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ArrowLeft, type LucideIcon } from 'lucide-react'
 
-interface DashboardPageHeaderBackTo {
+export interface DashboardPageHeaderBackTo {
   to: string
   label: string
 }

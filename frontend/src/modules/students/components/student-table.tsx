@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
+import { Link } from '@tanstack/react-router'
 import { todayDay } from '@shigjetademy/shared/calendar-day'
 import { getStudentName } from '@shigjetademy/shared/students'
 import type { Student } from '@shigjetademy/shared/students'
+import { ROW_LINK_CLASS } from '#/lib/row-click'
 import { useFormatDay } from '#/lib/use-format-date'
 import { getAge } from '../utils/age'
 import { StudentLoginStatus } from './student-login-status'
@@ -62,7 +64,9 @@ export function StudentTable({ students, renderActions }: StudentTableProps) {
             <tr key={student.id} className="border-b border-rule last:border-b-0">
               <td className={CELL_CLASS}>
                 <span className="grid leading-tight">
-                  <span className="font-semibold">{getStudentName(student)}</span>
+                  <Link to="/dashboard/students/$studentId" params={{ studentId: student.id }} className={ROW_LINK_CLASS}>
+                    {getStudentName(student)}
+                  </Link>
                   <span className="tabular hidden text-[0.88rem] text-ink-3 max-[640px]:block">{student.student_number}</span>
                 </span>
               </td>

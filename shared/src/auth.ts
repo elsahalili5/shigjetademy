@@ -119,8 +119,11 @@ export const ALLOWED_AVATAR_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp
 
 export const AVATAR_MAX_BYTES = 2 * 1024 * 1024
 
+/** What a permission check needs to know about someone's place in an organization */
+export type PermissionMembership = { role: MemberRole; permissions: Permission[] }
+
 type HasOrganizationPermissionParams = {
-  membership: { role: MemberRole; permissions: Permission[] }
+  membership: PermissionMembership
   permission: Permission
 }
 

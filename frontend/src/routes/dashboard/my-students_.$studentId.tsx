@@ -17,5 +17,5 @@ function DashboardMyStudentPage() {
   const membership = useActiveMembership()
   // Switching to an organization where they aren't a lecturer, here or in another tab, sends them to its home
   if (!membership || !isOrganizationLecturer(membership)) return <Navigate to="/dashboard" />
-  return <StudentDetailPage organizationId={membership.organization.id} studentId={studentId} />
+  return <StudentDetailPage organizationId={membership.organization.id} studentId={studentId} viewer="TEACHER" />
 }

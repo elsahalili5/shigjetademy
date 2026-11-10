@@ -2,6 +2,7 @@ import { screen, within } from '@testing-library/react'
 import { delay, http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createStudentSchema, updateStudentSchema } from '@shigjetademy/shared/students'
+import type { StudentRosterDetail } from '@shigjetademy/shared/student-roster'
 import type { Student, StudentPage, StudentStatus } from '@shigjetademy/shared/students'
 import { buildUser, OWNER_MEMBERSHIPS, signInAs, YLLKA_ADMIN_MEMBERSHIP } from '#/test/fixtures'
 import { renderRoute } from '#/test/render-route'
@@ -86,6 +87,18 @@ describe('StudentsPage: list', () => {
 })
 
 describe('StudentsPage: list states', () => {
+  it('opens a student’s details from their name', async () => {
+    signInAsOwner()
+    const detail: StudentRosterDetail = { student: { id: ARTA.id, first_name: 'Arta', last_name: 'Gashi' }, groups: [], attendance: [], summary: { present: 0, tardy: 0, absent: 0, rate: null } }
+    server.use(http.get(`*/api/organizations/org-1/my-students/${ARTA.id}`, () => HttpResponse.json({ data: detail })))
+    const { router, user } = renderRoute('/dashboard/students')
+
+    await user.click(within(await studentsTable()).getByRole('link', { name: 'Arta Gashi' }))
+
+    expect(await screen.findByRole('heading', { name: 'Arta Gashi' })).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe(`/dashboard/students/${ARTA.id}`)
+  })
+
   it('shows a skeleton while loading', async () => {
     signInAs(buildUser({ memberships: OWNER_MEMBERSHIPS }))
     server.use(http.get(STUDENTS_PATH, () => new Promise<never>(() => {})))
