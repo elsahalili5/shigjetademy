@@ -16,7 +16,7 @@ export const StudentHomeService = {
   getMySchool: async ({ organizationId, userId }: GetMySchoolParams): Promise<MySchool> => {
     const organization = await prisma.organization.findUniqueOrThrow({
       where: { id: organizationId },
-      select: { id: true, name: true, country: true, settings: { select: { time_zone: true, week_start: true, date_format: true } } },
+      select: { id: true, name: true, country: true, settings: { select: { time_zone: true, week_start: true, date_format: true, student_messaging_enabled: true } } },
     })
     const settings = resolveOrganizationSettings({ stored: organization.settings, country: organization.country })
     const today = toDate(todayIn(settings.time_zone))

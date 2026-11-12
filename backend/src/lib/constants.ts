@@ -28,7 +28,7 @@ export const safeUserSelect = {
           type: true,
           status: true,
           country: true,
-          settings: { select: { time_zone: true, week_start: true, date_format: true } },
+          settings: { select: { time_zone: true, week_start: true, date_format: true, student_messaging_enabled: true } },
         },
       },
     },

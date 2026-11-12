@@ -324,15 +324,18 @@ model Organization {
   courses        Course[]
   groups         Group[]
   guardians      Guardian[]
+  conversations  Conversation[]
 }
 
 /// How one organization runs. An organization without a row reads the defaults; the row is written on its first save.
 model OrganizationSettings {
-  organization_id String     @id @db.Uuid
+  organization_id           String     @id @db.Uuid
   /// An IANA time zone, like Europe/Belgrade
-  time_zone       String
-  week_start      WeekStart  @default(MONDAY)
-  date_format     DateFormat @default(DAY_MONTH_YEAR)
+  time_zone                 String
+  week_start                WeekStart  @default(MONDAY)
+  date_format               DateFormat @default(DAY_MONTH_YEAR)
+  /// Whether students and their lecturers may message each other; off until the owner turns it on
+  student_messaging_enabled Boolean    @default(false)
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -856,8 +859,10 @@ model Membership {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  user         User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  user          User                      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  organization  Organization              @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  conversations ConversationParticipant[]
+  sent_messages Message[]
 
   @@unique([user_id, organization_id])
   @@index([organization_id, role])
@@ -926,4 +931,56 @@ model ActivityLog {
   @@index([created_at])
   @@index([organization_id])
   @@index([action])
+}
+
+// ─────────────────────────────────────────
+// INBOX
+// ─────────────────────────────────────────
+
+/// A private 1:1 conversation between two members of an organization. pair_key is the two membership ids sorted and joined,
+/// so a pair has at most one conversation per organization however many times either starts one.
+model Conversation {
+  id              String   @id @default(uuid()) @db.Uuid
+  organization_id String   @db.Uuid
+  pair_key        String
+  /// The newest message's time; the creation time while the conversation has none
+  last_message_at DateTime @default(now())
+
+  created_at DateTime @default(now())
+
+  organization Organization              @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@unique([organization_id, pair_key])
+  @@index([organization_id, last_message_at])
+}
+
+/// One side of a conversation. last_read_at is when this member last opened it (or sent into it): their unread messages are the other's after it,
+/// and the other's "seen" mark on a message is this value reaching the message's time.
+model ConversationParticipant {
+  conversation_id String    @db.Uuid
+  membership_id   String    @db.Uuid
+  last_read_at    DateTime?
+
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  membership   Membership   @relation(fields: [membership_id], references: [id], onDelete: Cascade)
+
+  @@id([conversation_id, membership_id])
+  @@index([membership_id])
+}
+
+model Message {
+  id                   String @id @default(uuid()) @db.Uuid
+  conversation_id      String @db.Uuid
+  sender_membership_id String @db.Uuid
+  body                 String
+
+  created_at DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  sender       Membership   @relation(fields: [sender_membership_id], references: [id], onDelete: Cascade)
+
+  @@index([conversation_id, created_at])
+  @@index([sender_membership_id])
 }

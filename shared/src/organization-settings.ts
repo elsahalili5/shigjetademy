@@ -61,11 +61,12 @@ export type TimeZone = (typeof TIME_ZONES)[number]
 
 const FALLBACK_TIME_ZONE: TimeZone = 'Europe/Belgrade'
 
-/** The settings an organization has until its owner saves their own: the time zone from its country, Monday and day-month-year */
+/** The settings an organization has until its owner saves their own: the time zone from its country, Monday, day-month-year and student messaging off */
 const getDefaultOrganizationSettings = (country: string): OrganizationSettings => ({
   time_zone: COUNTRIES.find((entry) => entry.code === country)?.time_zone ?? FALLBACK_TIME_ZONE,
   week_start: DEFAULT_WEEK_START,
   date_format: DEFAULT_DATE_FORMAT,
+  student_messaging_enabled: false,
 })
 
 const isTimeZone = (value: string): value is TimeZone => TIME_ZONES.some((zone) => zone === value)
@@ -75,6 +76,7 @@ type StoredOrganizationSettings = {
   time_zone: string
   week_start: WeekStart
   date_format: DateFormat
+  student_messaging_enabled: boolean
 }
 
 type ResolveOrganizationSettingsParams = {
@@ -93,6 +95,7 @@ export const updateOrganizationSettingsSchema = z.object({
   time_zone: z.enum(TIME_ZONES, 'Choose a time zone from the list.'),
   week_start: z.enum(WEEK_STARTS, 'Choose Monday or Sunday.'),
   date_format: z.enum(DATE_FORMATS, 'Choose how dates are written.'),
+  student_messaging_enabled: z.boolean('Choose whether students may message their lecturers.'),
 })
 
 export type UpdateOrganizationSettingsInput = z.infer<typeof updateOrganizationSettingsSchema>
@@ -122,9 +125,10 @@ export const reactivateOrganizationSchema = z.object({
 
 export type ReactivateOrganizationInput = z.infer<typeof reactivateOrganizationSchema>
 
-/** How the whole organization runs: when its week starts, its time zone and how its dates are written */
+/** How the whole organization runs: when its week starts, its time zone, how its dates are written and whether students may message their lecturers */
 export type OrganizationSettings = {
   time_zone: TimeZone
   week_start: WeekStart
   date_format: DateFormat
+  student_messaging_enabled: boolean
 }

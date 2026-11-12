@@ -73,7 +73,7 @@ const SEND_FAILED_MESSAGE = 'We couldn’t send the email. Try again in a moment
 const emailInvitation = async ({ invitationId, token, actorId }: EmailInvitationParams) => {
   const invitation = await prisma.invitation.findUniqueOrThrow({
     where: { id: invitationId },
-    select: { email: true, role: true, expires_at: true, organization: { select: { name: true, country: true, settings: { select: { time_zone: true, week_start: true, date_format: true } } } } },
+    select: { email: true, role: true, expires_at: true, organization: { select: { name: true, country: true, settings: { select: { time_zone: true, week_start: true, date_format: true, student_messaging_enabled: true } } } } },
   })
   const inviter = await prisma.user.findUniqueOrThrow({ where: { id: actorId }, select: { first_name: true, last_name: true, email: true } })
   const { time_zone } = resolveOrganizationSettings({ stored: invitation.organization.settings, country: invitation.organization.country })

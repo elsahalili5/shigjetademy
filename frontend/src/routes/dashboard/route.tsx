@@ -17,6 +17,7 @@ import { useAuth } from '#/modules/auth/hooks/use-auth'
 import { isOrganizationGuardian, isOrganizationLecturer, isOrganizationOwner, isOrganizationStudent, isPlatformAdmin } from '#/modules/auth/utils/session-user'
 import type { SessionMembership } from '#/modules/auth/utils/session-user'
 import { ROLE_LABELS } from '#/modules/auth/utils/role-labels'
+import { CommunicationNavGroup } from '#/modules/communication/components/communication-nav-group'
 import { OrganizationSuspended } from '#/modules/organization/components/organization-suspended'
 import { OrganizationDeactivated } from '#/modules/organization-settings/components/organization-deactivated'
 import { OrganizationMark } from '#/modules/organization/components/organization-mark'
@@ -197,7 +198,7 @@ function SidebarNavigation({ membership, isAdmin }: SidebarNavigationProps) {
   return <ModuleNavigation isAdmin={isAdmin} hiddenSlugs={getHiddenModuleSlugs(membership)} />
 }
 
-/** Students only have My school for now; their profile is at the bottom of the sidebar like everyone's */
+/** Students have My school and Communication; their profile is at the bottom of the sidebar like everyone's */
 function StudentNavigation() {
   return (
     <>
@@ -207,11 +208,12 @@ function StudentNavigation() {
       <Link to="/dashboard/my-school" className={SIDEBAR_LINK_CLASS}>
         <SidebarLinkContent icon={School} label="My school" />
       </Link>
+      <CommunicationNavGroup linkClassName={SIDEBAR_LINK_CLASS} />
     </>
   )
 }
 
-/** Guardians only have My children; their profile is at the bottom of the sidebar like everyone's */
+/** Guardians have My children and Communication; their profile is at the bottom of the sidebar like everyone's */
 function GuardianNavigation() {
   return (
     <>
@@ -221,11 +223,12 @@ function GuardianNavigation() {
       <Link to="/dashboard/my-children" className={SIDEBAR_LINK_CLASS}>
         <SidebarLinkContent icon={UsersRound} label="My children" />
       </Link>
+      <CommunicationNavGroup linkClassName={SIDEBAR_LINK_CLASS} />
     </>
   )
 }
 
-/** Lecturers have My teaching, Students, Attendance and Lessons; their profile is at the bottom of the sidebar like everyone's */
+/** Lecturers have My teaching, Students, Attendance, Lessons and Communication; their profile is at the bottom of the sidebar like everyone's */
 function LecturerNavigation() {
   return (
     <>
@@ -244,6 +247,7 @@ function LecturerNavigation() {
       <Link to="/dashboard/lessons" className={SIDEBAR_LINK_CLASS}>
         <SidebarLinkContent icon={Presentation} label="Lessons" />
       </Link>
+      <CommunicationNavGroup linkClassName={SIDEBAR_LINK_CLASS} />
     </>
   )
 }
@@ -256,10 +260,25 @@ function OwnerNavigation() {
         {section.title}
       </span>
       {section.items.map((item) => (
-        <OwnerNavLink key={item.kind === 'page' ? item.to : item.slug} item={item} />
+        <OwnerNavLink key={getOwnerNavKey(item)} item={item} />
       ))}
     </div>
   ))
+}
+
+const getOwnerNavKey = (item: OwnerNavItem) => {
+  switch (item.kind) {
+    case 'page':
+      return item.to
+    case 'module':
+      return item.slug
+    case 'communication':
+      return item.kind
+    default: {
+      const unknown: never = item
+      throw new Error(`Unknown sidebar item: ${String(unknown)}`)
+    }
+  }
 }
 
 interface OwnerNavLinkProps {
@@ -274,6 +293,8 @@ function OwnerNavLink({ item }: OwnerNavLinkProps) {
           <SidebarLinkContent icon={item.icon} label={item.label} />
         </Link>
       )
+    case 'communication':
+      return <CommunicationNavGroup linkClassName={SIDEBAR_LINK_CLASS} />
     case 'module': {
       const mod = moduleBySlug(item.slug)
       if (!mod) return null
@@ -311,7 +332,8 @@ interface ModuleNavigationProps {
 
 /** The platform admin's modules, or the flat school module list for everyone else in an organization */
 function ModuleNavigation({ isAdmin, hiddenSlugs }: ModuleNavigationProps) {
-  const modules = isAdmin ? ADMIN_MODULES : MODULES.filter((m) => !hiddenSlugs.has(m.slug))
+  // The school admin's Messages module is the Communication group below
+  const modules = isAdmin ? ADMIN_MODULES : MODULES.filter((m) => !hiddenSlugs.has(m.slug) && m.slug !== 'messages')
   return (
     <>
       <span className={SIDEBAR_HEADING_CLASS} aria-hidden="true">
@@ -328,6 +350,7 @@ function ModuleNavigation({ isAdmin, hiddenSlugs }: ModuleNavigationProps) {
           </Link>
         ),
       )}
+      {isAdmin ? null : <CommunicationNavGroup linkClassName={SIDEBAR_LINK_CLASS} />}
     </>
   )
 }

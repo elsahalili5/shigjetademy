@@ -20,7 +20,7 @@ export const buildUser = (overrides: Partial<AuthUser> = {}): AuthUser => ({
 })
 
 /** What an organization's settings are until its owner saves their own */
-export const DEFAULT_SETTINGS: OrganizationSettings = { time_zone: 'Europe/Belgrade', week_start: 'MONDAY', date_format: 'DAY_MONTH_YEAR' }
+export const DEFAULT_SETTINGS: OrganizationSettings = { time_zone: 'Europe/Belgrade', week_start: 'MONDAY', date_format: 'DAY_MONTH_YEAR', student_messaging_enabled: false }
 
 /** What the platform's settings are until a platform admin saves their own */
 export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {

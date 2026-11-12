@@ -28,7 +28,7 @@ export const MyChildrenService = {
   // Everything is read by the id findLinkedChild returned, and every field is picked by the shared helpers' selects
   getMyChild: async ({ organizationId, userId, studentId }: GetMyChildParams): Promise<MyChildDetail> => {
     const child = await findLinkedChild({ organizationId, userId, studentId })
-    const organization = await prisma.organization.findUniqueOrThrow({ where: { id: organizationId }, select: { country: true, settings: { select: { time_zone: true, week_start: true, date_format: true } } } })
+    const organization = await prisma.organization.findUniqueOrThrow({ where: { id: organizationId }, select: { country: true, settings: { select: { time_zone: true, week_start: true, date_format: true, student_messaging_enabled: true } } } })
     const settings = resolveOrganizationSettings({ stored: organization.settings, country: organization.country })
     const today = toDate(todayIn(settings.time_zone))
     const [school, enrolledGroups] = await Promise.all([

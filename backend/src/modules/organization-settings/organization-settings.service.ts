@@ -6,7 +6,7 @@ import { PERMISSIONS } from '@shigjetademy/shared/auth'
 import { resolveOrganizationSettings } from '@shigjetademy/shared/organization-settings'
 import type { DeactivateOrganizationInput, ReactivateOrganizationInput, TransferOwnershipInput, UpdateOrganizationSettingsInput } from './organization-settings.types.ts'
 
-const settingsSelect = { time_zone: true, week_start: true, date_format: true } as const
+const settingsSelect = { time_zone: true, week_start: true, date_format: true, student_messaging_enabled: true } as const
 
 type UpdateSettingsParams = {
   organizationId: string
