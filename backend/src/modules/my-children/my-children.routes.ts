@@ -7,16 +7,21 @@ import { studentParamSchema } from '@modules/students/students.schema.ts'
 import { MyChildrenController } from './my-children.controller.ts'
 
 // Mounted at /api/organizations. Only the organization's guardians read it, and only about their own linked children.
-// Later modules add /me/children/:studentId/<module> routes here, behind requireMembership(['GUARDIAN']) and findLinkedChild.
+// Notes about a child come from the parent-notes module. Later modules add /me/children/:studentId/<module> routes here, behind requireMembership(['GUARDIAN']) and findLinkedChild.
 const router = Router()
 
 const CHILDREN = '/:organizationId/me/children'
 const CHILD = `${CHILDREN}/:studentId`
+const NOTES = '/:organizationId/me/notes'
 
 const isGuardian = requireMembership(['GUARDIAN'])
 
 router.get(CHILDREN, authMiddleware, validateRequestMiddleware(organizationIdParamSchema, 'params'), isGuardian, MyChildrenController.listMyChildren)
 
 router.get(CHILD, authMiddleware, validateRequestMiddleware(studentParamSchema, 'params'), isGuardian, MyChildrenController.getMyChild)
+
+router.get(NOTES, authMiddleware, validateRequestMiddleware(organizationIdParamSchema, 'params'), isGuardian, MyChildrenController.listMyNotes)
+
+router.get(`${CHILD}/notes`, authMiddleware, validateRequestMiddleware(studentParamSchema, 'params'), isGuardian, MyChildrenController.listMyChildNotes)
 
 export default router

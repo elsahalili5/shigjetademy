@@ -7,19 +7,26 @@ import { RescheduledLessons } from '#/components/RescheduledLessons'
 import { SectionCard } from '#/components/SectionCard'
 import { getScheduleLabel } from '#/modules/groups/utils/schedule-label'
 import { useMySchool } from '../hooks/use-my-school'
+import { StudentWelcomeBanner } from './student-welcome-banner'
 
 interface MySchoolPageProps {
   organizationId: string
   organizationName: string
+  firstName: string
+  timeZone: string
 }
 
 /** A student's home: their school, their own record, their groups, their moved lessons and the current school year and term, read-only */
-export function MySchoolPage({ organizationId, organizationName }: MySchoolPageProps) {
+export function MySchoolPage({ organizationId, organizationName, firstName, timeZone }: MySchoolPageProps) {
   const mySchool = useMySchool(organizationId)
 
   return (
     <div className="flex h-full min-w-0 flex-col overflow-y-auto">
       <DashboardPageHeader icon={School} title="My school" subtitle={organizationName} />
+      {/* Spans the panel's full width, inside the page's side padding */}
+      <div className="px-[clamp(20px,3.4vw,44px)] pb-5">
+        <StudentWelcomeBanner firstName={firstName} organizationName={organizationName} timeZone={timeZone} />
+      </div>
       <div className="grid max-w-[880px] gap-5 px-[clamp(20px,3.4vw,44px)] pb-10">
         <MySchoolContent status={mySchool.status} data={mySchool.data} onRetry={() => void mySchool.refetch()} />
       </div>

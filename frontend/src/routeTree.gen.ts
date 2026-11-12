@@ -26,14 +26,18 @@ import { Route as authSignupRouteImport } from './routes/(auth)/signup'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as DashboardModuleRouteImport } from './routes/dashboard/$module'
 import { Route as DashboardAcademicPeriodsRouteImport } from './routes/dashboard/academic-periods'
+import { Route as DashboardAnnouncementsRouteImport } from './routes/dashboard/announcements'
 import { Route as DashboardAttendanceRouteImport } from './routes/dashboard/attendance'
 import { Route as DashboardCoursesRouteImport } from './routes/dashboard/courses'
+import { Route as DashboardDiscussionsRouteImport } from './routes/dashboard/discussions'
 import { Route as DashboardGroupsRouteImport } from './routes/dashboard/groups'
+import { Route as DashboardInboxRouteImport } from './routes/dashboard/inbox'
 import { Route as DashboardLecturersRouteImport } from './routes/dashboard/lecturers'
 import { Route as DashboardLessonsRouteImport } from './routes/dashboard/lessons'
 import { Route as DashboardLocationsRouteImport } from './routes/dashboard/locations'
 import { Route as DashboardMembersRouteImport } from './routes/dashboard/members'
 import { Route as DashboardMyChildrenRouteImport } from './routes/dashboard/my-children'
+import { Route as DashboardMyNotesRouteImport } from './routes/dashboard/my-notes'
 import { Route as DashboardMySchoolRouteImport } from './routes/dashboard/my-school'
 import { Route as DashboardMyStudentsRouteImport } from './routes/dashboard/my-students'
 import { Route as DashboardMyTeachingRouteImport } from './routes/dashboard/my-teaching'
@@ -42,6 +46,7 @@ import { Route as DashboardOrganizationSettingsRouteImport } from './routes/dash
 import { Route as DashboardOverviewRouteImport } from './routes/dashboard/overview'
 import { Route as DashboardProfileRouteImport } from './routes/dashboard/profile'
 import { Route as DashboardScheduleRouteImport } from './routes/dashboard/schedule'
+import { Route as DashboardStudentNotesRouteImport } from './routes/dashboard/student-notes'
 import { Route as DashboardStudentsRouteImport } from './routes/dashboard/students'
 import { Route as InviteTokenRouteImport } from './routes/invite/$token'
 import { Route as OrganizationsNewRouteImport } from './routes/organizations/new'
@@ -138,6 +143,11 @@ const DashboardAcademicPeriodsRoute =
     path: '/academic-periods',
     getParentRoute: () => DashboardRouteRoute,
   } as any)
+const DashboardAnnouncementsRoute = DashboardAnnouncementsRouteImport.update({
+  id: '/announcements',
+  path: '/announcements',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
 const DashboardAttendanceRoute = DashboardAttendanceRouteImport.update({
   id: '/attendance',
   path: '/attendance',
@@ -148,9 +158,19 @@ const DashboardCoursesRoute = DashboardCoursesRouteImport.update({
   path: '/courses',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
+const DashboardDiscussionsRoute = DashboardDiscussionsRouteImport.update({
+  id: '/discussions',
+  path: '/discussions',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
 const DashboardGroupsRoute = DashboardGroupsRouteImport.update({
   id: '/groups',
   path: '/groups',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+const DashboardInboxRoute = DashboardInboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
 const DashboardLecturersRoute = DashboardLecturersRouteImport.update({
@@ -176,6 +196,11 @@ const DashboardMembersRoute = DashboardMembersRouteImport.update({
 const DashboardMyChildrenRoute = DashboardMyChildrenRouteImport.update({
   id: '/my-children',
   path: '/my-children',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+const DashboardMyNotesRoute = DashboardMyNotesRouteImport.update({
+  id: '/my-notes',
+  path: '/my-notes',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
 const DashboardMySchoolRoute = DashboardMySchoolRouteImport.update({
@@ -218,6 +243,11 @@ const DashboardProfileRoute = DashboardProfileRouteImport.update({
 const DashboardScheduleRoute = DashboardScheduleRouteImport.update({
   id: '/schedule',
   path: '/schedule',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+const DashboardStudentNotesRoute = DashboardStudentNotesRouteImport.update({
+  id: '/student-notes',
+  path: '/student-notes',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
 const DashboardStudentsRoute = DashboardStudentsRouteImport.update({
@@ -295,14 +325,18 @@ export interface FileRoutesByFullPath {
   '/signup': typeof authSignupRoute
   '/dashboard/$module': typeof DashboardModuleRoute
   '/dashboard/academic-periods': typeof DashboardAcademicPeriodsRoute
+  '/dashboard/announcements': typeof DashboardAnnouncementsRoute
   '/dashboard/attendance': typeof DashboardAttendanceRoute
   '/dashboard/courses': typeof DashboardCoursesRoute
+  '/dashboard/discussions': typeof DashboardDiscussionsRoute
   '/dashboard/groups': typeof DashboardGroupsRoute
+  '/dashboard/inbox': typeof DashboardInboxRoute
   '/dashboard/lecturers': typeof DashboardLecturersRoute
   '/dashboard/lessons': typeof DashboardLessonsRoute
   '/dashboard/locations': typeof DashboardLocationsRoute
   '/dashboard/members': typeof DashboardMembersRoute
   '/dashboard/my-children': typeof DashboardMyChildrenRoute
+  '/dashboard/my-notes': typeof DashboardMyNotesRoute
   '/dashboard/my-school': typeof DashboardMySchoolRoute
   '/dashboard/my-students': typeof DashboardMyStudentsRoute
   '/dashboard/my-teaching': typeof DashboardMyTeachingRoute
@@ -311,6 +345,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/overview': typeof DashboardOverviewRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/schedule': typeof DashboardScheduleRoute
+  '/dashboard/student-notes': typeof DashboardStudentNotesRoute
   '/dashboard/students': typeof DashboardStudentsRoute
   '/invite/$token': typeof InviteTokenRoute
   '/organizations/new': typeof OrganizationsNewRoute
@@ -338,14 +373,18 @@ export interface FileRoutesByTo {
   '/signup': typeof authSignupRoute
   '/dashboard/$module': typeof DashboardModuleRoute
   '/dashboard/academic-periods': typeof DashboardAcademicPeriodsRoute
+  '/dashboard/announcements': typeof DashboardAnnouncementsRoute
   '/dashboard/attendance': typeof DashboardAttendanceRoute
   '/dashboard/courses': typeof DashboardCoursesRoute
+  '/dashboard/discussions': typeof DashboardDiscussionsRoute
   '/dashboard/groups': typeof DashboardGroupsRoute
+  '/dashboard/inbox': typeof DashboardInboxRoute
   '/dashboard/lecturers': typeof DashboardLecturersRoute
   '/dashboard/lessons': typeof DashboardLessonsRoute
   '/dashboard/locations': typeof DashboardLocationsRoute
   '/dashboard/members': typeof DashboardMembersRoute
   '/dashboard/my-children': typeof DashboardMyChildrenRoute
+  '/dashboard/my-notes': typeof DashboardMyNotesRoute
   '/dashboard/my-school': typeof DashboardMySchoolRoute
   '/dashboard/my-students': typeof DashboardMyStudentsRoute
   '/dashboard/my-teaching': typeof DashboardMyTeachingRoute
@@ -354,6 +393,7 @@ export interface FileRoutesByTo {
   '/dashboard/overview': typeof DashboardOverviewRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/schedule': typeof DashboardScheduleRoute
+  '/dashboard/student-notes': typeof DashboardStudentNotesRoute
   '/dashboard/students': typeof DashboardStudentsRoute
   '/invite/$token': typeof InviteTokenRoute
   '/organizations/new': typeof OrganizationsNewRoute
@@ -385,14 +425,18 @@ export interface FileRoutesById {
   '/(auth)/signup': typeof authSignupRoute
   '/dashboard/$module': typeof DashboardModuleRoute
   '/dashboard/academic-periods': typeof DashboardAcademicPeriodsRoute
+  '/dashboard/announcements': typeof DashboardAnnouncementsRoute
   '/dashboard/attendance': typeof DashboardAttendanceRoute
   '/dashboard/courses': typeof DashboardCoursesRoute
+  '/dashboard/discussions': typeof DashboardDiscussionsRoute
   '/dashboard/groups': typeof DashboardGroupsRoute
+  '/dashboard/inbox': typeof DashboardInboxRoute
   '/dashboard/lecturers': typeof DashboardLecturersRoute
   '/dashboard/lessons': typeof DashboardLessonsRoute
   '/dashboard/locations': typeof DashboardLocationsRoute
   '/dashboard/members': typeof DashboardMembersRoute
   '/dashboard/my-children': typeof DashboardMyChildrenRoute
+  '/dashboard/my-notes': typeof DashboardMyNotesRoute
   '/dashboard/my-school': typeof DashboardMySchoolRoute
   '/dashboard/my-students': typeof DashboardMyStudentsRoute
   '/dashboard/my-teaching': typeof DashboardMyTeachingRoute
@@ -401,6 +445,7 @@ export interface FileRoutesById {
   '/dashboard/overview': typeof DashboardOverviewRoute
   '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/schedule': typeof DashboardScheduleRoute
+  '/dashboard/student-notes': typeof DashboardStudentNotesRoute
   '/dashboard/students': typeof DashboardStudentsRoute
   '/invite/$token': typeof InviteTokenRoute
   '/organizations/new': typeof OrganizationsNewRoute
@@ -431,14 +476,18 @@ export interface FileRouteTypes {
     | '/signup'
     | '/dashboard/$module'
     | '/dashboard/academic-periods'
+    | '/dashboard/announcements'
     | '/dashboard/attendance'
     | '/dashboard/courses'
+    | '/dashboard/discussions'
     | '/dashboard/groups'
+    | '/dashboard/inbox'
     | '/dashboard/lecturers'
     | '/dashboard/lessons'
     | '/dashboard/locations'
     | '/dashboard/members'
     | '/dashboard/my-children'
+    | '/dashboard/my-notes'
     | '/dashboard/my-school'
     | '/dashboard/my-students'
     | '/dashboard/my-teaching'
@@ -447,6 +496,7 @@ export interface FileRouteTypes {
     | '/dashboard/overview'
     | '/dashboard/profile'
     | '/dashboard/schedule'
+    | '/dashboard/student-notes'
     | '/dashboard/students'
     | '/invite/$token'
     | '/organizations/new'
@@ -474,14 +524,18 @@ export interface FileRouteTypes {
     | '/signup'
     | '/dashboard/$module'
     | '/dashboard/academic-periods'
+    | '/dashboard/announcements'
     | '/dashboard/attendance'
     | '/dashboard/courses'
+    | '/dashboard/discussions'
     | '/dashboard/groups'
+    | '/dashboard/inbox'
     | '/dashboard/lecturers'
     | '/dashboard/lessons'
     | '/dashboard/locations'
     | '/dashboard/members'
     | '/dashboard/my-children'
+    | '/dashboard/my-notes'
     | '/dashboard/my-school'
     | '/dashboard/my-students'
     | '/dashboard/my-teaching'
@@ -490,6 +544,7 @@ export interface FileRouteTypes {
     | '/dashboard/overview'
     | '/dashboard/profile'
     | '/dashboard/schedule'
+    | '/dashboard/student-notes'
     | '/dashboard/students'
     | '/invite/$token'
     | '/organizations/new'
@@ -520,14 +575,18 @@ export interface FileRouteTypes {
     | '/(auth)/signup'
     | '/dashboard/$module'
     | '/dashboard/academic-periods'
+    | '/dashboard/announcements'
     | '/dashboard/attendance'
     | '/dashboard/courses'
+    | '/dashboard/discussions'
     | '/dashboard/groups'
+    | '/dashboard/inbox'
     | '/dashboard/lecturers'
     | '/dashboard/lessons'
     | '/dashboard/locations'
     | '/dashboard/members'
     | '/dashboard/my-children'
+    | '/dashboard/my-notes'
     | '/dashboard/my-school'
     | '/dashboard/my-students'
     | '/dashboard/my-teaching'
@@ -536,6 +595,7 @@ export interface FileRouteTypes {
     | '/dashboard/overview'
     | '/dashboard/profile'
     | '/dashboard/schedule'
+    | '/dashboard/student-notes'
     | '/dashboard/students'
     | '/invite/$token'
     | '/organizations/new'
@@ -681,6 +741,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAcademicPeriodsRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
+    '/dashboard/announcements': {
+      id: '/dashboard/announcements'
+      path: '/announcements'
+      fullPath: '/dashboard/announcements'
+      preLoaderRoute: typeof DashboardAnnouncementsRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
     '/dashboard/attendance': {
       id: '/dashboard/attendance'
       path: '/attendance'
@@ -695,11 +762,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardCoursesRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
+    '/dashboard/discussions': {
+      id: '/dashboard/discussions'
+      path: '/discussions'
+      fullPath: '/dashboard/discussions'
+      preLoaderRoute: typeof DashboardDiscussionsRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
     '/dashboard/groups': {
       id: '/dashboard/groups'
       path: '/groups'
       fullPath: '/dashboard/groups'
       preLoaderRoute: typeof DashboardGroupsRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
+    '/dashboard/inbox': {
+      id: '/dashboard/inbox'
+      path: '/inbox'
+      fullPath: '/dashboard/inbox'
+      preLoaderRoute: typeof DashboardInboxRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
     '/dashboard/lecturers': {
@@ -735,6 +816,13 @@ declare module '@tanstack/react-router' {
       path: '/my-children'
       fullPath: '/dashboard/my-children'
       preLoaderRoute: typeof DashboardMyChildrenRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
+    '/dashboard/my-notes': {
+      id: '/dashboard/my-notes'
+      path: '/my-notes'
+      fullPath: '/dashboard/my-notes'
+      preLoaderRoute: typeof DashboardMyNotesRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
     '/dashboard/my-school': {
@@ -791,6 +879,13 @@ declare module '@tanstack/react-router' {
       path: '/schedule'
       fullPath: '/dashboard/schedule'
       preLoaderRoute: typeof DashboardScheduleRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
+    '/dashboard/student-notes': {
+      id: '/dashboard/student-notes'
+      path: '/student-notes'
+      fullPath: '/dashboard/student-notes'
+      preLoaderRoute: typeof DashboardStudentNotesRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
     '/dashboard/students': {
@@ -920,14 +1015,18 @@ const authRouteRouteWithChildren = authRouteRoute._addFileChildren(
 interface DashboardRouteRouteChildren {
   DashboardModuleRoute: typeof DashboardModuleRoute
   DashboardAcademicPeriodsRoute: typeof DashboardAcademicPeriodsRoute
+  DashboardAnnouncementsRoute: typeof DashboardAnnouncementsRoute
   DashboardAttendanceRoute: typeof DashboardAttendanceRoute
   DashboardCoursesRoute: typeof DashboardCoursesRoute
+  DashboardDiscussionsRoute: typeof DashboardDiscussionsRoute
   DashboardGroupsRoute: typeof DashboardGroupsRoute
+  DashboardInboxRoute: typeof DashboardInboxRoute
   DashboardLecturersRoute: typeof DashboardLecturersRoute
   DashboardLessonsRoute: typeof DashboardLessonsRoute
   DashboardLocationsRoute: typeof DashboardLocationsRoute
   DashboardMembersRoute: typeof DashboardMembersRoute
   DashboardMyChildrenRoute: typeof DashboardMyChildrenRoute
+  DashboardMyNotesRoute: typeof DashboardMyNotesRoute
   DashboardMySchoolRoute: typeof DashboardMySchoolRoute
   DashboardMyStudentsRoute: typeof DashboardMyStudentsRoute
   DashboardMyTeachingRoute: typeof DashboardMyTeachingRoute
@@ -936,6 +1035,7 @@ interface DashboardRouteRouteChildren {
   DashboardOverviewRoute: typeof DashboardOverviewRoute
   DashboardProfileRoute: typeof DashboardProfileRoute
   DashboardScheduleRoute: typeof DashboardScheduleRoute
+  DashboardStudentNotesRoute: typeof DashboardStudentNotesRoute
   DashboardStudentsRoute: typeof DashboardStudentsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardClientsOrganizationIdRoute: typeof DashboardClientsOrganizationIdRoute
@@ -949,14 +1049,18 @@ interface DashboardRouteRouteChildren {
 const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardModuleRoute: DashboardModuleRoute,
   DashboardAcademicPeriodsRoute: DashboardAcademicPeriodsRoute,
+  DashboardAnnouncementsRoute: DashboardAnnouncementsRoute,
   DashboardAttendanceRoute: DashboardAttendanceRoute,
   DashboardCoursesRoute: DashboardCoursesRoute,
+  DashboardDiscussionsRoute: DashboardDiscussionsRoute,
   DashboardGroupsRoute: DashboardGroupsRoute,
+  DashboardInboxRoute: DashboardInboxRoute,
   DashboardLecturersRoute: DashboardLecturersRoute,
   DashboardLessonsRoute: DashboardLessonsRoute,
   DashboardLocationsRoute: DashboardLocationsRoute,
   DashboardMembersRoute: DashboardMembersRoute,
   DashboardMyChildrenRoute: DashboardMyChildrenRoute,
+  DashboardMyNotesRoute: DashboardMyNotesRoute,
   DashboardMySchoolRoute: DashboardMySchoolRoute,
   DashboardMyStudentsRoute: DashboardMyStudentsRoute,
   DashboardMyTeachingRoute: DashboardMyTeachingRoute,
@@ -965,6 +1069,7 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardOverviewRoute: DashboardOverviewRoute,
   DashboardProfileRoute: DashboardProfileRoute,
   DashboardScheduleRoute: DashboardScheduleRoute,
+  DashboardStudentNotesRoute: DashboardStudentNotesRoute,
   DashboardStudentsRoute: DashboardStudentsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardClientsOrganizationIdRoute: DashboardClientsOrganizationIdRoute,

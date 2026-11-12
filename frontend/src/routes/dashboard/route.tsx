@@ -1,9 +1,10 @@
-import { ClipboardCheck, GraduationCap, LogOut, Presentation, School, Users, UsersRound } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronDown, ClipboardCheck, GraduationCap, List, LogOut, MessageSquareText, Presentation, School, Users, UsersRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { hasOrganizationPermission } from '@shigjetademy/shared/auth'
 import type { Permission } from '@shigjetademy/shared/auth'
 import type { OrganizationStatus } from '@shigjetademy/shared/organization'
-import { Link, Outlet, createFileRoute, useMatchRoute, useNavigate } from '@tanstack/react-router'
+import { Link, Outlet, createFileRoute, useMatchRoute, useNavigate, useRouterState } from '@tanstack/react-router'
 import wordmark from '#/assets/brand/shigjetademy-wordmark.png'
 import { ADMIN_MODULES } from '#/lib/admin-modules'
 import { UserAvatar } from '#/components/UserAvatar'
@@ -17,6 +18,7 @@ import { useAuth } from '#/modules/auth/hooks/use-auth'
 import { isOrganizationGuardian, isOrganizationLecturer, isOrganizationOwner, isOrganizationStudent, isPlatformAdmin } from '#/modules/auth/utils/session-user'
 import type { SessionMembership } from '#/modules/auth/utils/session-user'
 import { ROLE_LABELS } from '#/modules/auth/utils/role-labels'
+import { CommunicationNavGroup } from '#/modules/communication/components/communication-nav-group'
 import { OrganizationSuspended } from '#/modules/organization/components/organization-suspended'
 import { OrganizationDeactivated } from '#/modules/organization-settings/components/organization-deactivated'
 import { OrganizationMark } from '#/modules/organization/components/organization-mark'
@@ -60,6 +62,12 @@ const getHiddenModuleSlugs = (membership: SessionMembership | undefined) =>
   new Set(
     MODULES.map((m) => m.slug).filter((slug) => isGatedModule(slug) && !(membership && MODULE_PERMISSIONS[slug].some((permission) => hasOrganizationPermission({ membership, permission })))),
   )
+
+const SIDEBAR_SUBLINK_CLASS =
+  'flex items-center gap-2.5 rounded-xl py-[8px] pr-3.5 pl-[42px] text-[0.95rem] font-[550] text-on-navy-2 no-underline transition-colors duration-[180ms] ease-out hover:text-white aria-[current=page]:bg-navy-2 aria-[current=page]:text-white max-[860px]:flex-none max-[860px]:pl-3.5 max-[860px]:whitespace-nowrap [&_svg]:flex-none aria-[current=page]:[&_svg]:text-green'
+
+// The pages under a lecturer's Students menu: the existing students page (and each student's page under it) and the notes to parents
+const STUDENTS_MENU_PATHS = ['/dashboard/my-students', '/dashboard/student-notes'] as const
 
 const SIDEBAR_HEADING_CLASS = 'px-3.5 pb-2.5 font-data text-[0.807rem] tracking-[0.06em] text-on-navy-2 uppercase max-[860px]:hidden'
 
@@ -197,7 +205,7 @@ function SidebarNavigation({ membership, isAdmin }: SidebarNavigationProps) {
   return <ModuleNavigation isAdmin={isAdmin} hiddenSlugs={getHiddenModuleSlugs(membership)} />
 }
 
-/** Students only have My school for now; their profile is at the bottom of the sidebar like everyone's */
+/** Students have My school and Communication; their profile is at the bottom of the sidebar like everyone's */
 function StudentNavigation() {
   return (
     <>
@@ -207,11 +215,12 @@ function StudentNavigation() {
       <Link to="/dashboard/my-school" className={SIDEBAR_LINK_CLASS}>
         <SidebarLinkContent icon={School} label="My school" />
       </Link>
+      <CommunicationNavGroup linkClassName={SIDEBAR_LINK_CLASS} />
     </>
   )
 }
 
-/** Guardians only have My children; their profile is at the bottom of the sidebar like everyone's */
+/** Guardians have My children, Notes and Communication; their profile is at the bottom of the sidebar like everyone's */
 function GuardianNavigation() {
   return (
     <>
@@ -221,11 +230,15 @@ function GuardianNavigation() {
       <Link to="/dashboard/my-children" className={SIDEBAR_LINK_CLASS}>
         <SidebarLinkContent icon={UsersRound} label="My children" />
       </Link>
+      <Link to="/dashboard/my-notes" className={SIDEBAR_LINK_CLASS}>
+        <SidebarLinkContent icon={MessageSquareText} label="Notes" />
+      </Link>
+      <CommunicationNavGroup linkClassName={SIDEBAR_LINK_CLASS} />
     </>
   )
 }
 
-/** Lecturers have My teaching, Students, Attendance and Lessons; their profile is at the bottom of the sidebar like everyone's */
+/** Lecturers have My teaching, Students, Attendance, Lessons and Communication; their profile is at the bottom of the sidebar like everyone's */
 function LecturerNavigation() {
   return (
     <>
@@ -235,16 +248,57 @@ function LecturerNavigation() {
       <Link to="/dashboard/my-teaching" className={SIDEBAR_LINK_CLASS}>
         <SidebarLinkContent icon={GraduationCap} label="My teaching" />
       </Link>
-      <Link to="/dashboard/my-students" className={SIDEBAR_LINK_CLASS}>
-        <SidebarLinkContent icon={Users} label="Students" />
-      </Link>
+      <StudentsMenu />
       <Link to="/dashboard/attendance" className={SIDEBAR_LINK_CLASS}>
         <SidebarLinkContent icon={ClipboardCheck} label="Attendance" />
       </Link>
       <Link to="/dashboard/lessons" className={SIDEBAR_LINK_CLASS}>
         <SidebarLinkContent icon={Presentation} label="Lessons" />
       </Link>
+      <CommunicationNavGroup linkClassName={SIDEBAR_LINK_CLASS} />
     </>
+  )
+}
+
+/** The lecturer's Students menu: the existing students page, and the notes they write to students' parents. Open whenever the current page is under either. */
+function StudentsMenu() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname })
+  const isInside = STUDENTS_MENU_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
+  const [isOpen, setIsOpen] = useState(isInside)
+  const [wasInside, setWasInside] = useState(isInside)
+  // Arriving on one of its pages opens the menu; the lecturer can still close it there
+  if (isInside !== wasInside) {
+    setWasInside(isInside)
+    if (isInside) setIsOpen(true)
+  }
+  const menuId = 'students-menu'
+
+  return (
+    <div className="flex flex-col gap-0.5 max-[860px]:flex-none max-[860px]:flex-row max-[860px]:items-center max-[860px]:gap-1.5">
+      <button
+        type="button"
+        className={`${SIDEBAR_LINK_CLASS} w-full cursor-pointer text-left ${isInside ? 'text-white' : ''}`}
+        aria-expanded={isOpen}
+        aria-controls={isOpen ? menuId : undefined}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <Users size={18} strokeWidth={1.9} aria-hidden="true" />
+        <span className="flex-1">Students</span>
+        <ChevronDown className={`transition-transform duration-[180ms] ease-out ${isOpen ? 'rotate-180' : ''}`} size={16} strokeWidth={2} aria-hidden="true" />
+      </button>
+      {isOpen ? (
+        <div id={menuId} className="flex flex-col gap-0.5 max-[860px]:flex-row max-[860px]:gap-1.5">
+          <Link to="/dashboard/my-students" className={SIDEBAR_SUBLINK_CLASS}>
+            <List size={16} strokeWidth={1.9} aria-hidden="true" />
+            Students List
+          </Link>
+          <Link to="/dashboard/student-notes" className={SIDEBAR_SUBLINK_CLASS}>
+            <MessageSquareText size={16} strokeWidth={1.9} aria-hidden="true" />
+            Student Notes
+          </Link>
+        </div>
+      ) : null}
+    </div>
   )
 }
 
@@ -256,10 +310,25 @@ function OwnerNavigation() {
         {section.title}
       </span>
       {section.items.map((item) => (
-        <OwnerNavLink key={item.kind === 'page' ? item.to : item.slug} item={item} />
+        <OwnerNavLink key={getOwnerNavKey(item)} item={item} />
       ))}
     </div>
   ))
+}
+
+const getOwnerNavKey = (item: OwnerNavItem) => {
+  switch (item.kind) {
+    case 'page':
+      return item.to
+    case 'module':
+      return item.slug
+    case 'communication':
+      return item.kind
+    default: {
+      const unknown: never = item
+      throw new Error(`Unknown sidebar item: ${String(unknown)}`)
+    }
+  }
 }
 
 interface OwnerNavLinkProps {
@@ -274,6 +343,8 @@ function OwnerNavLink({ item }: OwnerNavLinkProps) {
           <SidebarLinkContent icon={item.icon} label={item.label} />
         </Link>
       )
+    case 'communication':
+      return <CommunicationNavGroup linkClassName={SIDEBAR_LINK_CLASS} />
     case 'module': {
       const mod = moduleBySlug(item.slug)
       if (!mod) return null
@@ -311,7 +382,8 @@ interface ModuleNavigationProps {
 
 /** The platform admin's modules, or the flat school module list for everyone else in an organization */
 function ModuleNavigation({ isAdmin, hiddenSlugs }: ModuleNavigationProps) {
-  const modules = isAdmin ? ADMIN_MODULES : MODULES.filter((m) => !hiddenSlugs.has(m.slug))
+  // The school admin's Messages module is the Communication group below
+  const modules = isAdmin ? ADMIN_MODULES : MODULES.filter((m) => !hiddenSlugs.has(m.slug) && m.slug !== 'messages')
   return (
     <>
       <span className={SIDEBAR_HEADING_CLASS} aria-hidden="true">
@@ -328,6 +400,7 @@ function ModuleNavigation({ isAdmin, hiddenSlugs }: ModuleNavigationProps) {
           </Link>
         ),
       )}
+      {isAdmin ? null : <CommunicationNavGroup linkClassName={SIDEBAR_LINK_CLASS} />}
     </>
   )
 }

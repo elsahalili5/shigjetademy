@@ -6,6 +6,8 @@ import { server } from './server'
 
 // jsdom has no scrolling; the router's scroll restoration calls it
 window.scrollTo = vi.fn()
+// jsdom has no layout; a thread scrolls its newest message into view
+Element.prototype.scrollIntoView = vi.fn()
 // jsdom has no media queries; the toaster asks for prefers-reduced-motion
 window.matchMedia = vi.fn((query: string) => ({
   matches: false,

@@ -6,7 +6,9 @@ import { SectionCard } from '#/components/SectionCard'
 import { getScheduleLabel } from '#/modules/groups/utils/schedule-label'
 import { StudentDetailView } from '#/modules/student-roster/components/student-detail-page'
 import { useMyChild } from '../hooks/use-my-child'
+import { useMyChildNotes } from '../hooks/use-my-child-notes'
 import { useMyChildren } from '../hooks/use-my-children'
+import { MyChildNotes } from './my-child-notes'
 
 interface MyChildPageProps {
   organizationId: string
@@ -16,6 +18,7 @@ interface MyChildPageProps {
 /** One linked child as their guardian reads it: groups, weekly schedule, moved lessons and attendance, read-only */
 export function MyChildPage({ organizationId, studentId }: MyChildPageProps) {
   const child = useMyChild({ organizationId, studentId })
+  const notes = useMyChildNotes({ organizationId, studentId })
 
   const renderSections = (detail: MyChildDetail): ReactNode => (
     <>
@@ -23,6 +26,7 @@ export function MyChildPage({ organizationId, studentId }: MyChildPageProps) {
       <SectionCard title="Weekly schedule">
         <WeeklySchedule groups={detail.groups} />
       </SectionCard>
+      <MyChildNotes notes={notes} />
       <SectionCard title="Rescheduled lessons">
         <RescheduledLessons lessons={detail.rescheduled_lessons} />
       </SectionCard>

@@ -31,4 +31,30 @@ export const MyChildrenController = {
       return sendError({ res, error, fallback: 'Failed to fetch your child' })
     }
   },
+
+  listMyNotes: async (req: AuthRequest & TypedRequest<unknown, OrganizationIdParam>, res: Response) => {
+    try {
+      const userId = req.user?.id
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' })
+      }
+      const notes = await MyChildrenService.listMyNotes({ organizationId: req.params.organizationId, userId })
+      return res.status(200).json({ data: notes })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to fetch your notes' })
+    }
+  },
+
+  listMyChildNotes: async (req: AuthRequest & TypedRequest<unknown, StudentParam>, res: Response) => {
+    try {
+      const userId = req.user?.id
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' })
+      }
+      const notes = await MyChildrenService.listMyChildNotes({ ...req.params, userId })
+      return res.status(200).json({ data: notes })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to fetch the notes about your child' })
+    }
+  },
 }

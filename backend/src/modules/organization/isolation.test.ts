@@ -26,6 +26,7 @@ type TargetIds = {
   rescheduleId: string
   invitationId: string
   guardianId: string
+  conversationId: string
 }
 
 type ScopedEndpoint = {
@@ -38,7 +39,7 @@ type ScopedEndpoint = {
 const PROFILE = { name: 'Taken over', type: 'School', country: 'XK', currency: 'EUR' } as const
 const LOCATION = { name: 'Taken over', address: '', city: '', phone: '', is_main: true } as const
 const ROOM = { name: 'Taken over', capacity: null } as const
-const SETTINGS = { time_zone: 'America/New_York', week_start: 'SUNDAY', date_format: 'MONTH_DAY_YEAR' } as const
+const SETTINGS = { time_zone: 'America/New_York', week_start: 'SUNDAY', date_format: 'MONTH_DAY_YEAR', student_messaging_enabled: true } as const
 const YEAR = { name: 'Taken over', start_date: '2030-09-01', end_date: '2031-06-30', is_current: true } as const
 const TERM = { name: 'Taken over', start_date: '2026-09-01', end_date: '2026-12-20' } as const
 const HOLIDAY = { name: 'Taken over', start_date: '2026-12-24', end_date: '2026-12-24' } as const
@@ -84,6 +85,11 @@ const COVERED = { covered: 'Taken over' } as const
 const RESCHEDULE = { original_date: '2027-11-24', original_start_time: '17:00', new_date: '2027-11-26', new_start_time: '17:00', new_end_time: '18:30', reason: '' } as const
 
 const GUARDIAN = { first_name: 'Taken', last_name: 'Over', email: 'intruder@family.test', phone: '', relationship: 'MOTHER' } as const
+
+// Well-formed ids, so the sweep passes validation and reaches the organization checks
+const NEW_CONVERSATION = { recipient_membership_id: '00000000-0000-4000-8000-000000000007', body: 'Taken over' } as const
+
+const MESSAGE = { body: 'Taken over' } as const
 
 const GROUP = { course_id: '00000000-0000-4000-8000-000000000001', name: 'Taken over', academic_year_id: '00000000-0000-4000-8000-000000000002', academic_term_id: null, room_id: null, capacity: null, lecturer_id: null, lecturer_effective_from: null, schedule: SCHEDULE } as const
 
@@ -151,6 +157,8 @@ const SCOPED_ENDPOINTS: ScopedEndpoint[] = [
   { method: 'get', route: '/:organizationId/me/lecturer' },
   { method: 'get', route: '/:organizationId/me/children' },
   { method: 'get', route: '/:organizationId/me/children/:studentId' },
+  { method: 'get', route: '/:organizationId/me/children/:studentId/notes' },
+  { method: 'get', route: '/:organizationId/me/notes' },
   { method: 'get', route: '/:organizationId/lecturers' },
   { method: 'post', route: '/:organizationId/lecturers', body: LECTURER },
   { method: 'get', route: '/:organizationId/lecturers/subjects' },
@@ -199,6 +207,16 @@ const SCOPED_ENDPOINTS: ScopedEndpoint[] = [
   { method: 'put', route: '/:organizationId/groups/:groupId/lesson-plans/:date/:startTime/covered', body: COVERED },
   { method: 'get', route: '/:organizationId/my-students' },
   { method: 'get', route: '/:organizationId/my-students/:studentId' },
+  { method: 'get', route: '/:organizationId/parent-notes/groups' },
+  { method: 'get', route: '/:organizationId/parent-notes/conversations' },
+  { method: 'get', route: '/:organizationId/parent-notes/students/:studentId' },
+  { method: 'post', route: '/:organizationId/parent-notes/students/:studentId', body: { body: 'Taken over' } },
+  { method: 'get', route: '/:organizationId/inbox/contacts' },
+  { method: 'get', route: '/:organizationId/inbox/unread-count' },
+  { method: 'get', route: '/:organizationId/inbox/conversations' },
+  { method: 'post', route: '/:organizationId/inbox/conversations', body: NEW_CONVERSATION },
+  { method: 'get', route: '/:organizationId/inbox/conversations/:conversationId' },
+  { method: 'post', route: '/:organizationId/inbox/conversations/:conversationId/messages', body: MESSAGE },
 ]
 
 type ToPathParams = {
@@ -225,6 +243,7 @@ const toPath = ({ route, ids }: ToPathParams) =>
     .replace(':rescheduleId', ids.rescheduleId)
     .replace(':invitationId', ids.invitationId)
     .replace(':guardianId', ids.guardianId)
+    .replace(':conversationId', ids.conversationId)
     .replace(':date', LESSON_DATE)
     .replace(':startTime', LESSON_START)}`
 
@@ -255,7 +274,7 @@ type SeedOrganizationParams = {
   slug: string
 }
 
-/** An organization with an owner, a school admin, a location, a department, a school year with a term and a holiday, a student with an open login invitation, a lecturer with an open login invitation, a course with a group that has a lecturer, a Wednesday meeting, a substitution, the student enrolled and marked present on LESSON_DATE, the next Wednesday's session moved to the Thursday, and an open admin invitation */
+/** An organization with an owner, a school admin, a location, a department, a school year with a term and a holiday, a student with an open login invitation, a lecturer with an open login invitation, a private conversation between the owner and the admin, a course with a group that has a lecturer, a Wednesday meeting, a substitution, the student enrolled and marked present on LESSON_DATE, the next Wednesday's session moved to the Thursday, and an open admin invitation */
 const seedOrganization = async ({ name, slug }: SeedOrganizationParams) => {
   const owner = await createUser({ email: `owner@${slug}.test` })
   const admin = await createUser({ email: `admin@${slug}.test` })
@@ -320,7 +339,16 @@ const seedOrganization = async ({ name, slug }: SeedOrganizationParams) => {
       expires_at: new Date(Date.now() + 86_400_000),
     },
   })
-  return { organizationId: organization.id, membershipId: adminMembership.id, locationId: location.id, roomId: room.id, departmentId: department.id, yearId: year.id, termId: term.id, holidayId: holiday.id, studentId: student.id, lecturerId: lecturer.id, courseId: course.id, groupId: group.id, substitutionId: substitution.id, enrolmentId: enrolment.id, rescheduleId: reschedule.id, invitationId: invitation.id, guardianId: guardian.id }
+  const ownerMembership = await prisma.membership.findFirstOrThrow({ where: { organization_id: organization.id, user_id: owner.id } })
+  const conversation = await prisma.conversation.create({
+    data: {
+      organization_id: organization.id,
+      pair_key: [ownerMembership.id, adminMembership.id].sort().join(':'),
+      participants: { create: [{ membership_id: ownerMembership.id }, { membership_id: adminMembership.id }] },
+      messages: { create: { sender_membership_id: ownerMembership.id, body: `${name} private note` } },
+    },
+  })
+  return { organizationId: organization.id, membershipId: adminMembership.id, locationId: location.id, roomId: room.id, departmentId: department.id, yearId: year.id, termId: term.id, holidayId: holiday.id, studentId: student.id, lecturerId: lecturer.id, courseId: course.id, groupId: group.id, substitutionId: substitution.id, enrolmentId: enrolment.id, rescheduleId: reschedule.id, invitationId: invitation.id, guardianId: guardian.id, conversationId: conversation.id }
 }
 
 let oxford: TargetIds
@@ -365,6 +393,9 @@ const yllkaAsItsOwnerSeesIt = async () => {
     myStudents: await read('/:organizationId/my-students'),
     myStudent: await read('/:organizationId/my-students/:studentId'),
     studentGuardians: await read('/:organizationId/students/:studentId/guardians'),
+    inboxConversations: await read('/:organizationId/inbox/conversations'),
+    inboxConversation: await read('/:organizationId/inbox/conversations/:conversationId'),
+    inboxUnreadCount: await read('/:organizationId/inbox/unread-count'),
   }
 }
 
@@ -397,8 +428,8 @@ describe('organization isolation', () => {
     // Oxford's own organization id with Yllka's member, location, department, academic period, student, lecturer, course, group, substitution, enrolment, reschedule and invitation ids
     const mixed: TargetIds = { ...yllka, organizationId: oxford.organizationId }
 
-    // The guardian-only routes refuse the owner outright; the next test sweeps them as a guardian
-    for (const endpoint of SCOPED_ENDPOINTS.filter((item) => !item.route.includes('/me/children/') && /:(membership|location|room|department|year|term|holiday|student|lecturer|course|group|substitution|enrolment|reschedule|invitation|guardian)Id/.test(item.route))) {
+    // The guardian-only and lecturer-only routes refuse the owner outright; the next tests sweep them as a guardian and as a lecturer
+    for (const endpoint of SCOPED_ENDPOINTS.filter((item) => !item.route.includes('/me/children/') && !item.route.includes('/parent-notes/') && /:(membership|location|room|department|year|term|holiday|student|lecturer|course|group|substitution|enrolment|reschedule|invitation|guardian|conversation)Id/.test(item.route))) {
       const response = await send({ ...endpoint, ids: mixed, auth: oxfordOwnerAuth })
       expect(response.status, `${endpoint.method.toUpperCase()} ${endpoint.route} answered ${response.status}`).toBe(404)
     }
@@ -554,6 +585,37 @@ describe('organization isolation', () => {
       }
     }
     expect((await send({ method: 'get', route: `/:organizationId/attendance/groups?date=${LESSON_DATE}`, ids: oxford, auth: lecturerAuth })).body.data).toEqual([])
+
+    expect(await yllkaAsItsOwnerSeesIt()).toEqual(before)
+  })
+
+  it('refuses lecturers on another organization’s notes to parents', async () => {
+    const lecturer = await createUser({ email: 'lecturer@yllka.test' })
+    await prisma.membership.createMany({
+      data: [
+        { user_id: lecturer.id, organization_id: yllka.organizationId, role: 'LECTURER' },
+        { user_id: lecturer.id, organization_id: oxford.organizationId, role: 'LECTURER' },
+      ],
+    })
+    await prisma.lecturer.update({ where: { id: yllka.lecturerId }, data: { user_id: lecturer.id } })
+    const yllkaOnly = await createUser({ email: 'only@yllka.test' })
+    await prisma.membership.create({ data: { user_id: yllkaOnly.id, organization_id: yllka.organizationId, role: 'LECTURER' } })
+    const before = await yllkaAsItsOwnerSeesIt()
+    const lecturerAuth = await loginAs('lecturer@yllka.test')
+    const yllkaOnlyAuth = await loginAs('only@yllka.test')
+    const noteEndpoints = SCOPED_ENDPOINTS.filter((endpoint) => endpoint.route.includes('/parent-notes/'))
+
+    for (const endpoint of noteEndpoints) {
+      const label = `${endpoint.method.toUpperCase()} ${endpoint.route}`
+      expect((await send({ ...endpoint, ids: oxford, auth: yllkaOnlyAuth })).status, label).toBe(403)
+      // A member of both, whose lecturer record is Yllka's, writes to nobody in Oxford, nor to Yllka's students through Oxford
+      if (endpoint.route.includes(':studentId')) {
+        expect((await send({ ...endpoint, ids: oxford, auth: lecturerAuth })).status, label).toBe(403)
+        expect((await send({ ...endpoint, ids: { ...yllka, organizationId: oxford.organizationId }, auth: lecturerAuth })).status, label).toBe(403)
+      }
+    }
+    expect((await send({ method: 'get', route: '/:organizationId/parent-notes/groups', ids: oxford, auth: lecturerAuth })).body.data).toEqual([])
+    expect((await send({ method: 'get', route: '/:organizationId/parent-notes/conversations', ids: oxford, auth: lecturerAuth })).body.data).toEqual([])
 
     expect(await yllkaAsItsOwnerSeesIt()).toEqual(before)
   })

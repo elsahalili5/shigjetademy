@@ -3,6 +3,7 @@ import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import type { AuthUser } from '@shigjetademy/shared/auth'
 import type { MyChild, MyChildDetail } from '@shigjetademy/shared/guardians'
+import type { MyChildNote } from '@shigjetademy/shared/parent-notes'
 import { buildUser, DEFAULT_SETTINGS, signInAs } from '#/test/fixtures'
 import { renderRoute } from '#/test/render-route'
 import { server } from '#/test/server'
@@ -27,8 +28,14 @@ const DETAIL: MyChildDetail = {
   summary: { present: 1, tardy: 0, absent: 1, rate: 50 },
 }
 
-const serve = ({ detail = DETAIL, children = [ARTA, BESA] }: { detail?: MyChildDetail; children?: MyChild[] } = {}) =>
+const NOTES: MyChildNote[] = [
+  { id: 'note-2', body: 'Arta led the group work today.', created_at: '2026-11-05T10:30:00.000Z', author: { first_name: 'Teuta', last_name: 'Krasniqi' } },
+  { id: 'note-1', body: 'Please bring the workbook on Monday.', created_at: '2026-11-02T08:00:00.000Z', author: { first_name: 'Arben', last_name: 'Hoxha' } },
+]
+
+const serve = ({ detail = DETAIL, children = [ARTA, BESA], notes = [] }: { detail?: MyChildDetail; children?: MyChild[]; notes?: MyChildNote[] } = {}) =>
   server.use(
+    http.get(`*/api/organizations/org-1/me/children/${ARTA.id}/notes`, () => HttpResponse.json({ data: notes })),
     http.get('*/api/organizations/org-1/me/children', () => HttpResponse.json({ data: children })),
     http.get(`*/api/organizations/org-1/me/children/${ARTA.id}`, () => HttpResponse.json({ data: detail })),
   )
@@ -116,5 +123,38 @@ describe('MyChildPage', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Arta Gashi' })).toBeInTheDocument()
     expect(router.state.location.pathname).toBe(PATH)
+  })
+
+  it('lists the notes teachers wrote about the child with their author and date, newest first', async () => {
+    signInAs(buildUser({ memberships: GUARDIAN_MEMBERSHIPS }))
+    serve({ notes: NOTES })
+    renderRoute(PATH)
+
+    const notes = within(await screen.findByRole('list', { name: 'Notes from teachers' })).getAllByRole('listitem')
+    expect(notes).toHaveLength(2)
+    expect(notes[0]).toHaveTextContent('Arta led the group work today.')
+    expect(notes[0]).toHaveTextContent('Teuta Krasniqi')
+    expect(notes[0]).toHaveTextContent('5 Nov 2026')
+    expect(notes[1]).toHaveTextContent('Arben Hoxha')
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+  })
+
+  it('says when no teacher has written yet', async () => {
+    signInAs(buildUser({ memberships: GUARDIAN_MEMBERSHIPS }))
+    serve()
+    renderRoute(PATH)
+
+    expect(await screen.findByText('When a teacher writes to you about your child, it shows up here.')).toBeInTheDocument()
+  })
+
+  it('offers a retry when the notes fail to load', async () => {
+    signInAs(buildUser({ memberships: GUARDIAN_MEMBERSHIPS }))
+    serve()
+    server.use(http.get(`*/api/organizations/org-1/me/children/${ARTA.id}/notes`, () => HttpResponse.json({ error: 'Nope' }, { status: 500 })))
+    renderRoute(PATH)
+
+    const alert = await screen.findByText('We couldn’t load the notes.')
+    expect(alert).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
   })
 })
