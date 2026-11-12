@@ -2,6 +2,7 @@ import { Navigate, createFileRoute } from '@tanstack/react-router'
 import { requireOrganizationStudent } from '#/lib/route-guard'
 import { useTitle } from '#/lib/use-title'
 import { useActiveMembership } from '#/modules/auth/hooks/use-active-membership'
+import { useAuth } from '#/modules/auth/hooks/use-auth'
 import { isOrganizationStudent } from '#/modules/auth/utils/session-user'
 import { MySchoolPage } from '#/modules/my-school/components/my-school-page'
 
@@ -13,9 +14,10 @@ export const Route = createFileRoute('/dashboard/my-school')({
 
 function DashboardMySchoolPage() {
   useTitle('My school · Shigjetademy')
+  const auth = useAuth()
   const membership = useActiveMembership()
   // Switching to an organization where they aren't a student, here or in another tab, sends them to its home
   if (!membership || !isOrganizationStudent(membership)) return <Navigate to="/dashboard" />
   const { organization } = membership
-  return <MySchoolPage organizationId={organization.id} organizationName={organization.name} />
+  return <MySchoolPage organizationId={organization.id} organizationName={organization.name} firstName={auth.user?.first_name ?? ''} timeZone={organization.time_zone} />
 }

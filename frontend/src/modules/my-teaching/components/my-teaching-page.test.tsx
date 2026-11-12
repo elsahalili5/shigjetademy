@@ -97,7 +97,9 @@ describe('My teaching', () => {
     renderRoute('/dashboard/my-teaching')
 
     const modules = await screen.findByRole('navigation', { name: 'Modules' })
-    expect(within(modules).getAllByRole('link').map((link) => link.textContent)).toEqual(['My teaching', 'Students', 'Attendance', 'Lessons'])
+    expect(within(modules).getAllByRole('link').map((link) => link.textContent)).toEqual(['My teaching', 'Attendance', 'Lessons'])
+    // Students is a menu that opens to Students List and Student Notes
+    expect(within(modules).getByRole('button', { name: 'Students' })).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('says when no record is linked yet, or no term is running', async () => {

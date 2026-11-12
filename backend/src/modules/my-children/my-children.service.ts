@@ -1,6 +1,7 @@
 import { todayIn } from '@shigjetademy/shared/calendar-day'
 import { resolveOrganizationSettings } from '@shigjetademy/shared/organization-settings'
 import type { MyChildDetail } from '@shigjetademy/shared/guardians'
+import type { MyChildNote, MyNote } from '@shigjetademy/shared/parent-notes'
 import { toDate } from '@lib/calendar-day.ts'
 import { prisma } from '@lib/prisma.ts'
 import { getStudentGroups } from '@modules/student-home/student-groups.ts'
@@ -38,5 +39,25 @@ export const MyChildrenService = {
     // The history covers every group they were ever in, ended enrolments included, like the manager's view
     const { attendance, summary } = await getStudentAttendance({ studentId: child.id, groupIds: enrolledGroups.map((group) => group.id) })
     return { student: child, ...school, attendance, summary }
+  },
+
+  /** Every note the school's lecturers sent about this child, newest first, with the lecturer's name and nothing else */
+  listMyChildNotes: async ({ organizationId, userId, studentId }: GetMyChildParams): Promise<MyChildNote[]> => {
+    const child = await findLinkedChild({ organizationId, userId, studentId })
+    const notes = await prisma.studentParentNote.findMany({
+      where: { organization_id: organizationId, student_id: child.id },
+      orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
+      select: { id: true, body: true, created_at: true, lecturer: { select: { first_name: true, last_name: true } } },
+    })
+    return notes.map(({ id, body, created_at, lecturer }) => ({ id, body, created_at: created_at.toISOString(), author: lecturer }))
+  },
+  /** Every note about any of this guardian's linked children, newest first, with the child and the lecturer's name */
+  listMyNotes: async ({ organizationId, userId }: ListMyChildrenParams): Promise<MyNote[]> => {
+    const notes = await prisma.studentParentNote.findMany({
+      where: { organization_id: organizationId, student: linkedChildWhere({ organizationId, userId }) },
+      orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
+      select: { id: true, body: true, created_at: true, lecturer: { select: { first_name: true, last_name: true } }, student: { select: linkedChildSelect } },
+    })
+    return notes.map(({ id, body, created_at, lecturer, student }) => ({ id, body, created_at: created_at.toISOString(), author: lecturer, student }))
   },
 }

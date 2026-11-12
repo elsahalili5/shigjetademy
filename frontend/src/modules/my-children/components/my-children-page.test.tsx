@@ -48,3 +48,58 @@ describe('MyChildrenPage', () => {
     expect(await screen.findByRole('link', { name: 'Arta Gashi' })).toBeInTheDocument()
   })
 })
+
+describe('Notes in the guardian sidebar', () => {
+  it('links to the Notes page, which lists the notes about every child with who wrote them and when', async () => {
+    signInAs(buildUser({ memberships: GUARDIAN_MEMBERSHIPS }))
+    serveChildren([ARTA, BESA])
+    server.use(
+      http.get('*/api/organizations/org-1/me/notes', () =>
+        HttpResponse.json({
+          data: [
+            { id: 'n2', body: 'Besa was great today.', created_at: '2026-11-04T10:30:00.000Z', author: { first_name: 'Teuta', last_name: 'Krasniqi' }, student: BESA },
+            { id: 'n1', body: 'Arta needs her book.', created_at: '2026-11-03T09:15:00.000Z', author: { first_name: 'Arben', last_name: 'Hoxha' }, student: ARTA },
+          ],
+        }),
+      ),
+    )
+    const { user } = renderRoute('/dashboard/my-children')
+
+    await user.click(await screen.findByRole('link', { name: 'Notes' }))
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Notes' })).toBeInTheDocument()
+    const items = within(await screen.findByRole('list', { name: 'Notes' })).getAllByRole('listitem')
+    expect(items).toHaveLength(2)
+    expect(items[0]).toHaveTextContent('About Besa Gashi')
+    expect(items[0]).toHaveTextContent('Teuta Krasniqi')
+    expect(items[0]).toHaveTextContent('4 Nov 2026')
+    expect(items[1]).toHaveTextContent('Arta needs her book.')
+  })
+
+  it('says when there are no notes yet', async () => {
+    signInAs(buildUser({ memberships: GUARDIAN_MEMBERSHIPS }))
+    server.use(http.get('*/api/organizations/org-1/me/notes', () => HttpResponse.json({ data: [] })))
+    renderRoute('/dashboard/my-notes')
+
+    expect(await screen.findByText('No notes yet')).toBeInTheDocument()
+  })
+})
+
+describe('the guardian welcome', () => {
+  it('welcomes the parents of one child by the child’s name', async () => {
+    signInAs(buildUser({ memberships: GUARDIAN_MEMBERSHIPS }))
+    serveChildren([ARTA])
+    renderRoute('/dashboard/my-children')
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Welcome, Arta’s parents!' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Read your notes' })).toHaveAttribute('href', '/dashboard/my-notes')
+  })
+
+  it('names every child when there are several', async () => {
+    signInAs(buildUser({ memberships: GUARDIAN_MEMBERSHIPS }))
+    serveChildren([ARTA, BESA])
+    renderRoute('/dashboard/my-children')
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Welcome, Arta and Besa’s parents!' })).toBeInTheDocument()
+  })
+})

@@ -1,9 +1,10 @@
-import { ClipboardCheck, GraduationCap, LogOut, Presentation, School, Users, UsersRound } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronDown, ClipboardCheck, GraduationCap, List, LogOut, MessageSquareText, Presentation, School, Users, UsersRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { hasOrganizationPermission } from '@shigjetademy/shared/auth'
 import type { Permission } from '@shigjetademy/shared/auth'
 import type { OrganizationStatus } from '@shigjetademy/shared/organization'
-import { Link, Outlet, createFileRoute, useMatchRoute, useNavigate } from '@tanstack/react-router'
+import { Link, Outlet, createFileRoute, useMatchRoute, useNavigate, useRouterState } from '@tanstack/react-router'
 import wordmark from '#/assets/brand/shigjetademy-wordmark.png'
 import { ADMIN_MODULES } from '#/lib/admin-modules'
 import { UserAvatar } from '#/components/UserAvatar'
@@ -60,6 +61,12 @@ const getHiddenModuleSlugs = (membership: SessionMembership | undefined) =>
   new Set(
     MODULES.map((m) => m.slug).filter((slug) => isGatedModule(slug) && !(membership && MODULE_PERMISSIONS[slug].some((permission) => hasOrganizationPermission({ membership, permission })))),
   )
+
+const SIDEBAR_SUBLINK_CLASS =
+  'flex items-center gap-2.5 rounded-xl py-[8px] pr-3.5 pl-[42px] text-[0.95rem] font-[550] text-on-navy-2 no-underline transition-colors duration-[180ms] ease-out hover:text-white aria-[current=page]:bg-navy-2 aria-[current=page]:text-white max-[860px]:flex-none max-[860px]:pl-3.5 max-[860px]:whitespace-nowrap [&_svg]:flex-none aria-[current=page]:[&_svg]:text-green'
+
+// The pages under a lecturer's Students menu: the existing students page (and each student's page under it) and the notes to parents
+const STUDENTS_MENU_PATHS = ['/dashboard/my-students', '/dashboard/student-notes'] as const
 
 const SIDEBAR_HEADING_CLASS = 'px-3.5 pb-2.5 font-data text-[0.807rem] tracking-[0.06em] text-on-navy-2 uppercase max-[860px]:hidden'
 
@@ -211,7 +218,7 @@ function StudentNavigation() {
   )
 }
 
-/** Guardians only have My children; their profile is at the bottom of the sidebar like everyone's */
+/** Guardians have My children and Notes; their profile is at the bottom of the sidebar like everyone's */
 function GuardianNavigation() {
   return (
     <>
@@ -220,6 +227,9 @@ function GuardianNavigation() {
       </span>
       <Link to="/dashboard/my-children" className={SIDEBAR_LINK_CLASS}>
         <SidebarLinkContent icon={UsersRound} label="My children" />
+      </Link>
+      <Link to="/dashboard/my-notes" className={SIDEBAR_LINK_CLASS}>
+        <SidebarLinkContent icon={MessageSquareText} label="Notes" />
       </Link>
     </>
   )
@@ -235,9 +245,7 @@ function LecturerNavigation() {
       <Link to="/dashboard/my-teaching" className={SIDEBAR_LINK_CLASS}>
         <SidebarLinkContent icon={GraduationCap} label="My teaching" />
       </Link>
-      <Link to="/dashboard/my-students" className={SIDEBAR_LINK_CLASS}>
-        <SidebarLinkContent icon={Users} label="Students" />
-      </Link>
+      <StudentsMenu />
       <Link to="/dashboard/attendance" className={SIDEBAR_LINK_CLASS}>
         <SidebarLinkContent icon={ClipboardCheck} label="Attendance" />
       </Link>
@@ -245,6 +253,48 @@ function LecturerNavigation() {
         <SidebarLinkContent icon={Presentation} label="Lessons" />
       </Link>
     </>
+  )
+}
+
+/** The lecturer's Students menu: the existing students page, and the notes they write to students' parents. Open whenever the current page is under either. */
+function StudentsMenu() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname })
+  const isInside = STUDENTS_MENU_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
+  const [isOpen, setIsOpen] = useState(isInside)
+  const [wasInside, setWasInside] = useState(isInside)
+  // Arriving on one of its pages opens the menu; the lecturer can still close it there
+  if (isInside !== wasInside) {
+    setWasInside(isInside)
+    if (isInside) setIsOpen(true)
+  }
+  const menuId = 'students-menu'
+
+  return (
+    <div className="flex flex-col gap-0.5 max-[860px]:flex-none max-[860px]:flex-row max-[860px]:items-center max-[860px]:gap-1.5">
+      <button
+        type="button"
+        className={`${SIDEBAR_LINK_CLASS} w-full cursor-pointer text-left ${isInside ? 'text-white' : ''}`}
+        aria-expanded={isOpen}
+        aria-controls={isOpen ? menuId : undefined}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <Users size={18} strokeWidth={1.9} aria-hidden="true" />
+        <span className="flex-1">Students</span>
+        <ChevronDown className={`transition-transform duration-[180ms] ease-out ${isOpen ? 'rotate-180' : ''}`} size={16} strokeWidth={2} aria-hidden="true" />
+      </button>
+      {isOpen ? (
+        <div id={menuId} className="flex flex-col gap-0.5 max-[860px]:flex-row max-[860px]:gap-1.5">
+          <Link to="/dashboard/my-students" className={SIDEBAR_SUBLINK_CLASS}>
+            <List size={16} strokeWidth={1.9} aria-hidden="true" />
+            Students List
+          </Link>
+          <Link to="/dashboard/student-notes" className={SIDEBAR_SUBLINK_CLASS}>
+            <MessageSquareText size={16} strokeWidth={1.9} aria-hidden="true" />
+            Student Notes
+          </Link>
+        </div>
+      ) : null}
+    </div>
   )
 }
 

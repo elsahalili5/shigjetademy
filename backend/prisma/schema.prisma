@@ -312,18 +312,19 @@ model Organization {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  memberships    Membership[]
-  invitations    Invitation[]
-  activity       ActivityLog[]
-  locations      Location[]
-  departments    Department[]
-  academic_years AcademicYear[]
-  settings       OrganizationSettings?
-  students       Student[]
-  lecturers      Lecturer[]
-  courses        Course[]
-  groups         Group[]
-  guardians      Guardian[]
+  memberships          Membership[]
+  invitations          Invitation[]
+  activity             ActivityLog[]
+  locations            Location[]
+  departments          Department[]
+  academic_years       AcademicYear[]
+  settings             OrganizationSettings?
+  students             Student[]
+  lecturers            Lecturer[]
+  courses              Course[]
+  groups               Group[]
+  guardians            Guardian[]
+  student_parent_notes StudentParentNote[]
 }
 
 /// How one organization runs. An organization without a row reads the defaults; the row is written on its first save.
@@ -493,12 +494,13 @@ model Student {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  organization     Organization       @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  user             User?              @relation(fields: [user_id], references: [id], onDelete: SetNull)
-  invitations      Invitation[]
-  group_enrolments GroupEnrolment[]
-  attendance       AttendanceRecord[]
-  guardians        StudentGuardian[]
+  organization         Organization        @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  user                 User?               @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  invitations          Invitation[]
+  group_enrolments     GroupEnrolment[]
+  attendance           AttendanceRecord[]
+  guardians            StudentGuardian[]
+  student_parent_notes StudentParentNote[]
 
   @@unique([organization_id, student_number])
   @@unique([organization_id, user_id])
@@ -552,6 +554,26 @@ model StudentGuardian {
   @@index([guardian_id])
 }
 
+/// A note a lecturer wrote about one student for their guardians. Append-only: the lecturer's conversation with a student's
+/// guardians is every note they sent, oldest first, and a guardian reads them on the child's page.
+model StudentParentNote {
+  id              String @id @default(uuid()) @db.Uuid
+  organization_id String @db.Uuid
+  student_id      String @db.Uuid
+  lecturer_id     String @db.Uuid
+  body            String
+
+  created_at DateTime @default(now())
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  student      Student      @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  lecturer     Lecturer     @relation(fields: [lecturer_id], references: [id], onDelete: Cascade)
+
+  @@index([student_id, created_at])
+  @@index([lecturer_id, created_at])
+  @@index([organization_id])
+}
+
 // ─────────────────────────────────────────
 // LECTURERS
 // ─────────────────────────────────────────
@@ -579,13 +601,14 @@ model Lecturer {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  organization        Organization              @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  department          Department?               @relation(fields: [department_id], references: [id], onDelete: SetNull)
-  user                User?                     @relation(fields: [user_id], references: [id], onDelete: SetNull)
-  locations           LecturerLocation[]
-  invitations         Invitation[]
-  group_assignments   GroupLecturerAssignment[]
-  group_substitutions GroupSubstitution[]
+  organization         Organization              @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  department           Department?               @relation(fields: [department_id], references: [id], onDelete: SetNull)
+  user                 User?                     @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  locations            LecturerLocation[]
+  invitations          Invitation[]
+  group_assignments    GroupLecturerAssignment[]
+  group_substitutions  GroupSubstitution[]
+  student_parent_notes StudentParentNote[]
 
   @@unique([organization_id, user_id])
   @@index([organization_id, status])

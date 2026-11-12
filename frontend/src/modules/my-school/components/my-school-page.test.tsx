@@ -57,6 +57,16 @@ describe('My school', () => {
     expect(screen.getByText('1 Sep 2026 – 20 Dec 2026')).toBeInTheDocument()
   })
 
+  it('welcomes the student by first name', async () => {
+    signInAs(STUDENT)
+    serveMySchool()
+    renderRoute('/dashboard/my-school')
+
+    const welcome = await screen.findByRole('region', { name: 'Welcome' })
+    expect(within(welcome).getByRole('heading', { level: 2 })).toHaveTextContent(/^Good (morning|afternoon|evening), Arta!$/)
+    expect(within(welcome).getByText('Oxford Academy · Student')).toBeInTheDocument()
+  })
+
   it('shows a student only My school in the sidebar', async () => {
     signInAs(STUDENT)
     serveMySchool()

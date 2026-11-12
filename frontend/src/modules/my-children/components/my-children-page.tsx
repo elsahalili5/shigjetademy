@@ -7,6 +7,7 @@ import { LoadError } from '#/components/LoadError'
 import { SectionCard } from '#/components/SectionCard'
 import { SkeletonRows } from '#/components/SkeletonRows'
 import { useMyChildren } from '../hooks/use-my-children'
+import { GuardianWelcomeBanner } from './guardian-welcome-banner'
 
 interface MyChildrenPageProps {
   organizationId: string
@@ -20,6 +21,10 @@ export function MyChildrenPage({ organizationId, organizationName }: MyChildrenP
   return (
     <div className="flex h-full min-w-0 flex-col overflow-y-auto">
       <DashboardPageHeader icon={UsersRound} title="My children" subtitle={organizationName} />
+      {/* Spans the panel's full width, inside the page's side padding */}
+      <div className="px-[clamp(20px,3.4vw,44px)] pb-5">
+        <GuardianWelcomeBanner organizationName={organizationName} linkedChildren={children.data} />
+      </div>
       <div className="grid max-w-[880px] gap-5 px-[clamp(20px,3.4vw,44px)] pb-10">
         <SectionCard title="Children">
           <ChildList status={children.status} items={children.data} onRetry={() => void children.refetch()} />

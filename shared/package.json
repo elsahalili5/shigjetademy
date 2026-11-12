@@ -23,7 +23,8 @@
     "./platform-settings": "./src/platform-settings.ts",
     "./rooms": "./src/rooms.ts",
     "./schedule": "./src/schedule.ts",
-    "./guardians": "./src/guardians.ts"
+    "./guardians": "./src/guardians.ts",
+    "./parent-notes": "./src/parent-notes.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

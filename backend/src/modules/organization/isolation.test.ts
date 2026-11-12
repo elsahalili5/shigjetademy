@@ -151,6 +151,8 @@ const SCOPED_ENDPOINTS: ScopedEndpoint[] = [
   { method: 'get', route: '/:organizationId/me/lecturer' },
   { method: 'get', route: '/:organizationId/me/children' },
   { method: 'get', route: '/:organizationId/me/children/:studentId' },
+  { method: 'get', route: '/:organizationId/me/children/:studentId/notes' },
+  { method: 'get', route: '/:organizationId/me/notes' },
   { method: 'get', route: '/:organizationId/lecturers' },
   { method: 'post', route: '/:organizationId/lecturers', body: LECTURER },
   { method: 'get', route: '/:organizationId/lecturers/subjects' },
@@ -199,6 +201,10 @@ const SCOPED_ENDPOINTS: ScopedEndpoint[] = [
   { method: 'put', route: '/:organizationId/groups/:groupId/lesson-plans/:date/:startTime/covered', body: COVERED },
   { method: 'get', route: '/:organizationId/my-students' },
   { method: 'get', route: '/:organizationId/my-students/:studentId' },
+  { method: 'get', route: '/:organizationId/parent-notes/groups' },
+  { method: 'get', route: '/:organizationId/parent-notes/conversations' },
+  { method: 'get', route: '/:organizationId/parent-notes/students/:studentId' },
+  { method: 'post', route: '/:organizationId/parent-notes/students/:studentId', body: { body: 'Taken over' } },
 ]
 
 type ToPathParams = {
@@ -397,8 +403,8 @@ describe('organization isolation', () => {
     // Oxford's own organization id with Yllka's member, location, department, academic period, student, lecturer, course, group, substitution, enrolment, reschedule and invitation ids
     const mixed: TargetIds = { ...yllka, organizationId: oxford.organizationId }
 
-    // The guardian-only routes refuse the owner outright; the next test sweeps them as a guardian
-    for (const endpoint of SCOPED_ENDPOINTS.filter((item) => !item.route.includes('/me/children/') && /:(membership|location|room|department|year|term|holiday|student|lecturer|course|group|substitution|enrolment|reschedule|invitation|guardian)Id/.test(item.route))) {
+    // The guardian-only and lecturer-only routes refuse the owner outright; the next tests sweep them as a guardian and as a lecturer
+    for (const endpoint of SCOPED_ENDPOINTS.filter((item) => !item.route.includes('/me/children/') && !item.route.includes('/parent-notes/') && /:(membership|location|room|department|year|term|holiday|student|lecturer|course|group|substitution|enrolment|reschedule|invitation|guardian)Id/.test(item.route))) {
       const response = await send({ ...endpoint, ids: mixed, auth: oxfordOwnerAuth })
       expect(response.status, `${endpoint.method.toUpperCase()} ${endpoint.route} answered ${response.status}`).toBe(404)
     }
@@ -554,6 +560,37 @@ describe('organization isolation', () => {
       }
     }
     expect((await send({ method: 'get', route: `/:organizationId/attendance/groups?date=${LESSON_DATE}`, ids: oxford, auth: lecturerAuth })).body.data).toEqual([])
+
+    expect(await yllkaAsItsOwnerSeesIt()).toEqual(before)
+  })
+
+  it('refuses lecturers on another organization’s notes to parents', async () => {
+    const lecturer = await createUser({ email: 'lecturer@yllka.test' })
+    await prisma.membership.createMany({
+      data: [
+        { user_id: lecturer.id, organization_id: yllka.organizationId, role: 'LECTURER' },
+        { user_id: lecturer.id, organization_id: oxford.organizationId, role: 'LECTURER' },
+      ],
+    })
+    await prisma.lecturer.update({ where: { id: yllka.lecturerId }, data: { user_id: lecturer.id } })
+    const yllkaOnly = await createUser({ email: 'only@yllka.test' })
+    await prisma.membership.create({ data: { user_id: yllkaOnly.id, organization_id: yllka.organizationId, role: 'LECTURER' } })
+    const before = await yllkaAsItsOwnerSeesIt()
+    const lecturerAuth = await loginAs('lecturer@yllka.test')
+    const yllkaOnlyAuth = await loginAs('only@yllka.test')
+    const noteEndpoints = SCOPED_ENDPOINTS.filter((endpoint) => endpoint.route.includes('/parent-notes/'))
+
+    for (const endpoint of noteEndpoints) {
+      const label = `${endpoint.method.toUpperCase()} ${endpoint.route}`
+      expect((await send({ ...endpoint, ids: oxford, auth: yllkaOnlyAuth })).status, label).toBe(403)
+      // A member of both, whose lecturer record is Yllka's, writes to nobody in Oxford, nor to Yllka's students through Oxford
+      if (endpoint.route.includes(':studentId')) {
+        expect((await send({ ...endpoint, ids: oxford, auth: lecturerAuth })).status, label).toBe(403)
+        expect((await send({ ...endpoint, ids: { ...yllka, organizationId: oxford.organizationId }, auth: lecturerAuth })).status, label).toBe(403)
+      }
+    }
+    expect((await send({ method: 'get', route: '/:organizationId/parent-notes/groups', ids: oxford, auth: lecturerAuth })).body.data).toEqual([])
+    expect((await send({ method: 'get', route: '/:organizationId/parent-notes/conversations', ids: oxford, auth: lecturerAuth })).body.data).toEqual([])
 
     expect(await yllkaAsItsOwnerSeesIt()).toEqual(before)
   })
