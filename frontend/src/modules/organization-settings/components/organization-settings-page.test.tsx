@@ -49,7 +49,7 @@ const signInAsOwner = () => {
 const preferences = () => screen.findByRole('region', { name: 'General preferences' })
 
 describe('organization settings: general preferences', () => {
-  it('opens from the owner’s sidebar, right under Messages at the end of Organization', async () => {
+  it('opens from the owner’s sidebar, right under Communication at the end of Organization', async () => {
     signInAsOwner()
     server.use(
       http.get('*/api/organizations/org-1/overview', () =>
@@ -69,7 +69,10 @@ describe('organization settings: general preferences', () => {
     const organization = await screen.findByRole('group', { name: 'Organization' })
     const labels = within(organization).getAllByRole('link').map((link) => link.textContent)
     expect(labels.at(-1)).toBe('Organization settings')
-    expect(labels.at(-2)).toBe('Messages')
+    expect(labels.at(-2)).toBe('Members and permissions')
+    // Communication is a group between them, and closed away from its pages
+    const items = within(organization).getAllByRole('link').concat(within(organization).getAllByRole('button'))
+    expect(items.map((item) => item.textContent)).toContain('Communication')
 
     await user.click(within(organization).getByRole('link', { name: 'Organization settings' }))
 
@@ -98,7 +101,41 @@ describe('organization settings: general preferences', () => {
     await user.click(within(section).getByRole('button', { name: 'Save preferences' }))
 
     expect(await within(section).findByText('The preferences are saved.')).toBeInTheDocument()
-    expect(sent).toEqual({ time_zone: 'Europe/Tirane', week_start: 'MONDAY', date_format: 'DAY_MONTH_YEAR' })
+    expect(sent).toEqual({ time_zone: 'Europe/Tirane', week_start: 'MONDAY', date_format: 'DAY_MONTH_YEAR', student_messaging_enabled: false })
+  })
+
+  it('keeps students from messaging their lecturers until the owner turns it on, and saves the choice', async () => {
+    signInAsOwner()
+    let sent: UpdateOrganizationSettingsInput | undefined
+    server.use(
+      http.put('*/api/organizations/org-1/settings', async ({ request }) => {
+        sent = updateOrganizationSettingsSchema.parse(await request.json())
+        return HttpResponse.json({ data: sent })
+      }),
+    )
+    const { user } = renderRoute('/dashboard/organization-settings')
+
+    const section = await preferences()
+    const toggle = within(section).getByRole('checkbox', { name: 'Let students message their lecturers' })
+    expect(toggle).not.toBeChecked()
+    expect(toggle).toHaveAccessibleDescription(/existing conversations stay readable/)
+
+    await user.click(toggle)
+    await user.click(within(section).getByRole('button', { name: 'Save preferences' }))
+
+    expect(await within(section).findByText('The preferences are saved.')).toBeInTheDocument()
+    expect(sent?.student_messaging_enabled).toBe(true)
+    expect(toggle).toBeChecked()
+  })
+
+  it('shows student messaging as on when the organization has turned it on', async () => {
+    signInAs(buildUser({ memberships: OWNER_MEMBERSHIPS }))
+    serveSettings({ ...DEFAULT_SETTINGS, student_messaging_enabled: true })
+    renderRoute('/dashboard/organization-settings')
+
+    const section = await preferences()
+
+    expect(within(section).getByRole('checkbox', { name: 'Let students message their lecturers' })).toBeChecked()
   })
 
   it('previews the date format before saving it', async () => {

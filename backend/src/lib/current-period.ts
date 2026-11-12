@@ -18,7 +18,7 @@ type GetOrganizationTodayParams = {
 const readSettings = async ({ db, organizationId }: GetOrganizationTodayParams) => {
   const organization = await db.organization.findUniqueOrThrow({
     where: { id: organizationId },
-    select: { country: true, settings: { select: { time_zone: true, week_start: true, date_format: true } } },
+    select: { country: true, settings: { select: { time_zone: true, week_start: true, date_format: true, student_messaging_enabled: true } } },
   })
   return resolveOrganizationSettings({ stored: organization.settings, country: organization.country })
 }

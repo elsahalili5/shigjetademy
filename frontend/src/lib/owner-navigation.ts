@@ -26,6 +26,8 @@ export type OwnerNavItem =
       icon: LucideIcon
     }
   | { kind: 'module'; slug: ModuleSlug; label?: string }
+  /** The expandable Communication group, which every role's sidebar has */
+  | { kind: 'communication' }
 
 type OwnerNavSection = {
   title: string
@@ -41,7 +43,7 @@ export const OWNER_NAV_SECTIONS: OwnerNavSection[] = [
       { kind: 'page', to: '/dashboard/locations', label: 'Locations and departments', icon: MapPin },
       { kind: 'page', to: '/dashboard/academic-periods', label: 'Academic periods', icon: CalendarRange },
       { kind: 'page', to: '/dashboard/members', label: 'Members and permissions', icon: UserCog },
-      { kind: 'module', slug: 'messages' },
+      { kind: 'communication' },
       { kind: 'page', to: '/dashboard/organization-settings', label: 'Organization settings', icon: Settings },
     ],
   },

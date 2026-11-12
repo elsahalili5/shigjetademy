@@ -23,6 +23,10 @@ export const Route = createFileRoute('/dashboard/$module')({
     if (isAdmin && !adminModuleBySlug(params.module)) {
       throw redirect({ to: '/dashboard/$module', params: { module: 'clients' } })
     }
+    // The school modules' Messages became the Communication group's Inbox
+    if (!isAdmin && params.module === 'messages') {
+      throw redirect({ to: '/dashboard/inbox' })
+    }
     if (!isAdmin && !moduleBySlug(params.module)) {
       throw redirect({ to: '/dashboard' })
     }

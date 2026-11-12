@@ -20,14 +20,14 @@ interface PreferencesFormProps {
   settings: OrganizationSettings
 }
 
-/** Time zone, first day of the week and date format, saved together */
+/** Time zone, first day of the week, date format and student messaging, saved together */
 export function PreferencesForm({ organizationId, settings }: PreferencesFormProps) {
   const settingsForm = useOrganizationSettingsForm(settings)
   const updateSettings = useUpdateOrganizationSettings(organizationId)
   const { form } = settingsForm
   const { errors, isDirty } = form.formState
   const isPending = updateSettings.isPending
-  const ids = { timeZone: useId(), weekStart: useId(), dateFormat: useId() }
+  const ids = { timeZone: useId(), weekStart: useId(), dateFormat: useId(), studentMessaging: useId(), studentMessagingHint: useId() }
   const fieldError = (fieldName: keyof UpdateOrganizationSettingsInput) =>
     getFieldError<UpdateOrganizationSettingsInput>({ fieldName, formErrors: errors, backendError: updateSettings.error })
 
@@ -63,6 +63,25 @@ export function PreferencesForm({ organizationId, settings }: PreferencesFormPro
           </SelectField>
         </div>
         <p className="text-[0.95rem] text-ink-2">Dates look like {formatOrganizationDate({ iso: EXAMPLE_DATE, dateFormat: settingsForm.dateFormat })}</p>
+
+        <div className="flex items-start gap-3 rounded-xl border border-rule-strong px-3.5 py-3 has-disabled:bg-mist/60">
+          <input
+            id={ids.studentMessaging}
+            type="checkbox"
+            className="mt-1 size-4 accent-green-deep"
+            aria-describedby={ids.studentMessagingHint}
+            disabled={isPending}
+            {...form.register('student_messaging_enabled')}
+          />
+          <span className="grid gap-0.5">
+            <label htmlFor={ids.studentMessaging} className="font-semibold">
+              Let students message their lecturers
+            </label>
+            <span id={ids.studentMessagingHint} className="text-[0.93rem] text-ink-3">
+              Students and the lecturers of their groups can write to each other. When it is off, their existing conversations stay readable.
+            </span>
+          </span>
+        </div>
 
         {updateSettings.isError ? <FormAlert>{getErrorMessage(updateSettings.error)}</FormAlert> : null}
 

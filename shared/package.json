@@ -24,7 +24,8 @@
     "./rooms": "./src/rooms.ts",
     "./schedule": "./src/schedule.ts",
     "./guardians": "./src/guardians.ts",
-    "./parent-notes": "./src/parent-notes.ts"
+    "./parent-notes": "./src/parent-notes.ts",
+    "./inbox": "./src/inbox.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

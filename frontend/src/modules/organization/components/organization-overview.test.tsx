@@ -192,7 +192,7 @@ describe('dashboard sidebar', () => {
 
     const sidebar = await screen.findByRole('navigation', { name: 'Modules' })
     const sections = within(sidebar).getAllByRole('group')
-    expect(sections.map((section) => section.getAttribute('aria-label'))).toEqual(['Organization', 'Academic management', 'Learning', 'Finance'])
+    expect(sections.map((section) => section.getAttribute('aria-label'))).toEqual(['Organization', 'Communication', 'Academic management', 'Learning', 'Finance'])
     const organization = within(sidebar).getByRole('group', { name: 'Organization' })
     expect(within(organization).getAllByRole('link').map((link) => link.textContent)).toEqual([
       'Overview',
@@ -200,10 +200,10 @@ describe('dashboard sidebar', () => {
       'Locations and departments',
       'Academic periods',
       'Members and permissions',
-      'Messages',
       'Organization settings',
     ])
-    expect(within(organization).getByRole('link', { name: 'Messages' })).toHaveAttribute('href', '/dashboard/messages')
+    // Communication is an expandable group between Members and Organization settings
+    expect(within(organization).getByRole('button', { name: 'Communication' })).toHaveAttribute('aria-expanded', 'false')
     expect(within(organization).getByRole('link', { name: 'Members and permissions' })).toHaveAttribute('href', '/dashboard/members')
     expect(within(sidebar).getByRole('group', { name: 'Finance' })).toHaveTextContent('PaymentsFinancial recordsReports')
   })
@@ -218,7 +218,9 @@ describe('dashboard sidebar', () => {
     expect(within(sidebar).queryByRole('link', { name: 'Courses' })).not.toBeInTheDocument()
     expect(within(sidebar).queryByRole('link', { name: 'Lecturers' })).not.toBeInTheDocument()
     expect(within(sidebar).queryByRole('link', { name: 'Students & enrolment' })).not.toBeInTheDocument()
-    expect(within(sidebar).queryByRole('group')).not.toBeInTheDocument()
+    // No sections, only the Communication group in place of Messages
+    expect(within(sidebar).getAllByRole('group').map((group) => group.getAttribute('aria-label'))).toEqual(['Communication'])
+    expect(within(sidebar).queryByRole('link', { name: 'Messages' })).not.toBeInTheDocument()
     expect(within(sidebar).queryByRole('link', { name: /Members/ })).not.toBeInTheDocument()
   })
 })

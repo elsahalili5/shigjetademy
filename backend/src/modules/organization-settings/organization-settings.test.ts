@@ -12,7 +12,7 @@ let adminAuth: string
 let ownerId: string
 let adminId: string
 
-const PREFERENCES = { time_zone: 'Europe/Tirane', week_start: 'SUNDAY', date_format: 'MONTH_DAY_YEAR' } as const
+const PREFERENCES = { time_zone: 'Europe/Tirane', week_start: 'SUNDAY', date_format: 'MONTH_DAY_YEAR', student_messaging_enabled: true } as const
 
 beforeEach(async () => {
   const owner = await createUser({ email: 'owner@oxford.test' })
@@ -30,14 +30,14 @@ describe('organization settings: general preferences', () => {
     const response = await request(app).get(settingsPath).set('Authorization', ownerAuth)
 
     expect(response.status).toBe(200)
-    expect(response.body.data).toEqual({ time_zone: 'Europe/Belgrade', week_start: 'MONDAY', date_format: 'DAY_MONTH_YEAR' })
+    expect(response.body.data).toEqual({ time_zone: 'Europe/Belgrade', week_start: 'MONDAY', date_format: 'DAY_MONTH_YEAR', student_messaging_enabled: false })
     // Reading writes nothing; the row comes with the first save
     expect(await prisma.organizationSettings.count()).toBe(0)
   })
 
   it('sends every member the organization’s settings with their session, defaults included', async () => {
     const before = await request(app).get('/api/auth/me').set('Authorization', adminAuth)
-    expect(before.body.data.memberships[0].organization).toMatchObject({ time_zone: 'Europe/Belgrade', week_start: 'MONDAY', date_format: 'DAY_MONTH_YEAR' })
+    expect(before.body.data.memberships[0].organization).toMatchObject({ time_zone: 'Europe/Belgrade', week_start: 'MONDAY', date_format: 'DAY_MONTH_YEAR', student_messaging_enabled: false })
 
     await request(app).put(settingsPath).set('Authorization', ownerAuth).send(PREFERENCES)
 
@@ -53,6 +53,21 @@ describe('organization settings: general preferences', () => {
     expect((await request(app).get(settingsPath).set('Authorization', ownerAuth)).body.data).toEqual(PREFERENCES)
     const activity = await prisma.activityLog.findMany({ where: { organization_id: organizationId }, select: { action: true } })
     expect(activity).toEqual([{ action: 'ORGANIZATION_SETTINGS_UPDATED' }])
+  })
+
+  it('keeps student messaging off until the owner turns it on, and off again', async () => {
+    await request(app).put(settingsPath).set('Authorization', ownerAuth).send(PREFERENCES)
+    const turnedOff = await request(app).put(settingsPath).set('Authorization', ownerAuth).send({ ...PREFERENCES, student_messaging_enabled: false })
+
+    expect(turnedOff.body.data.student_messaging_enabled).toBe(false)
+    expect((await request(app).get(settingsPath).set('Authorization', ownerAuth)).body.data.student_messaging_enabled).toBe(false)
+  })
+
+  it('refuses a student messaging setting that isn’t on or off', async () => {
+    const response = await request(app).put(settingsPath).set('Authorization', ownerAuth).send({ ...PREFERENCES, student_messaging_enabled: 'yes' })
+
+    expect(response.status).toBe(400)
+    expect(response.body.details.fieldErrors.student_messaging_enabled).toBeDefined()
   })
 
   it('refuses a time zone that doesn’t exist', async () => {

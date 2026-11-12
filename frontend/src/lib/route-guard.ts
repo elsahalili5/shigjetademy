@@ -62,6 +62,13 @@ export function requireOrganizationOwner(queryClient: QueryClient) {
   }
 }
 
+/** Communication pages are for every member of the active organization; the platform admin, who has none, goes back to their dashboard */
+export function requireOrganizationMember(queryClient: QueryClient) {
+  if (!getSessionMembership(queryClient)) {
+    throw redirect({ to: '/dashboard' })
+  }
+}
+
 /** My school is for the active organization's students; anyone else goes back to their dashboard */
 export function requireOrganizationStudent(queryClient: QueryClient) {
   if (!isOrganizationStudent(getSessionMembership(queryClient))) {
