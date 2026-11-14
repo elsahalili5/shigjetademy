@@ -13,6 +13,7 @@ import { useUpdateClientStatus } from '../hooks/use-update-client-status'
 import { currencyNames, regionNames } from '../utils/format'
 import { ORGANIZATION_TYPE_LABELS } from '../utils/labels'
 import { ClientStatusChip } from './client-status-chip'
+import { NotificationBell } from '#/components/NotificationBell'
 
 // A malformed id is refused with 400; to the admin it is as missing as an unknown one
 const NOT_FOUND_STATUSES = [400, 404]
@@ -88,7 +89,10 @@ function ClientProfile({ client }: ClientProfileProps) {
               </p>
             </div>
           </div>
-          <StatusControl client={client} />
+          <div className="flex items-center gap-3 self-center">
+            <StatusControl client={client} />
+            <NotificationBell />
+          </div>
         </div>
       </header>
 

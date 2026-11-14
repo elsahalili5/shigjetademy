@@ -23,6 +23,7 @@ import type { StudentDialogMode } from './student-dialog'
 import { StudentInviteDialog } from './student-invite-dialog'
 import type { StudentInviteTarget } from './student-invite-dialog'
 import { StudentTable } from './student-table'
+import { TableToolbar } from '#/components/TableToolbar'
 
 const STATUS_TAB_LABELS = {
   ACTIVE: 'Active',
@@ -105,12 +106,7 @@ export function StudentsPage({ organizationId, organizationName }: StudentsPageP
 
   return (
     <div className="flex h-full min-w-0 flex-col overflow-y-auto">
-      <DashboardPageHeader icon={Users} title="Students" subtitle={`${organizationName} · student records`}>
-        <button type="button" className="button button--primary min-h-11 px-4 text-base" onClick={handleAdd}>
-          <Plus size={17} strokeWidth={2.2} aria-hidden="true" />
-          Add student
-        </button>
-      </DashboardPageHeader>
+      <DashboardPageHeader icon={Users} title="Students" subtitle={`${organizationName} · student records`} />
 
       <div className="grid min-w-0 gap-5 px-[clamp(20px,3.4vw,44px)] pb-10">
         {notice ? <NoticeBar notice={notice} onDismiss={() => setNotice(null)} /> : null}
@@ -131,23 +127,28 @@ export function StudentsPage({ organizationId, organizationName }: StudentsPageP
               </button>
             ))}
           </div>
-
-          <div className="relative w-[min(100%,340px)]">
-            <label htmlFor={searchId} className="visually-hidden">
-              Search students
-            </label>
-            <Search className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-ink-3" size={17} strokeWidth={2} aria-hidden="true" />
-            <input
-              id={searchId}
-              type="search"
-              placeholder="Name or student number"
-              className="min-h-11 w-full rounded-full border border-rule-strong bg-white pr-4 pl-10 text-base transition-[border-color,box-shadow] duration-150 placeholder:text-ink-3 hover:border-ink-3 focus:border-green-deep focus:shadow-[0_0_0_3px_var(--green-wash)] focus:outline-none"
-              value={studentSearch.text}
-              onChange={(event) => studentSearch.change(event.target.value)}
-            />
-          </div>
         </div>
 
+        <TableToolbar
+          addLabel="Add student"
+          onAdd={handleAdd}
+          search={
+            <div className="relative w-[min(100%,340px)]">
+                <label htmlFor={searchId} className="visually-hidden">
+                  Search students
+                </label>
+                <Search className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-ink-3" size={17} strokeWidth={2} aria-hidden="true" />
+                <input
+                  id={searchId}
+                  type="search"
+                  placeholder="Name or student number"
+                  className="min-h-11 w-full rounded-full border border-rule-strong bg-white pr-4 pl-10 text-base transition-[border-color,box-shadow] duration-150 placeholder:text-ink-3 hover:border-ink-3 focus:border-green-deep focus:shadow-[0_0_0_3px_var(--green-wash)] focus:outline-none"
+                  value={studentSearch.text}
+                  onChange={(event) => studentSearch.change(event.target.value)}
+                />
+              </div>
+          }
+        />
         <section className="rounded-card border border-rule" role="tabpanel" aria-label={STATUS_TAB_LABELS[status]}>
           <StudentList
             status={students.status}

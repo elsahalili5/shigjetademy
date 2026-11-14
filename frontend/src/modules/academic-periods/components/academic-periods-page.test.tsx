@@ -87,7 +87,7 @@ describe('AcademicPeriodsPage: school years', () => {
 
     const region = await yearsRegion()
     expect(await within(region).findByText('No academic years yet')).toBeInTheDocument()
-    await user.click(within(region).getByRole('button', { name: 'Add year' }))
+    await user.click(screen.getByRole('button', { name: 'Add year' }))
     const dialog = screen.getByRole('dialog', { name: 'Add a school year' })
     expect(within(dialog).getByRole('checkbox', { name: 'Current year' })).toBeChecked()
     await user.type(within(dialog).getByLabelText('Starts'), '2026-09-01')
@@ -104,7 +104,7 @@ describe('AcademicPeriodsPage: school years', () => {
     signInWithYears({ years: [] })
     const { user } = renderRoute('/dashboard/academic-periods')
 
-    await user.click(await within(await yearsRegion()).findByRole('button', { name: 'Add year' }))
+    await user.click(await screen.findByRole('button', { name: 'Add year' }))
     const dialog = screen.getByRole('dialog', { name: 'Add a school year' })
     await user.type(within(dialog).getByLabelText('Name'), 'Year one')
     await user.type(within(dialog).getByLabelText('Starts'), '2026-09-01')
@@ -117,7 +117,7 @@ describe('AcademicPeriodsPage: school years', () => {
     signInWithYears({ years: [] })
     const { user } = renderRoute('/dashboard/academic-periods')
 
-    await user.click(await within(await yearsRegion()).findByRole('button', { name: 'Add year' }))
+    await user.click(await screen.findByRole('button', { name: 'Add year' }))
     const dialog = screen.getByRole('dialog', { name: 'Add a school year' })
     await user.type(within(dialog).getByLabelText('Starts'), '2027-06-30')
     await user.type(within(dialog).getByLabelText('Ends'), '2026-09-01')
@@ -131,7 +131,7 @@ describe('AcademicPeriodsPage: school years', () => {
     server.use(http.post(YEARS_PATH, () => HttpResponse.json({ error: 'These dates overlap 2026–27' }, { status: 409 })))
     const { user } = renderRoute('/dashboard/academic-periods')
 
-    await user.click(await within(await yearsRegion()).findByRole('button', { name: 'Add year' }))
+    await user.click(await screen.findByRole('button', { name: 'Add year' }))
     const dialog = screen.getByRole('dialog', { name: 'Add a school year' })
     expect(within(dialog).getByRole('checkbox', { name: 'Current year' })).not.toBeChecked()
     await user.type(within(dialog).getByLabelText('Starts'), '2027-01-01')
@@ -147,14 +147,14 @@ describe('AcademicPeriodsPage: school years', () => {
     server.use(http.post(YEARS_PATH, () => HttpResponse.json({ error: 'These dates overlap 2026–27' }, { status: 409 })))
     const { user } = renderRoute('/dashboard/academic-periods')
 
-    await user.click(await within(await yearsRegion()).findByRole('button', { name: 'Add year' }))
+    await user.click(await screen.findByRole('button', { name: 'Add year' }))
     const dialog = screen.getByRole('dialog', { name: 'Add a school year' })
     await user.type(within(dialog).getByLabelText('Starts'), '2027-01-01')
     await user.type(within(dialog).getByLabelText('Ends'), '2027-08-31')
     await user.click(within(dialog).getByRole('button', { name: 'Add year' }))
     await within(dialog).findByRole('alert')
     await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
-    await user.click(within(await yearsRegion()).getByRole('button', { name: 'Add year' }))
+    await user.click(screen.getByRole('button', { name: 'Add year' }))
 
     const reopened = screen.getByRole('dialog', { name: 'Add a school year' })
     expect(within(reopened).getByLabelText('Starts')).toHaveValue('')
@@ -273,7 +273,7 @@ describe('AcademicPeriodsPage: school years', () => {
     signInWithYears({ role: 'ADMIN', permissions: ['MANAGE_ACADEMIC_PERIODS'] })
     renderRoute('/dashboard/academic-periods')
 
-    expect(await within(await yearsRegion()).findByRole('button', { name: 'Add year' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Add year' })).toBeInTheDocument()
     expect(within(await yearRegion('2027–28')).getByRole('button', { name: 'Edit' })).toBeInTheDocument()
   })
 
@@ -305,7 +305,7 @@ describe('AcademicPeriodsPage: school years', () => {
 
     const region = await yearsRegion()
     expect(await within(region).findByRole('button', { name: 'Try again' })).toBeInTheDocument()
-    expect(within(region).queryByRole('button', { name: 'Add year' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add year' })).not.toBeInTheDocument()
   })
 
   it('shows a loading skeleton and only offers adding once the years have loaded', async () => {
@@ -315,7 +315,7 @@ describe('AcademicPeriodsPage: school years', () => {
 
     const region = await yearsRegion()
     expect(within(region).getByRole('list', { name: 'Loading' })).toBeInTheDocument()
-    expect(within(region).queryByRole('button', { name: 'Add year' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add year' })).not.toBeInTheDocument()
   })
 })
 

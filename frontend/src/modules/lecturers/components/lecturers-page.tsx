@@ -27,6 +27,7 @@ import type { LecturerInviteTarget } from './lecturer-invite-dialog'
 import type { LecturerPlaceFilters } from './lecturer-filters'
 import { LecturerTable } from './lecturer-table'
 import { SkeletonRows } from './skeleton-rows'
+import { TableToolbar } from '#/components/TableToolbar'
 
 const STATUS_TAB_LABELS = {
   ACTIVE: 'Active',
@@ -111,12 +112,7 @@ export function LecturersPage({ organizationId, organizationName }: LecturersPag
 
   return (
     <div className="flex h-full min-w-0 flex-col overflow-y-auto">
-      <DashboardPageHeader icon={GraduationCap} title="Lecturers" subtitle={`${organizationName} · teaching staff`}>
-        <button type="button" className="button button--primary min-h-11 px-4 text-base" onClick={handleAdd}>
-          <Plus size={17} strokeWidth={2.2} aria-hidden="true" />
-          Add lecturer
-        </button>
-      </DashboardPageHeader>
+      <DashboardPageHeader icon={GraduationCap} title="Lecturers" subtitle={`${organizationName} · teaching staff`} />
 
       <div className="grid min-w-0 gap-5 px-[clamp(20px,3.4vw,44px)] pb-10">
         {notice ? <NoticeBar notice={notice} onDismiss={() => setNotice(null)} /> : null}
@@ -137,25 +133,30 @@ export function LecturersPage({ organizationId, organizationName }: LecturersPag
               </button>
             ))}
           </div>
-
-          <div className="relative w-[min(100%,340px)]">
-            <label htmlFor={searchId} className="visually-hidden">
-              Search lecturers
-            </label>
-            <Search className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-ink-3" size={17} strokeWidth={2} aria-hidden="true" />
-            <input
-              id={searchId}
-              type="search"
-              placeholder="Name, subject or email"
-              className="min-h-11 w-full rounded-full border border-rule-strong bg-white pr-4 pl-10 text-base transition-[border-color,box-shadow] duration-150 placeholder:text-ink-3 hover:border-ink-3 focus:border-green-deep focus:shadow-[0_0_0_3px_var(--green-wash)] focus:outline-none"
-              value={lecturerSearch.text}
-              onChange={(event) => lecturerSearch.change(event.target.value)}
-            />
-          </div>
         </div>
 
         <LecturerFilters filters={placeFilters} locations={formOptions.locations} departments={formOptions.departments} subjects={formOptions.subjects} onChange={setPlaceFilters} />
 
+        <TableToolbar
+          addLabel="Add lecturer"
+          onAdd={handleAdd}
+          search={
+            <div className="relative w-[min(100%,340px)]">
+                <label htmlFor={searchId} className="visually-hidden">
+                  Search lecturers
+                </label>
+                <Search className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-ink-3" size={17} strokeWidth={2} aria-hidden="true" />
+                <input
+                  id={searchId}
+                  type="search"
+                  placeholder="Name, subject or email"
+                  className="min-h-11 w-full rounded-full border border-rule-strong bg-white pr-4 pl-10 text-base transition-[border-color,box-shadow] duration-150 placeholder:text-ink-3 hover:border-ink-3 focus:border-green-deep focus:shadow-[0_0_0_3px_var(--green-wash)] focus:outline-none"
+                  value={lecturerSearch.text}
+                  onChange={(event) => lecturerSearch.change(event.target.value)}
+                />
+              </div>
+          }
+        />
         <section className="rounded-card border border-rule" role="tabpanel" aria-label={STATUS_TAB_LABELS[status]}>
           <LecturerList
             status={lecturers.status}

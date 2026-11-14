@@ -32,6 +32,7 @@ import type { GroupListFilters } from './group-filters'
 import { GroupLecturersDialog } from './group-lecturers-dialog'
 import type { GroupLecturersDialogMode } from './group-lecturers-dialog'
 import { GroupTable } from './group-table'
+import { TableAddButton } from '#/components/TableToolbar'
 
 const STATUS_TAB_LABELS = {
   ACTIVE: 'Active',
@@ -107,14 +108,7 @@ export function GroupsPage({ organizationId, organizationName, timeZone }: Group
 
   return (
     <div className="flex h-full min-w-0 flex-col overflow-y-auto">
-      <DashboardPageHeader icon={UsersRound} title="Groups" subtitle={`${organizationName} · the classes you run`}>
-        {canManage && setup === 'READY' ? (
-          <button type="button" className="button button--primary min-h-11 px-4 text-base" onClick={handleAdd}>
-            <Plus size={17} strokeWidth={2.2} aria-hidden="true" />
-            Add group
-          </button>
-        ) : null}
-      </DashboardPageHeader>
+      <DashboardPageHeader icon={UsersRound} title="Groups" subtitle={`${organizationName} · the classes you run`} />
 
       <div className="grid min-w-0 gap-5 px-[clamp(20px,3.4vw,44px)] pb-10">
         {notice ? <NoticeBar notice={notice} onDismiss={() => setNotice(null)} /> : null}
@@ -123,6 +117,7 @@ export function GroupsPage({ organizationId, organizationName, timeZone }: Group
 
         <GroupFilters filters={listFilters} courses={formOptions.courses} years={formOptions.years} onChange={setListFilters} />
 
+        {canManage && setup === 'READY' ? <TableAddButton label="Add group" onClick={handleAdd} /> : null}
         <section className="rounded-card border border-rule" role="tabpanel" aria-label={STATUS_TAB_LABELS[status]}>
           <GroupList
             isFailed={isListFailed}
