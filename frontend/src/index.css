@@ -1,5 +1,8 @@
 @import 'tailwindcss';
 
+/* Styles for the dashboard sidebar while it is collapsed to its icons */
+@custom-variant rail (&:where([data-sidebar='rail'] *));
+
 /* Brand tokens. Kept as plain custom properties too, so inline styles (tones, --i staggers)
    can keep using var(--green) and friends. */
 :root {

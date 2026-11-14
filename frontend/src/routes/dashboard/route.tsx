@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, ClipboardCheck, GraduationCap, List, LogOut, MessageSquareText, Presentation, School, Users, UsersRound } from 'lucide-react'
+import { ChevronDown, ClipboardCheck, GraduationCap, List, LogOut, MessageSquareText, PanelLeftClose, PanelLeftOpen, Presentation, School, Users, UsersRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { hasOrganizationPermission } from '@shigjetademy/shared/auth'
 import type { Permission } from '@shigjetademy/shared/auth'
@@ -8,7 +8,9 @@ import { Link, Outlet, createFileRoute, useMatchRoute, useNavigate, useRouterSta
 import wordmark from '#/assets/brand/shigjetademy-wordmark.png'
 import { ADMIN_MODULES } from '#/lib/admin-modules'
 import { UserAvatar } from '#/components/UserAvatar'
+import { useMediaQuery } from '#/hooks/useMediaQuery'
 import { MODULES, moduleBySlug } from '#/lib/modules'
+import { SidebarRailContext, readSidebarCollapsed, storeSidebarCollapsed, useSidebarRail } from '#/lib/sidebar-rail'
 import type { ModuleSlug } from '#/lib/modules'
 import { OWNER_NAV_SECTIONS } from '#/lib/owner-navigation'
 import type { OwnerNavItem } from '#/lib/owner-navigation'
@@ -19,13 +21,14 @@ import { isOrganizationGuardian, isOrganizationLecturer, isOrganizationOwner, is
 import type { SessionMembership } from '#/modules/auth/utils/session-user'
 import { ROLE_LABELS } from '#/modules/auth/utils/role-labels'
 import { CommunicationNavGroup } from '#/modules/communication/components/communication-nav-group'
+import { NARROW_SIDEBAR_QUERY } from '#/modules/communication/utils/communication-links'
 import { OrganizationSuspended } from '#/modules/organization/components/organization-suspended'
 import { OrganizationDeactivated } from '#/modules/organization-settings/components/organization-deactivated'
 import { OrganizationMark } from '#/modules/organization/components/organization-mark'
 import { OrganizationSwitcher } from '#/modules/organization/components/organization-switcher'
 
 const SIDEBAR_LINK_CLASS =
-  'flex items-center gap-3 rounded-xl px-3.5 py-[10px] font-[550] text-on-navy-2 no-underline transition-colors duration-[180ms] ease-out hover:text-white aria-[current=page]:bg-navy-2 aria-[current=page]:text-white max-[860px]:flex-none max-[860px]:whitespace-nowrap [&_svg]:flex-none aria-[current=page]:[&_svg]:text-green'
+  'flex items-center gap-3 rounded-xl px-3.5 py-[10px] font-[550] text-on-navy-2 no-underline transition-colors duration-[180ms] ease-out hover:text-white aria-[current=page]:bg-navy-2 aria-[current=page]:text-white max-[860px]:flex-none max-[860px]:whitespace-nowrap rail:justify-center rail:px-0 [&_svg]:flex-none aria-[current=page]:[&_svg]:text-green'
 
 // School modules that are built have their own page instead of the "not built yet" one
 const BUILT_MODULE_PAGES = {
@@ -69,7 +72,7 @@ const SIDEBAR_SUBLINK_CLASS =
 // The pages under a lecturer's Students menu: the existing students page (and each student's page under it) and the notes to parents
 const STUDENTS_MENU_PATHS = ['/dashboard/my-students', '/dashboard/student-notes'] as const
 
-const SIDEBAR_HEADING_CLASS = 'px-3.5 pb-2.5 font-data text-[0.807rem] tracking-[0.06em] text-on-navy-2 uppercase max-[860px]:hidden'
+const SIDEBAR_HEADING_CLASS = 'px-3.5 pb-2.5 font-data text-[0.807rem] tracking-[0.06em] text-on-navy-2 uppercase max-[860px]:hidden rail:hidden'
 
 export const Route = createFileRoute('/dashboard')({
   beforeLoad: ({ context }) => requireOrganization(context.queryClient),
@@ -89,70 +92,100 @@ function DashboardLayout() {
   const isAdmin = auth.user ? isPlatformAdmin(auth.user) : false
   const organizationStatus = isAdmin ? 'ACTIVE' : (membership?.organization.status ?? 'ACTIVE')
   const isOwner = isOrganizationOwner(membership)
+  const [isCollapsed, setIsCollapsed] = useState(readSidebarCollapsed)
+  // Narrow screens show the sidebar as a row along the top, which has nothing to collapse
+  const isNarrow = useMediaQuery(NARROW_SIDEBAR_QUERY)
+  const isRail = isCollapsed && !isNarrow
 
   const handleLogout = async () => {
     await auth.logout()
     await navigate({ to: '/login' })
   }
 
+  const handleCollapsedChange = (nextIsCollapsed: boolean) => {
+    setIsCollapsed(nextIsCollapsed)
+    storeSidebarCollapsed(nextIsCollapsed)
+  }
+
   return (
     <div className="h-svh bg-navy max-[860px]:h-auto max-[860px]:min-h-svh">
-      <div className="grid h-full grid-cols-[minmax(248px,288px)_minmax(0,1fr)] max-[860px]:grid-cols-1">
-        <aside className="flex min-h-0 flex-col gap-5 px-3 py-4 max-[860px]:gap-3 max-[860px]:pb-3">
-          <div className="flex items-center justify-between gap-3">
-            <Link
-              to="/"
-              className="rounded-[14px] bg-haze px-3.5 py-2.5 no-underline transition-colors duration-200 hover:bg-white"
-              aria-label="Shigjetademy website"
-            >
-              <img className="block h-7 w-auto" src={wordmark} alt="Shigjetademy" width={112} height={28} />
-            </Link>
-          </div>
-
-          {auth.user && membership && !isAdmin ? (
-            <OrganizationSwitcher memberships={auth.user.memberships} activeMembership={membership} />
-          ) : (
-            <div className="flex items-center gap-3 rounded-xl bg-navy-2 px-3 py-2.5">
-              <OrganizationMark name={organizationName} />
-              <span className="grid min-w-0 leading-tight">
-                <span className="truncate font-semibold text-white">{organizationName}</span>
-                <span className="truncate text-[0.87rem] text-on-navy-2">{roleLabel}</span>
-              </span>
+      <div
+        className={`grid h-full transition-[grid-template-columns] duration-200 ease-out max-[860px]:grid-cols-1 motion-reduce:transition-none ${isRail ? 'grid-cols-[76px_minmax(0,1fr)]' : 'grid-cols-[minmax(248px,288px)_minmax(0,1fr)]'}`}
+      >
+        <aside data-sidebar={isRail ? 'rail' : 'full'} className="flex min-h-0 min-w-0 flex-col gap-5 px-3 py-4 max-[860px]:gap-3 max-[860px]:pb-3">
+          <SidebarRailContext value={{ isRail, expand: () => handleCollapsedChange(false) }}>
+            <div className="flex items-center justify-between gap-3 rail:justify-center">
+              <Link to="/" className="rounded-[14px] bg-haze px-3.5 py-2.5 no-underline transition-colors duration-200 hover:bg-white rail:hidden" aria-label="Shigjetademy website">
+                <img className="block h-7 w-auto" src={wordmark} alt="Shigjetademy" width={112} height={28} />
+              </Link>
+              <button
+                type="button"
+                onClick={() => handleCollapsedChange(!isRail)}
+                className="grid size-10 flex-none place-items-center rounded-xl text-on-navy-2 transition-colors duration-200 hover:bg-navy-2 hover:text-white max-[860px]:hidden"
+                aria-label={isRail ? 'Expand sidebar' : 'Collapse sidebar'}
+                title={isRail ? 'Expand sidebar' : 'Collapse sidebar'}
+              >
+                {isRail ? <PanelLeftOpen size={19} strokeWidth={1.9} aria-hidden="true" /> : <PanelLeftClose size={19} strokeWidth={1.9} aria-hidden="true" />}
+              </button>
             </div>
-          )}
 
-          <nav
-            className="-mx-1 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-1 [scrollbar-width:none] max-[860px]:flex-row max-[860px]:gap-1.5 max-[860px]:overflow-x-auto [&::-webkit-scrollbar]:hidden"
-            aria-label="Modules"
-          >
-            <SidebarNavigation membership={membership} isAdmin={isAdmin} />
-          </nav>
+            {isRail ? (
+              <button
+                type="button"
+                onClick={() => handleCollapsedChange(false)}
+                className="mx-auto grid place-items-center rounded-xl p-1.5 transition-colors duration-200 hover:bg-navy-2"
+                aria-label={`${organizationName}, expand sidebar`}
+                title={organizationName}
+              >
+                <OrganizationMark name={organizationName} />
+              </button>
+            ) : auth.user && membership && !isAdmin ? (
+              <OrganizationSwitcher memberships={auth.user.memberships} activeMembership={membership} />
+            ) : (
+              <div className="flex items-center gap-3 rounded-xl bg-navy-2 px-3 py-2.5">
+                <OrganizationMark name={organizationName} />
+                <span className="grid min-w-0 leading-tight">
+                  <span className="truncate font-semibold text-white">{organizationName}</span>
+                  <span className="truncate text-[0.87rem] text-on-navy-2">{roleLabel}</span>
+                </span>
+              </div>
+            )}
 
-          <div className="flex items-center gap-2 border-t border-white/10 px-1 pt-4 max-[860px]:hidden">
-            <Link
-              to="/dashboard/profile"
-              className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1.5 py-1.5 no-underline transition-colors duration-200 hover:bg-navy-2 aria-[current=page]:bg-navy-2"
-              aria-label="Your profile"
+            <nav
+              className="-mx-1 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-1 [scrollbar-width:none] max-[860px]:flex-row max-[860px]:gap-1.5 max-[860px]:overflow-x-auto [&::-webkit-scrollbar]:hidden"
+              aria-label="Modules"
             >
-              <UserAvatar
-                name={fullName}
-                avatarUrl={auth.user?.avatar_url ?? null}
-                className="grid size-9 flex-none place-items-center rounded-full bg-green-wash text-[0.9rem] font-bold text-green-deep"
-              />
-              <span className="grid min-w-0 flex-1 leading-tight">
-                <span className="truncate font-semibold text-white">{fullName}</span>
-                <span className="truncate text-[0.87rem] text-on-navy-2">{auth.user?.email}</span>
-              </span>
-            </Link>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="grid size-9 place-items-center rounded-full text-on-navy-2 transition-colors duration-200 hover:bg-navy-2 hover:text-white"
-              aria-label="Log out"
-            >
-              <LogOut size={17} strokeWidth={1.9} aria-hidden="true" />
-            </button>
-          </div>
+              <SidebarNavigation membership={membership} isAdmin={isAdmin} />
+            </nav>
+
+            <div className="flex items-center gap-2 border-t border-white/10 px-1 pt-4 max-[860px]:hidden rail:flex-col rail:px-0">
+              <Link
+                to="/dashboard/profile"
+                className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1.5 py-1.5 no-underline transition-colors duration-200 hover:bg-navy-2 aria-[current=page]:bg-navy-2 rail:flex-none"
+                aria-label="Your profile"
+                title={isRail ? fullName : undefined}
+              >
+                <UserAvatar
+                  name={fullName}
+                  avatarUrl={auth.user?.avatar_url ?? null}
+                  className="grid size-9 flex-none place-items-center rounded-full bg-green-wash text-[0.9rem] font-bold text-green-deep"
+                />
+                <span className="grid min-w-0 flex-1 leading-tight rail:hidden">
+                  <span className="truncate font-semibold text-white">{fullName}</span>
+                  <span className="truncate text-[0.87rem] text-on-navy-2">{auth.user?.email}</span>
+                </span>
+              </Link>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="grid size-9 place-items-center rounded-full text-on-navy-2 transition-colors duration-200 hover:bg-navy-2 hover:text-white"
+                aria-label="Log out"
+                title={isRail ? 'Log out' : undefined}
+              >
+                <LogOut size={17} strokeWidth={1.9} aria-hidden="true" />
+              </button>
+            </div>
+          </SidebarRailContext>
         </aside>
 
         <main className="relative min-h-0 overflow-hidden rounded-l-[24px] bg-white max-[860px]:min-h-[70svh] max-[860px]:rounded-l-none max-[860px]:rounded-t-[24px]">
@@ -207,12 +240,13 @@ function SidebarNavigation({ membership, isAdmin }: SidebarNavigationProps) {
 
 /** Students have My school and Communication; their profile is at the bottom of the sidebar like everyone's */
 function StudentNavigation() {
+  const sidebar = useSidebarRail()
   return (
     <>
       <span className={SIDEBAR_HEADING_CLASS} aria-hidden="true">
         Dashboard
       </span>
-      <Link to="/dashboard/my-school" className={SIDEBAR_LINK_CLASS}>
+      <Link to="/dashboard/my-school" className={SIDEBAR_LINK_CLASS} title={sidebar.isRail ? 'My school' : undefined}>
         <SidebarLinkContent icon={School} label="My school" />
       </Link>
       <CommunicationNavGroup linkClassName={SIDEBAR_LINK_CLASS} />
@@ -222,15 +256,16 @@ function StudentNavigation() {
 
 /** Guardians have My children, Notes and Communication; their profile is at the bottom of the sidebar like everyone's */
 function GuardianNavigation() {
+  const sidebar = useSidebarRail()
   return (
     <>
       <span className={SIDEBAR_HEADING_CLASS} aria-hidden="true">
         Dashboard
       </span>
-      <Link to="/dashboard/my-children" className={SIDEBAR_LINK_CLASS}>
+      <Link to="/dashboard/my-children" className={SIDEBAR_LINK_CLASS} title={sidebar.isRail ? 'My children' : undefined}>
         <SidebarLinkContent icon={UsersRound} label="My children" />
       </Link>
-      <Link to="/dashboard/my-notes" className={SIDEBAR_LINK_CLASS}>
+      <Link to="/dashboard/my-notes" className={SIDEBAR_LINK_CLASS} title={sidebar.isRail ? 'Notes' : undefined}>
         <SidebarLinkContent icon={MessageSquareText} label="Notes" />
       </Link>
       <CommunicationNavGroup linkClassName={SIDEBAR_LINK_CLASS} />
@@ -240,19 +275,20 @@ function GuardianNavigation() {
 
 /** Lecturers have My teaching, Students, Attendance, Lessons and Communication; their profile is at the bottom of the sidebar like everyone's */
 function LecturerNavigation() {
+  const sidebar = useSidebarRail()
   return (
     <>
       <span className={SIDEBAR_HEADING_CLASS} aria-hidden="true">
         Dashboard
       </span>
-      <Link to="/dashboard/my-teaching" className={SIDEBAR_LINK_CLASS}>
+      <Link to="/dashboard/my-teaching" className={SIDEBAR_LINK_CLASS} title={sidebar.isRail ? 'My teaching' : undefined}>
         <SidebarLinkContent icon={GraduationCap} label="My teaching" />
       </Link>
       <StudentsMenu />
-      <Link to="/dashboard/attendance" className={SIDEBAR_LINK_CLASS}>
+      <Link to="/dashboard/attendance" className={SIDEBAR_LINK_CLASS} title={sidebar.isRail ? 'Attendance' : undefined}>
         <SidebarLinkContent icon={ClipboardCheck} label="Attendance" />
       </Link>
-      <Link to="/dashboard/lessons" className={SIDEBAR_LINK_CLASS}>
+      <Link to="/dashboard/lessons" className={SIDEBAR_LINK_CLASS} title={sidebar.isRail ? 'Lessons' : undefined}>
         <SidebarLinkContent icon={Presentation} label="Lessons" />
       </Link>
       <CommunicationNavGroup linkClassName={SIDEBAR_LINK_CLASS} />
@@ -271,22 +307,35 @@ function StudentsMenu() {
     setWasInside(isInside)
     if (isInside) setIsOpen(true)
   }
+  const sidebar = useSidebarRail()
   const menuId = 'students-menu'
+  // Its links only show in the full sidebar, so on the rail the menu opens the sidebar
+  const isExpanded = isOpen && !sidebar.isRail
+
+  const handleToggle = () => {
+    if (sidebar.isRail) {
+      sidebar.expand()
+      setIsOpen(true)
+      return
+    }
+    setIsOpen(!isOpen)
+  }
 
   return (
     <div className="flex flex-col gap-0.5 max-[860px]:flex-none max-[860px]:flex-row max-[860px]:items-center max-[860px]:gap-1.5">
       <button
         type="button"
         className={`${SIDEBAR_LINK_CLASS} w-full cursor-pointer text-left ${isInside ? 'text-white' : ''}`}
-        aria-expanded={isOpen}
-        aria-controls={isOpen ? menuId : undefined}
-        onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isExpanded}
+        aria-controls={isExpanded ? menuId : undefined}
+        title={sidebar.isRail ? 'Students' : undefined}
+        onClick={handleToggle}
       >
         <Users size={18} strokeWidth={1.9} aria-hidden="true" />
-        <span className="flex-1">Students</span>
-        <ChevronDown className={`transition-transform duration-[180ms] ease-out ${isOpen ? 'rotate-180' : ''}`} size={16} strokeWidth={2} aria-hidden="true" />
+        <span className="flex-1 rail:sr-only">Students</span>
+        <ChevronDown className={`transition-transform duration-[180ms] ease-out rail:hidden ${isOpen ? 'rotate-180' : ''}`} size={16} strokeWidth={2} aria-hidden="true" />
       </button>
-      {isOpen ? (
+      {isExpanded ? (
         <div id={menuId} className="flex flex-col gap-0.5 max-[860px]:flex-row max-[860px]:gap-1.5">
           <Link to="/dashboard/my-students" className={SIDEBAR_SUBLINK_CLASS}>
             <List size={16} strokeWidth={1.9} aria-hidden="true" />
@@ -336,10 +385,11 @@ interface OwnerNavLinkProps {
 }
 
 function OwnerNavLink({ item }: OwnerNavLinkProps) {
+  const sidebar = useSidebarRail()
   switch (item.kind) {
     case 'page':
       return (
-        <Link to={item.to} className={SIDEBAR_LINK_CLASS}>
+        <Link to={item.to} className={SIDEBAR_LINK_CLASS} title={sidebar.isRail ? item.label : undefined}>
           <SidebarLinkContent icon={item.icon} label={item.label} />
         </Link>
       )
@@ -349,7 +399,7 @@ function OwnerNavLink({ item }: OwnerNavLinkProps) {
       const mod = moduleBySlug(item.slug)
       if (!mod) return null
       return (
-        <Link to="/dashboard/$module" params={{ module: item.slug }} activeOptions={{ exact: true }} className={SIDEBAR_LINK_CLASS}>
+        <Link to="/dashboard/$module" params={{ module: item.slug }} activeOptions={{ exact: true }} className={SIDEBAR_LINK_CLASS} title={sidebar.isRail ? (item.label ?? mod.name) : undefined}>
           <SidebarLinkContent icon={mod.icon} label={item.label ?? mod.name} />
         </Link>
       )
@@ -370,7 +420,7 @@ function SidebarLinkContent({ icon: Icon, label }: SidebarLinkContentProps) {
   return (
     <>
       <Icon size={18} strokeWidth={1.9} aria-hidden="true" />
-      {label}
+      <span className="rail:sr-only">{label}</span>
     </>
   )
 }
@@ -382,6 +432,7 @@ interface ModuleNavigationProps {
 
 /** The platform admin's modules, or the flat school module list for everyone else in an organization */
 function ModuleNavigation({ isAdmin, hiddenSlugs }: ModuleNavigationProps) {
+  const sidebar = useSidebarRail()
   // The school admin's Messages module is the Communication group below
   const modules = isAdmin ? ADMIN_MODULES : MODULES.filter((m) => !hiddenSlugs.has(m.slug) && m.slug !== 'messages')
   return (
@@ -391,11 +442,11 @@ function ModuleNavigation({ isAdmin, hiddenSlugs }: ModuleNavigationProps) {
       </span>
       {modules.map((m) =>
         isBuiltModule(m.slug) ? (
-          <Link key={m.slug} to={BUILT_MODULE_PAGES[m.slug]} className={SIDEBAR_LINK_CLASS}>
+          <Link key={m.slug} to={BUILT_MODULE_PAGES[m.slug]} className={SIDEBAR_LINK_CLASS} title={sidebar.isRail ? m.name : undefined}>
             <SidebarLinkContent icon={m.icon} label={m.name} />
           </Link>
         ) : (
-          <Link key={m.slug} to="/dashboard/$module" params={{ module: m.slug }} activeOptions={{ exact: true }} className={SIDEBAR_LINK_CLASS}>
+          <Link key={m.slug} to="/dashboard/$module" params={{ module: m.slug }} activeOptions={{ exact: true }} className={SIDEBAR_LINK_CLASS} title={sidebar.isRail ? m.name : undefined}>
             <SidebarLinkContent icon={m.icon} label={m.name} />
           </Link>
         ),

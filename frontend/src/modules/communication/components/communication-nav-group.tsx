@@ -3,6 +3,7 @@ import { ChevronDown, MessageSquare } from 'lucide-react'
 import { Link, useMatchRoute } from '@tanstack/react-router'
 import type { MemberRole } from '@shigjetademy/shared/auth'
 import { useMediaQuery } from '#/hooks/useMediaQuery'
+import { useSidebarRail } from '#/lib/sidebar-rail'
 import { useActiveMembership } from '#/modules/auth/hooks/use-active-membership'
 import { useAnnouncementUnreadCount } from '#/modules/announcements/hooks/use-announcement-unread-count'
 import { useDiscussionUnreadCount } from '#/modules/discussions/hooks/use-discussion-unread-count'
@@ -46,25 +47,47 @@ function CommunicationLinks({ organizationId, role, linkClassName }: Communicati
   const links = getCommunicationLinks(role)
   const hasDiscussions = links.some((link) => link.to === '/dashboard/discussions')
   const discussionsUnread = useDiscussionUnreadCount({ organizationId, isEnabled: hasDiscussions })
+  const sidebar = useSidebarRail()
   const [override, setOverride] = useState<OpenOverride | null>(null)
   const listId = useId()
   const isOnRoute = links.some((link) => !!matchRoute({ to: link.to }))
-  const isOpen = override && override.wasOnRoute === isOnRoute ? override.isOpen : isOnRoute
+  const isChosenOpen = override && override.wasOnRoute === isOnRoute ? override.isOpen : isOnRoute
+  // Its links only show in the full sidebar, so on the rail the group opens the sidebar
+  const isOpen = isChosenOpen && !sidebar.isRail
   const unreadCount = unread.data?.unread_count ?? 0
   const unreadAnnouncementCount = announcementsUnread.data?.unread_count ?? 0
   const unreadDiscussionCount = hasDiscussions ? (discussionsUnread.data?.unread_count ?? 0) : 0
   const totalUnreadCount = unreadCount + unreadAnnouncementCount + unreadDiscussionCount
 
-  const handleToggle = () => setOverride({ isOpen: !isOpen, wasOnRoute: isOnRoute })
+  const handleToggle = () => {
+    if (sidebar.isRail) {
+      sidebar.expand()
+      setOverride({ isOpen: true, wasOnRoute: isOnRoute })
+      return
+    }
+    setOverride({ isOpen: !isOpen, wasOnRoute: isOnRoute })
+  }
 
   return (
     <div role="group" aria-label="Communication" className="flex flex-col gap-0.5 max-[860px]:flex-none max-[860px]:flex-row max-[860px]:gap-1.5">
       {isNarrow ? null : (
-        <button type="button" className={`${linkClassName} w-full text-left ${isOnRoute ? 'text-white' : ''}`} aria-expanded={isOpen} aria-controls={listId} onClick={handleToggle}>
+        <button
+          type="button"
+          className={`${linkClassName} relative w-full text-left ${isOnRoute ? 'text-white' : ''}`}
+          aria-expanded={isOpen}
+          aria-controls={listId}
+          title={sidebar.isRail ? 'Communication' : undefined}
+          onClick={handleToggle}
+        >
           <MessageSquare size={18} strokeWidth={1.9} aria-hidden="true" />
-          Communication
+          <span className="rail:sr-only">Communication</span>
           {!isOpen && totalUnreadCount > 0 ? <UnreadBadge count={totalUnreadCount} label={totalUnreadCount === unreadCount ? 'unread messages' : 'unread'} /> : null}
-          <ChevronDown className={`${totalUnreadCount > 0 && !isOpen ? '' : 'ml-auto'} transition-transform duration-[180ms] ${isOpen ? 'rotate-180' : ''}`} size={16} strokeWidth={2} aria-hidden="true" />
+          <ChevronDown
+            className={`${totalUnreadCount > 0 && !isOpen ? '' : 'ml-auto'} transition-transform duration-[180ms] rail:hidden ${isOpen ? 'rotate-180' : ''}`}
+            size={16}
+            strokeWidth={2}
+            aria-hidden="true"
+          />
         </button>
       )}
       {isNarrow || isOpen ? (
@@ -92,7 +115,10 @@ interface UnreadBadgeProps {
 
 function UnreadBadge({ count, label }: UnreadBadgeProps) {
   return (
-    <span className="ml-auto min-w-5 rounded-full bg-green px-1.5 py-px text-center text-[0.75rem] leading-snug font-bold text-navy" aria-label={`${count} ${label}`}>
+    <span
+      className="ml-auto min-w-5 rounded-full rail:absolute rail:top-0.5 rail:right-1 rail:ml-0 rail:min-w-4 rail:px-1 rail:text-[0.65rem] bg-green px-1.5 py-px text-center text-[0.75rem] leading-snug font-bold text-navy"
+      aria-label={`${count} ${label}`}
+    >
       {formatBadge(count)}
     </span>
   )
