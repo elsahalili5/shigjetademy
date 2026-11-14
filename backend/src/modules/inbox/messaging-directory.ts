@@ -87,5 +87,5 @@ export const loadMessagingDirectory = async ({ organizationId }: LoadMessagingDi
       lastName: membership.user.last_name,
     })
   }
-  return { context: { isStudentMessagingEnabled: settings?.student_messaging_enabled ?? false }, people }
+  return { context: { isStudentMessagingEnabled: settings?.student_messaging_enabled ?? true }, people }
 }

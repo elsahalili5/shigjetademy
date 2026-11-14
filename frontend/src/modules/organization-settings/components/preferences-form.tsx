@@ -75,10 +75,10 @@ export function PreferencesForm({ organizationId, settings }: PreferencesFormPro
           />
           <span className="grid gap-0.5">
             <label htmlFor={ids.studentMessaging} className="font-semibold">
-              Let students message their lecturers
+              Let students message teachers and admins
             </label>
             <span id={ids.studentMessagingHint} className="text-[0.93rem] text-ink-3">
-              Students and the lecturers of their groups can write to each other. When it is off, their existing conversations stay readable.
+              Students can write to the lecturers of their groups and to the school’s admins, and they can write back. When it is off, their existing conversations stay readable.
             </span>
           </span>
         </div>

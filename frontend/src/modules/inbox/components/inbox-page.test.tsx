@@ -53,6 +53,10 @@ const serveThread = (conversation: InboxConversation) =>
 
 const serveContacts = (contacts: InboxContact[]) => server.use(http.get('*/api/organizations/org-1/inbox/contacts', () => HttpResponse.json({ data: contacts })))
 
+const STUDENT_MEMBERSHIPS: AuthUser['memberships'] = [
+  { id: 'membership-me', role: 'STUDENT', permissions: [], organization: { id: 'org-1', name: 'Oxford Academy', type: 'ACADEMY', status: 'ACTIVE', ...DEFAULT_SETTINGS } },
+]
+
 const signInAsGuardian = () => signInAs(buildUser({ id: 'user-me', memberships: GUARDIAN_MEMBERSHIPS }))
 
 const ARBEN_SUMMARY = summary({ id: 'c-arben', other: ARBEN, last_message: ARBEN_MESSAGES[2], unread_count: 0, last_message_at: ARBEN_MESSAGES[2].created_at })
@@ -224,7 +228,7 @@ describe('the inbox: sending', () => {
 
     await user.click(await screen.findByRole('button', { name: /Arben Hoxha/ }))
 
-    expect(await screen.findByRole('note')).toHaveTextContent('Messaging between students and lecturers is turned off for this school. You can still read this conversation.')
+    expect(await screen.findByRole('note')).toHaveTextContent('Messaging between students and the school’s teachers and admins is turned off. You can still read this conversation.')
     expect(screen.queryByRole('textbox', { name: 'Message' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Send' })).not.toBeInTheDocument()
     expect(screen.getByText('Alba is doing well')).toBeInTheDocument()
@@ -232,6 +236,20 @@ describe('the inbox: sending', () => {
 })
 
 describe('the inbox: new message', () => {
+  it('offers a student their lecturers and the school admins, grouped by role', async () => {
+    signInAs(buildUser({ id: 'user-me', memberships: STUDENT_MEMBERSHIPS }))
+    serveConversations([])
+    serveContacts([ARBEN, DRITA])
+    const { user } = renderRoute('/dashboard/inbox')
+
+    await user.click(await screen.findByRole('button', { name: 'New message' }))
+    const dialog = await screen.findByRole('dialog', { name: 'New message' })
+
+    expect(within(await within(dialog).findByRole('group', { name: 'School staff' })).getByRole('radio', { name: /Drita Berisha/ })).toBeInTheDocument()
+    expect(within(within(dialog).getByRole('group', { name: 'Lecturers' })).getByRole('radio', { name: /Arben Hoxha/ })).toBeInTheDocument()
+    expect(within(dialog).queryByRole('group', { name: 'Students' })).not.toBeInTheDocument()
+  })
+
   it('lists the allowed contacts grouped by role, then starts the conversation and opens it', async () => {
     signInAs(buildUser({ id: 'user-me', memberships: OWNER_MEMBERSHIPS.map((membership) => ({ ...membership, id: ME })) }))
     serveConversations([])
@@ -301,5 +319,30 @@ describe('the inbox: new message', () => {
     const dialog = await screen.findByRole('dialog', { name: 'New message' })
     expect(await within(dialog).findByText('There is nobody you can message yet.')).toBeInTheDocument()
     expect(within(dialog).queryByRole('button', { name: 'Send message' })).not.toBeInTheDocument()
+  })
+
+  it('tells a student who they can write to when nobody is listed, and that messaging is off when it is', async () => {
+    const organization = STUDENT_MEMBERSHIPS[0].organization
+    signInAs(buildUser({ id: 'user-me', memberships: [{ ...STUDENT_MEMBERSHIPS[0], organization: { ...organization, student_messaging_enabled: false } }] }))
+    serveConversations([])
+    serveContacts([])
+    const { user } = renderRoute('/dashboard/inbox')
+
+    await user.click(await screen.findByRole('button', { name: 'New message' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'New message' })
+    expect(await within(dialog).findByText('Messaging between students and the school’s teachers and admins is turned off.')).toBeInTheDocument()
+  })
+
+  it('tells a student with messaging on that they can write to their lecturers and the admins', async () => {
+    signInAs(buildUser({ id: 'user-me', memberships: STUDENT_MEMBERSHIPS }))
+    serveConversations([])
+    serveContacts([])
+    const { user } = renderRoute('/dashboard/inbox')
+
+    await user.click(await screen.findByRole('button', { name: 'New message' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'New message' })
+    expect(await within(dialog).findByText('You can write to the lecturers of your groups and to the school’s admins.')).toBeInTheDocument()
   })
 })
