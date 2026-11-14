@@ -28,7 +28,8 @@ export function AuthShell({ children }: AuthShellProps) {
           />
         </Link>
 
-        <div className="mx-auto w-[min(100%,440px)] self-center [&_h1]:text-[clamp(2rem,3.4vw,2.8rem)] [&_h1]:font-bold [&_h1]:tracking-[-0.034em]">
+        {/* data-flush-end opts out of the marketing pages' bottom padding on main's last child, which would push the form up */}
+        <div data-flush-end className="mx-auto w-[min(100%,440px)] self-center [&_h1]:text-[clamp(2rem,3.4vw,2.8rem)] [&_h1]:font-bold [&_h1]:tracking-[-0.034em]">
           {children}
         </div>
       </main>
