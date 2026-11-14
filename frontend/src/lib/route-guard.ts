@@ -69,6 +69,14 @@ export function requireOrganizationMember(queryClient: QueryClient) {
   }
 }
 
+/** Discussions are for every member of the active organization except its guardians, who go back to their dashboard */
+export function requireOrganizationMemberExceptGuardian(queryClient: QueryClient) {
+  const membership = getSessionMembership(queryClient)
+  if (!membership || isOrganizationGuardian(membership)) {
+    throw redirect({ to: '/dashboard' })
+  }
+}
+
 /** My school is for the active organization's students; anyone else goes back to their dashboard */
 export function requireOrganizationStudent(queryClient: QueryClient) {
   if (!isOrganizationStudent(getSessionMembership(queryClient))) {

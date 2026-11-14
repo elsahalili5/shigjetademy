@@ -209,6 +209,24 @@ enum AnnouncementStatus {
   ARCHIVED
 }
 
+/// Where a discussion topic lives: in one group or in one course (the people of its active groups)
+enum DiscussionSpaceKind {
+  GROUP
+  COURSE
+}
+
+/// A removed topic or reply keeps its row and is shown as removed, never deleted
+enum DiscussionStatus {
+  ACTIVE
+  REMOVED
+}
+
+/// Who removed a topic or reply: its author or a moderator
+enum DiscussionRemovedBy {
+  AUTHOR
+  MODERATOR
+}
+
 enum WeekStart {
   MONDAY
   SUNDAY
@@ -343,6 +361,8 @@ model Organization {
   student_parent_notes StudentParentNote[]
   conversations        Conversation[]
   announcements        Announcement[]
+  discussion_topics    DiscussionTopic[]
+  discussion_replies   DiscussionReply[]
 }
 
 /// How one organization runs. An organization without a row reads the defaults; the row is written on its first save.
@@ -669,11 +689,12 @@ model Course {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  organization  Organization   @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  organization      Organization      @relation(fields: [organization_id], references: [id], onDelete: Cascade)
   /// NoAction: a department with courses can't be deleted (the department service says why), while deleting the organization still removes both, as both sit directly under it
-  department    Department     @relation(fields: [department_id], references: [id], onDelete: NoAction)
-  groups        Group[]
-  announcements Announcement[]
+  department        Department        @relation(fields: [department_id], references: [id], onDelete: NoAction)
+  groups            Group[]
+  announcements     Announcement[]
+  discussion_topics DiscussionTopic[]
 
   @@unique([organization_id, name])
   @@unique([organization_id, code])
@@ -713,6 +734,7 @@ model Group {
   reschedules          LessonReschedule[]
   lesson_plans         LessonPlan[]
   announcements        Announcement[]
+  discussion_topics    DiscussionTopic[]
 
   @@unique([course_id, academic_year_id, name])
   @@index([organization_id, status])
@@ -907,6 +929,9 @@ model Membership {
   sent_messages      Message[]
   announcements      Announcement[]
   announcement_reads AnnouncementRead[]
+  discussion_topics  DiscussionTopic[]
+  discussion_replies DiscussionReply[]
+  discussion_reads   DiscussionRead[]
 
   @@unique([user_id, organization_id])
   @@index([organization_id, role])
@@ -1075,5 +1100,78 @@ model AnnouncementRead {
   membership   Membership   @relation(fields: [membership_id], references: [id], onDelete: Cascade)
 
   @@id([announcement_id, membership_id])
+  @@index([membership_id])
+}
+
+/// A conversation started in a group or a course. Who may read and write is worked out from the group's and course's current people: no row per member.
+/// Topics and replies are removed softly (status REMOVED), never deleted. last_activity_at moves with the topic's creation and each new reply.
+model DiscussionTopic {
+  id                   String               @id @default(uuid()) @db.Uuid
+  organization_id      String               @db.Uuid
+  space_kind           DiscussionSpaceKind
+  /// Set for a GROUP space
+  group_id             String?              @db.Uuid
+  /// Set for a COURSE space
+  course_id            String?              @db.Uuid
+  author_membership_id String               @db.Uuid
+  title                String
+  body                 String
+  is_pinned            Boolean              @default(false)
+  is_locked            Boolean              @default(false)
+  status               DiscussionStatus     @default(ACTIVE)
+  removed_by           DiscussionRemovedBy?
+  /// Set when the author changed it after posting
+  edited_at            DateTime?
+  last_activity_at     DateTime             @default(now())
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  organization Organization      @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  author       Membership        @relation(fields: [author_membership_id], references: [id], onDelete: Cascade)
+  group        Group?            @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  course       Course?           @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  replies      DiscussionReply[]
+  reads        DiscussionRead[]
+
+  @@index([organization_id, last_activity_at])
+  @@index([group_id])
+  @@index([course_id])
+  @@index([author_membership_id])
+}
+
+/// A flat reply in time order: text only, no nesting
+model DiscussionReply {
+  id                   String               @id @default(uuid()) @db.Uuid
+  topic_id             String               @db.Uuid
+  organization_id      String               @db.Uuid
+  author_membership_id String               @db.Uuid
+  body                 String
+  status               DiscussionStatus     @default(ACTIVE)
+  removed_by           DiscussionRemovedBy?
+  /// Set when the author changed it after posting
+  edited_at            DateTime?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  topic        DiscussionTopic @relation(fields: [topic_id], references: [id], onDelete: Cascade)
+  organization Organization    @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  author       Membership      @relation(fields: [author_membership_id], references: [id], onDelete: Cascade)
+
+  @@index([topic_id, created_at])
+  @@index([author_membership_id])
+}
+
+/// How far a member has read a topic: the newest activity they saw. At most one row per pair; it only moves forward.
+model DiscussionRead {
+  topic_id      String   @db.Uuid
+  membership_id String   @db.Uuid
+  last_read_at  DateTime
+
+  topic      DiscussionTopic @relation(fields: [topic_id], references: [id], onDelete: Cascade)
+  membership Membership      @relation(fields: [membership_id], references: [id], onDelete: Cascade)
+
+  @@id([topic_id, membership_id])
   @@index([membership_id])
 }

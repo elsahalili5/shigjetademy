@@ -26,7 +26,8 @@
     "./guardians": "./src/guardians.ts",
     "./parent-notes": "./src/parent-notes.ts",
     "./inbox": "./src/inbox.ts",
-    "./announcements": "./src/announcements.ts"
+    "./announcements": "./src/announcements.ts",
+    "./discussions": "./src/discussions.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
