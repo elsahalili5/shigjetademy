@@ -2,13 +2,12 @@ import { useId, useState } from 'react'
 import { ChevronDown, MessageSquare } from 'lucide-react'
 import { Link, useMatchRoute } from '@tanstack/react-router'
 import type { MemberRole } from '@shigjetademy/shared/auth'
-import { useMediaQuery } from '#/hooks/useMediaQuery'
 import { useSidebarRail } from '#/lib/sidebar-rail'
 import { useActiveMembership } from '#/modules/auth/hooks/use-active-membership'
 import { useAnnouncementUnreadCount } from '#/modules/announcements/hooks/use-announcement-unread-count'
 import { useDiscussionUnreadCount } from '#/modules/discussions/hooks/use-discussion-unread-count'
 import { useInboxUnreadCount } from '#/modules/inbox/hooks/use-inbox-unread-count'
-import { NARROW_SIDEBAR_QUERY, getCommunicationLinks } from '../utils/communication-links'
+import { getCommunicationLinks } from '../utils/communication-links'
 
 const MAX_BADGE_COUNT = 99
 
@@ -38,10 +37,9 @@ type OpenOverride = {
   wasOnRoute: boolean
 }
 
-/** An expandable group: it opens by itself on a Communication page, and on narrow screens its links sit in the row with the others */
+/** An expandable group: it opens by itself on a Communication page */
 function CommunicationLinks({ organizationId, role, linkClassName }: CommunicationLinksProps) {
   const matchRoute = useMatchRoute()
-  const isNarrow = useMediaQuery(NARROW_SIDEBAR_QUERY)
   const unread = useInboxUnreadCount(organizationId)
   const announcementsUnread = useAnnouncementUnreadCount(organizationId)
   const links = getCommunicationLinks(role)
@@ -69,31 +67,29 @@ function CommunicationLinks({ organizationId, role, linkClassName }: Communicati
   }
 
   return (
-    <div role="group" aria-label="Communication" className="flex flex-col gap-0.5 max-[860px]:flex-none max-[860px]:flex-row max-[860px]:gap-1.5">
-      {isNarrow ? null : (
-        <button
-          type="button"
-          className={`${linkClassName} relative w-full text-left ${isOnRoute ? 'text-white' : ''}`}
-          aria-expanded={isOpen}
-          aria-controls={listId}
-          title={sidebar.isRail ? 'Communication' : undefined}
-          onClick={handleToggle}
-        >
-          <MessageSquare size={18} strokeWidth={1.9} aria-hidden="true" />
-          <span className="rail:sr-only">Communication</span>
-          {!isOpen && totalUnreadCount > 0 ? <UnreadBadge count={totalUnreadCount} label={totalUnreadCount === unreadCount ? 'unread messages' : 'unread'} /> : null}
-          <ChevronDown
-            className={`${totalUnreadCount > 0 && !isOpen ? '' : 'ml-auto'} transition-transform duration-[180ms] rail:hidden ${isOpen ? 'rotate-180' : ''}`}
-            size={16}
-            strokeWidth={2}
-            aria-hidden="true"
-          />
-        </button>
-      )}
-      {isNarrow || isOpen ? (
-        <div id={listId} className="flex flex-col gap-0.5 max-[860px]:flex-none max-[860px]:flex-row max-[860px]:gap-1.5">
+    <div role="group" aria-label="Communication" className="flex flex-col gap-0.5">
+      <button
+        type="button"
+        className={`${linkClassName} relative w-full text-left ${isOnRoute ? 'text-white' : ''}`}
+        aria-expanded={isOpen}
+        aria-controls={listId}
+        title={sidebar.isRail ? 'Communication' : undefined}
+        onClick={handleToggle}
+      >
+        <MessageSquare size={18} strokeWidth={1.9} aria-hidden="true" />
+        <span className="rail:sr-only">Communication</span>
+        {!isOpen && totalUnreadCount > 0 ? <UnreadBadge count={totalUnreadCount} label={totalUnreadCount === unreadCount ? 'unread messages' : 'unread'} /> : null}
+        <ChevronDown
+          className={`${totalUnreadCount > 0 && !isOpen ? '' : 'ml-auto'} transition-transform duration-[180ms] rail:hidden ${isOpen ? 'rotate-180' : ''}`}
+          size={16}
+          strokeWidth={2}
+          aria-hidden="true"
+        />
+      </button>
+      {isOpen ? (
+        <div id={listId} className="flex flex-col gap-0.5">
           {links.map((link) => (
-            <Link key={link.to} to={link.to} className={`${linkClassName} min-[861px]:pl-10`}>
+            <Link key={link.to} to={link.to} className={`${linkClassName} pl-10`}>
               <link.icon size={18} strokeWidth={1.9} aria-hidden="true" />
               {link.label}
               {link.to === '/dashboard/inbox' && unreadCount > 0 ? <UnreadBadge count={unreadCount} label="unread messages" /> : null}

@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { ChevronDown, ClipboardCheck, GraduationCap, List, LogOut, MessageSquareText, PanelLeftClose, PanelLeftOpen, Presentation, School, Users, UsersRound } from 'lucide-react'
+import { useRef, useState } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
+import { ChevronDown, ClipboardCheck, GraduationCap, List, LogOut, Menu, MessageSquareText, PanelLeftClose, PanelLeftOpen, Presentation, School, Users, UsersRound, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { hasOrganizationPermission } from '@shigjetademy/shared/auth'
 import type { Permission } from '@shigjetademy/shared/auth'
@@ -10,7 +11,7 @@ import { ADMIN_MODULES } from '#/lib/admin-modules'
 import { UserAvatar } from '#/components/UserAvatar'
 import { useMediaQuery } from '#/hooks/useMediaQuery'
 import { MODULES, moduleBySlug } from '#/lib/modules'
-import { SidebarRailContext, readSidebarCollapsed, storeSidebarCollapsed, useSidebarRail } from '#/lib/sidebar-rail'
+import { NARROW_SIDEBAR_QUERY, SidebarRailContext, readSidebarCollapsed, storeSidebarCollapsed, useSidebarRail } from '#/lib/sidebar-rail'
 import type { ModuleSlug } from '#/lib/modules'
 import { OWNER_NAV_SECTIONS } from '#/lib/owner-navigation'
 import type { OwnerNavItem } from '#/lib/owner-navigation'
@@ -21,14 +22,13 @@ import { isOrganizationGuardian, isOrganizationLecturer, isOrganizationOwner, is
 import type { SessionMembership } from '#/modules/auth/utils/session-user'
 import { ROLE_LABELS } from '#/modules/auth/utils/role-labels'
 import { CommunicationNavGroup } from '#/modules/communication/components/communication-nav-group'
-import { NARROW_SIDEBAR_QUERY } from '#/modules/communication/utils/communication-links'
 import { OrganizationSuspended } from '#/modules/organization/components/organization-suspended'
 import { OrganizationDeactivated } from '#/modules/organization-settings/components/organization-deactivated'
 import { OrganizationMark } from '#/modules/organization/components/organization-mark'
 import { OrganizationSwitcher } from '#/modules/organization/components/organization-switcher'
 
 const SIDEBAR_LINK_CLASS =
-  'flex items-center gap-3 rounded-xl px-3.5 py-[10px] font-[550] text-on-navy-2 no-underline transition-colors duration-[180ms] ease-out hover:text-white aria-[current=page]:bg-navy-2 aria-[current=page]:text-white max-[860px]:flex-none max-[860px]:whitespace-nowrap rail:justify-center rail:px-0 [&_svg]:flex-none aria-[current=page]:[&_svg]:text-green'
+  'flex items-center gap-3 rounded-xl px-3.5 py-[10px] font-[550] text-on-navy-2 no-underline transition-colors duration-[180ms] ease-out hover:text-white aria-[current=page]:bg-navy-2 aria-[current=page]:text-white rail:justify-center rail:px-0 [&_svg]:flex-none aria-[current=page]:[&_svg]:text-green'
 
 // School modules that are built have their own page instead of the "not built yet" one
 const BUILT_MODULE_PAGES = {
@@ -67,139 +67,231 @@ const getHiddenModuleSlugs = (membership: SessionMembership | undefined) =>
   )
 
 const SIDEBAR_SUBLINK_CLASS =
-  'flex items-center gap-2.5 rounded-xl py-[8px] pr-3.5 pl-[42px] text-[0.95rem] font-[550] text-on-navy-2 no-underline transition-colors duration-[180ms] ease-out hover:text-white aria-[current=page]:bg-navy-2 aria-[current=page]:text-white max-[860px]:flex-none max-[860px]:pl-3.5 max-[860px]:whitespace-nowrap [&_svg]:flex-none aria-[current=page]:[&_svg]:text-green'
+  'flex items-center gap-2.5 rounded-xl py-[8px] pr-3.5 pl-[42px] text-[0.95rem] font-[550] text-on-navy-2 no-underline transition-colors duration-[180ms] ease-out hover:text-white aria-[current=page]:bg-navy-2 aria-[current=page]:text-white [&_svg]:flex-none aria-[current=page]:[&_svg]:text-green'
 
 // The pages under a lecturer's Students menu: the existing students page (and each student's page under it) and the notes to parents
 const STUDENTS_MENU_PATHS = ['/dashboard/my-students', '/dashboard/student-notes'] as const
 
-const SIDEBAR_HEADING_CLASS = 'px-3.5 pb-2.5 font-data text-[0.807rem] tracking-[0.06em] text-on-navy-2 uppercase max-[860px]:hidden rail:hidden'
+const SIDEBAR_HEADING_CLASS = 'px-3.5 pb-2.5 font-data text-[0.807rem] tracking-[0.06em] text-on-navy-2 uppercase rail:hidden'
 
 export const Route = createFileRoute('/dashboard')({
   beforeLoad: ({ context }) => requireOrganization(context.queryClient),
   component: DashboardLayout,
 })
 
-/** The signed-in app: navy frame, module sidebar, and the active module on a white panel. */
+/** The signed-in app: navy frame, module sidebar, and the active module on a white panel. On narrow screens the sidebar opens as a drawer from a top bar. */
 function DashboardLayout() {
   const auth = useAuth()
-  const navigate = useNavigate()
-
   const membership = useActiveMembership()
-  const fullName = auth.user ? `${auth.user.first_name} ${auth.user.last_name}` : ''
-  const organizationName = membership?.organization.name ?? 'Shigjetademy'
-  const roleLabel = membership ? ROLE_LABELS[membership.role] : 'Platform admin'
   // The platform admin runs the platform, so their sidebar lists clients and statistics instead of school modules
   const isAdmin = auth.user ? isPlatformAdmin(auth.user) : false
   const organizationStatus = isAdmin ? 'ACTIVE' : (membership?.organization.status ?? 'ACTIVE')
+  const organizationName = membership?.organization.name ?? 'Shigjetademy'
   const isOwner = isOrganizationOwner(membership)
   const [isCollapsed, setIsCollapsed] = useState(readSidebarCollapsed)
-  // Narrow screens show the sidebar as a row along the top, which has nothing to collapse
   const isNarrow = useMediaQuery(NARROW_SIDEBAR_QUERY)
   const isRail = isCollapsed && !isNarrow
-
-  const handleLogout = async () => {
-    await auth.logout()
-    await navigate({ to: '/login' })
-  }
 
   const handleCollapsedChange = (nextIsCollapsed: boolean) => {
     setIsCollapsed(nextIsCollapsed)
     storeSidebarCollapsed(nextIsCollapsed)
   }
 
+  const panel = (
+    // data-flush-end opts out of the marketing pages' bottom padding on main's last child
+    <div className="h-full" data-flush-end>
+      <DashboardPanel organizationStatus={organizationStatus} organizationName={organizationName} isOwner={isOwner} />
+    </div>
+  )
+
+  if (isNarrow) {
+    return (
+      <div className="flex min-h-svh flex-col bg-navy">
+        <MobileSidebar />
+        <main className="relative min-h-[70svh] flex-1 overflow-hidden rounded-t-[24px] bg-white">{panel}</main>
+      </div>
+    )
+  }
+
   return (
-    <div className="h-svh bg-navy max-[860px]:h-auto max-[860px]:min-h-svh">
+    <div className="h-svh bg-navy">
       <div
-        className={`grid h-full transition-[grid-template-columns] duration-200 ease-out max-[860px]:grid-cols-1 motion-reduce:transition-none ${isRail ? 'grid-cols-[76px_minmax(0,1fr)]' : 'grid-cols-[minmax(248px,288px)_minmax(0,1fr)]'}`}
+        className={`grid h-full transition-[grid-template-columns] duration-200 ease-out motion-reduce:transition-none ${isRail ? 'grid-cols-[76px_minmax(0,1fr)]' : 'grid-cols-[minmax(248px,288px)_minmax(0,1fr)]'}`}
       >
-        <aside data-sidebar={isRail ? 'rail' : 'full'} className="flex min-h-0 min-w-0 flex-col gap-5 px-3 py-4 max-[860px]:gap-3 max-[860px]:pb-3">
+        <aside data-sidebar={isRail ? 'rail' : 'full'} className="flex min-h-0 min-w-0 flex-col gap-5 px-3 py-4">
           <SidebarRailContext value={{ isRail, expand: () => handleCollapsedChange(false) }}>
-            <div className="flex min-h-11 items-center justify-between gap-3 pl-2.5 rail:justify-center rail:pl-0">
-              <Link
-                to="/"
-                className="rounded-lg no-underline opacity-95 transition-opacity duration-200 hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-green rail:hidden"
-                aria-label="Shigjetademy website"
-              >
-                <img className="block h-7.5 w-auto" src={wordmark} alt="Shigjetademy" width={120} height={30} />
-              </Link>
-              <button
-                type="button"
-                onClick={() => handleCollapsedChange(!isRail)}
-                className="grid size-9 flex-none place-items-center rounded-lg text-on-navy-2 transition-colors duration-200 hover:bg-navy-2 hover:text-white max-[860px]:hidden"
-                aria-label={isRail ? 'Expand sidebar' : 'Collapse sidebar'}
-                title={isRail ? 'Expand sidebar' : 'Collapse sidebar'}
-              >
-                {isRail ? <PanelLeftOpen size={19} strokeWidth={1.9} aria-hidden="true" /> : <PanelLeftClose size={19} strokeWidth={1.9} aria-hidden="true" />}
-              </button>
-            </div>
-
-            {isRail ? (
-              <button
-                type="button"
-                onClick={() => handleCollapsedChange(false)}
-                className="mx-auto grid place-items-center rounded-xl p-1.5 transition-colors duration-200 hover:bg-navy-2"
-                aria-label={`${organizationName}, expand sidebar`}
-                title={organizationName}
-              >
-                <OrganizationMark name={organizationName} />
-              </button>
-            ) : auth.user && membership && !isAdmin ? (
-              <OrganizationSwitcher memberships={auth.user.memberships} activeMembership={membership} />
-            ) : (
-              <div className="flex items-center gap-3 rounded-xl bg-navy-2 px-3 py-2.5">
-                <OrganizationMark name={organizationName} />
-                <span className="grid min-w-0 leading-tight">
-                  <span className="truncate font-semibold text-white">{organizationName}</span>
-                  <span className="truncate text-[0.87rem] text-on-navy-2">{roleLabel}</span>
-                </span>
-              </div>
-            )}
-
-            <nav
-              className="-mx-1 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-1 [scrollbar-width:none] max-[860px]:flex-row max-[860px]:gap-1.5 max-[860px]:overflow-x-auto [&::-webkit-scrollbar]:hidden"
-              aria-label="Modules"
-            >
-              <SidebarNavigation membership={membership} isAdmin={isAdmin} />
-            </nav>
-
-            <div className="flex items-center gap-2 border-t border-white/10 px-1 pt-4 max-[860px]:hidden rail:flex-col rail:px-0">
-              <Link
-                to="/dashboard/profile"
-                className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1.5 py-1.5 no-underline transition-colors duration-200 hover:bg-navy-2 aria-[current=page]:bg-navy-2 rail:flex-none"
-                aria-label="Your profile"
-                title={isRail ? fullName : undefined}
-              >
-                <UserAvatar
-                  name={fullName}
-                  avatarUrl={auth.user?.avatar_url ?? null}
-                  className="grid size-9 flex-none place-items-center rounded-full bg-green-wash text-[0.9rem] font-bold text-green-deep"
-                />
-                <span className="grid min-w-0 flex-1 leading-tight rail:hidden">
-                  <span className="truncate font-semibold text-white">{fullName}</span>
-                  <span className="truncate text-[0.87rem] text-on-navy-2">{auth.user?.email}</span>
-                </span>
-              </Link>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="grid size-9 place-items-center rounded-full text-on-navy-2 transition-colors duration-200 hover:bg-navy-2 hover:text-white"
-                aria-label="Log out"
-                title={isRail ? 'Log out' : undefined}
-              >
-                <LogOut size={17} strokeWidth={1.9} aria-hidden="true" />
-              </button>
-            </div>
+            <SidebarBody
+              headerAction={
+                <button
+                  type="button"
+                  onClick={() => handleCollapsedChange(!isRail)}
+                  className={SIDEBAR_ICON_BUTTON_CLASS}
+                  aria-label={isRail ? 'Expand sidebar' : 'Collapse sidebar'}
+                  title={isRail ? 'Expand sidebar' : 'Collapse sidebar'}
+                >
+                  {isRail ? <PanelLeftOpen size={19} strokeWidth={1.9} aria-hidden="true" /> : <PanelLeftClose size={19} strokeWidth={1.9} aria-hidden="true" />}
+                </button>
+              }
+            />
           </SidebarRailContext>
         </aside>
 
-        <main className="relative min-h-0 overflow-hidden rounded-l-[24px] bg-white max-[860px]:min-h-[70svh] max-[860px]:rounded-l-none max-[860px]:rounded-t-[24px]">
-          {/* data-flush-end opts out of the marketing pages' bottom padding on main's last child */}
-          <div className="h-full" data-flush-end>
-            <DashboardPanel organizationStatus={organizationStatus} organizationName={organizationName} isOwner={isOwner} />
-          </div>
-        </main>
+        <main className="relative min-h-0 overflow-hidden rounded-l-[24px] bg-white">{panel}</main>
       </div>
     </div>
+  )
+}
+
+const SIDEBAR_ICON_BUTTON_CLASS =
+  'grid size-9 flex-none place-items-center rounded-lg text-on-navy-2 transition-colors duration-200 hover:bg-navy-2 hover:text-white focus-visible:outline-2 focus-visible:outline-green'
+
+/** The top bar on narrow screens, and the sidebar it opens as a drawer from the left. The drawer closes on a link, the close button, Escape or a tap outside it. */
+function MobileSidebar() {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const [isOpen, setIsOpen] = useState(false)
+
+  const handleOpen = () => {
+    dialogRef.current?.showModal()
+    setIsOpen(true)
+  }
+
+  const handleClose = () => {
+    dialogRef.current?.close()
+    setIsOpen(false)
+  }
+
+  // A tap on the backdrop lands on the dialog itself; a tap on a link leaves for its page
+  const handleDialogClick = (event: MouseEvent<HTMLDialogElement>) => {
+    if (!(event.target instanceof Element)) return
+    if (event.target === event.currentTarget || event.target.closest('a')) handleClose()
+  }
+
+  return (
+    <>
+      <header className="flex items-center justify-between gap-3 px-4 py-3">
+        <SidebarWordmark />
+        <button type="button" onClick={handleOpen} className={`${SIDEBAR_ICON_BUTTON_CLASS} size-11`} aria-label="Open menu" aria-expanded={isOpen} aria-haspopup="dialog">
+          <Menu size={22} strokeWidth={1.9} aria-hidden="true" />
+        </button>
+      </header>
+
+      <dialog
+        ref={dialogRef}
+        aria-label="Menu"
+        onClose={() => setIsOpen(false)}
+        onClick={handleDialogClick}
+        className="fixed inset-y-0 left-0 m-0 h-svh max-h-none w-[min(300px,86vw)] max-w-none bg-navy p-0 text-white transition-transform duration-250 ease-out backdrop:bg-black/50 motion-reduce:transition-none starting:open:-translate-x-full"
+      >
+        {isOpen ? (
+          <div className="flex h-full flex-col gap-5 px-3 py-4">
+            <SidebarBody
+              headerAction={
+                <button type="button" onClick={handleClose} className={`${SIDEBAR_ICON_BUTTON_CLASS} size-11`} aria-label="Close menu">
+                  <X size={20} strokeWidth={1.9} aria-hidden="true" />
+                </button>
+              }
+            />
+          </div>
+        ) : null}
+      </dialog>
+    </>
+  )
+}
+
+function SidebarWordmark() {
+  return (
+    <Link
+      to="/"
+      className="rounded-lg no-underline opacity-95 transition-opacity duration-200 hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-green rail:hidden"
+      aria-label="Shigjetademy website"
+    >
+      <img className="block h-7.5 w-auto" src={wordmark} alt="Shigjetademy" width={120} height={30} />
+    </Link>
+  )
+}
+
+interface SidebarBodyProps {
+  /** The button at the top right: collapse on desktop, close in the drawer */
+  headerAction: ReactNode
+}
+
+/** What the sidebar holds wherever it is shown: the wordmark, the organization, the modules, and the signed-in user */
+function SidebarBody({ headerAction }: SidebarBodyProps) {
+  const auth = useAuth()
+  const navigate = useNavigate()
+  const sidebar = useSidebarRail()
+  const membership = useActiveMembership()
+  const fullName = auth.user ? `${auth.user.first_name} ${auth.user.last_name}` : ''
+  const organizationName = membership?.organization.name ?? 'Shigjetademy'
+  const roleLabel = membership ? ROLE_LABELS[membership.role] : 'Platform admin'
+  const isAdmin = auth.user ? isPlatformAdmin(auth.user) : false
+
+  const handleLogout = async () => {
+    await auth.logout()
+    await navigate({ to: '/login' })
+  }
+
+  return (
+    <>
+      <div className="flex min-h-11 items-center justify-between gap-3 pl-2.5 rail:justify-center rail:pl-0">
+        <SidebarWordmark />
+        {headerAction}
+      </div>
+
+      {sidebar.isRail ? (
+        <button
+          type="button"
+          onClick={sidebar.expand}
+          className="mx-auto grid place-items-center rounded-xl p-1.5 transition-colors duration-200 hover:bg-navy-2"
+          aria-label={`${organizationName}, expand sidebar`}
+          title={organizationName}
+        >
+          <OrganizationMark name={organizationName} />
+        </button>
+      ) : auth.user && membership && !isAdmin ? (
+        <OrganizationSwitcher memberships={auth.user.memberships} activeMembership={membership} />
+      ) : (
+        <div className="flex items-center gap-3 rounded-xl bg-navy-2 px-3 py-2.5">
+          <OrganizationMark name={organizationName} />
+          <span className="grid min-w-0 leading-tight">
+            <span className="truncate font-semibold text-white">{organizationName}</span>
+            <span className="truncate text-[0.87rem] text-on-navy-2">{roleLabel}</span>
+          </span>
+        </div>
+      )}
+
+      <nav className="-mx-1 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Modules">
+        <SidebarNavigation membership={membership} isAdmin={isAdmin} />
+      </nav>
+
+      <div className="flex items-center gap-2 border-t border-white/10 px-1 pt-4 rail:flex-col rail:px-0">
+        <Link
+          to="/dashboard/profile"
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1.5 py-1.5 no-underline transition-colors duration-200 hover:bg-navy-2 aria-[current=page]:bg-navy-2 rail:flex-none"
+          aria-label="Your profile"
+          title={sidebar.isRail ? fullName : undefined}
+        >
+          <UserAvatar
+            name={fullName}
+            avatarUrl={auth.user?.avatar_url ?? null}
+            className="grid size-9 flex-none place-items-center rounded-full bg-green-wash text-[0.9rem] font-bold text-green-deep"
+          />
+          <span className="grid min-w-0 flex-1 leading-tight rail:hidden">
+            <span className="truncate font-semibold text-white">{fullName}</span>
+            <span className="truncate text-[0.87rem] text-on-navy-2">{auth.user?.email}</span>
+          </span>
+        </Link>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="grid size-9 place-items-center rounded-full text-on-navy-2 transition-colors duration-200 hover:bg-navy-2 hover:text-white"
+          aria-label="Log out"
+          title={sidebar.isRail ? 'Log out' : undefined}
+        >
+          <LogOut size={17} strokeWidth={1.9} aria-hidden="true" />
+        </button>
+      </div>
+    </>
   )
 }
 
@@ -326,7 +418,7 @@ function StudentsMenu() {
   }
 
   return (
-    <div className="flex flex-col gap-0.5 max-[860px]:flex-none max-[860px]:flex-row max-[860px]:items-center max-[860px]:gap-1.5">
+    <div className="flex flex-col gap-0.5">
       <button
         type="button"
         className={`${SIDEBAR_LINK_CLASS} w-full cursor-pointer text-left ${isInside ? 'text-white' : ''}`}
@@ -340,7 +432,7 @@ function StudentsMenu() {
         <ChevronDown className={`transition-transform duration-[180ms] ease-out rail:hidden ${isOpen ? 'rotate-180' : ''}`} size={16} strokeWidth={2} aria-hidden="true" />
       </button>
       {isExpanded ? (
-        <div id={menuId} className="flex flex-col gap-0.5 max-[860px]:flex-row max-[860px]:gap-1.5">
+        <div id={menuId} className="flex flex-col gap-0.5">
           <Link to="/dashboard/my-students" className={SIDEBAR_SUBLINK_CLASS}>
             <List size={16} strokeWidth={1.9} aria-hidden="true" />
             Students List
@@ -358,7 +450,7 @@ function StudentsMenu() {
 /** The owner's sidebar, grouped by area */
 function OwnerNavigation() {
   return OWNER_NAV_SECTIONS.map((section) => (
-    <div key={section.title} role="group" aria-label={section.title} className="flex flex-col gap-0.5 pb-3 max-[860px]:flex-none max-[860px]:flex-row max-[860px]:gap-1.5 max-[860px]:pb-0">
+    <div key={section.title} role="group" aria-label={section.title} className="flex flex-col gap-0.5 pb-3">
       <span className={SIDEBAR_HEADING_CLASS} aria-hidden="true">
         {section.title}
       </span>

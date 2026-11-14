@@ -1,5 +1,8 @@
 import { createContext, useContext } from 'react'
 
+/** The width below which the sidebar leaves the page and opens as a drawer from a menu button */
+export const NARROW_SIDEBAR_QUERY = '(max-width: 860px)'
+
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'shigjetademy-sidebar-collapsed'
 
 export const readSidebarCollapsed = (): boolean => {

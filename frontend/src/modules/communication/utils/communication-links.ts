@@ -17,8 +17,5 @@ export const COMMUNICATION_LINKS: readonly CommunicationLink[] = [
   { to: '/dashboard/discussions', label: 'Groups & Discussions', icon: MessagesSquare, excludedRoles: ['GUARDIAN'] },
 ]
 
-/** The sidebar's width at which it turns into a row along the top */
-export const NARROW_SIDEBAR_QUERY = '(max-width: 860px)'
-
 /** The Communication links a role sees */
 export const getCommunicationLinks = (role: MemberRole) => COMMUNICATION_LINKS.filter((link) => !link.excludedRoles?.includes(role))
