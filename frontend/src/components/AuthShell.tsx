@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react'
-import { ArrowLeft } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import wordmark from '#/assets/brand/shigjetademy-wordmark.png'
 import { Arcs } from '#/components/Arcs'
@@ -28,14 +27,6 @@ export function AuthShell({ children }: AuthShellProps) {
               width={152}
               height={38}
             />
-          </Link>
-
-          <Link
-            to="/"
-            className="group inline-flex min-h-11 items-center gap-1.5 rounded-lg px-1 text-[0.953rem] font-[550] whitespace-nowrap text-ink-3 no-underline transition-colors duration-200 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green"
-          >
-            <ArrowLeft className="transition-transform duration-200 ease-out group-hover:-translate-x-0.5 motion-reduce:transition-none" size={16} strokeWidth={2} aria-hidden="true" />
-            Back to website
           </Link>
         </div>
 
