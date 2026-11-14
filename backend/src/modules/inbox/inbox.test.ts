@@ -38,6 +38,8 @@ const get = async (key: MemberKey, path: string) => request(app).get(`${base()}$
 
 const post = async (key: MemberKey, path: string, body: object) => request(app).post(`${base()}${path}`).set('Authorization', await authed(key)).send(body)
 
+const put = async (key: MemberKey, path: string, body: object) => request(app).put(`${base()}${path}`).set('Authorization', await authed(key)).send(body)
+
 const startConversation = (from: MemberKey, to: MemberKey, body = 'Hello there') => post(from, '/conversations', { recipient_membership_id: membershipIds[to], body })
 
 const setStudentMessaging = (isEnabled: boolean) =>
@@ -447,5 +449,176 @@ describe('when student messaging is turned off', () => {
   it('still lets the lecturer message guardians and staff', async () => {
     expect((await startConversation('arben', 'gent')).status).toBe(201)
     expect((await startConversation('arben', 'admin')).status).toBe(201)
+  })
+})
+
+describe('editing a message', () => {
+  it('lets the author change their text, trimmed, and marks it edited in the thread and the list without new activity', async () => {
+    const started = await startConversation('owner', 'admin', 'Meet at 5')
+    const conversationId = started.body.data.conversation_id
+    const messageId = started.body.data.message.id
+    await startConversation('owner', 'arben', 'Newer conversation')
+
+    const edited = await put('owner', `/conversations/${conversationId}/messages/${messageId}`, { body: '  Meet at 6  ' })
+
+    expect(edited.status).toBe(200)
+    expect(edited.body.data).toMatchObject({ id: messageId, body: 'Meet at 6', status: 'ACTIVE', created_at: started.body.data.message.created_at })
+    expect(edited.body.data.edited_at).toEqual(expect.any(String))
+    const thread = await get('admin', `/conversations/${conversationId}`)
+    expect(thread.body.data.messages).toEqual([edited.body.data])
+    const list = await get('owner', '/conversations')
+    expect(list.body.data.map((item: { last_message: { body: string } }) => item.last_message.body)).toEqual(['Newer conversation', 'Meet at 6'])
+    expect((await get('admin', '/unread-count')).body.data).toEqual({ unread_count: 0 })
+  })
+
+  it('keeps the other side’s unread count when they have not opened the conversation yet', async () => {
+    const started = await startConversation('owner', 'admin', 'Hello')
+
+    await put('owner', `/conversations/${started.body.data.conversation_id}/messages/${started.body.data.message.id}`, { body: 'Hello again' })
+
+    expect((await get('admin', '/unread-count')).body.data).toEqual({ unread_count: 1 })
+  })
+
+  it('writes nothing when the text is unchanged', async () => {
+    const started = await startConversation('owner', 'admin', 'Same words')
+
+    const response = await put('owner', `/conversations/${started.body.data.conversation_id}/messages/${started.body.data.message.id}`, { body: ' Same words ' })
+
+    expect(response.status).toBe(200)
+    expect(response.body.data).toMatchObject({ body: 'Same words', edited_at: null })
+  })
+
+  it('refuses the other participant’s edit with 403 and keeps the text', async () => {
+    const started = await startConversation('owner', 'admin', 'Mine')
+
+    const response = await put('admin', `/conversations/${started.body.data.conversation_id}/messages/${started.body.data.message.id}`, { body: 'Taken over' })
+
+    expect(response.status).toBe(403)
+    expect((await get('owner', `/conversations/${started.body.data.conversation_id}`)).body.data.messages[0]).toMatchObject({ body: 'Mine', edited_at: null })
+  })
+
+  it('answers 404 to a non-participant, for a message of another conversation and for an unknown message', async () => {
+    const started = await startConversation('arben', 'gent', 'Private')
+    const other = await startConversation('arben', 'admin', 'Elsewhere')
+    const path = `/conversations/${started.body.data.conversation_id}/messages`
+
+    expect((await put('owner', `${path}/${started.body.data.message.id}`, { body: 'Taken over' })).status).toBe(404)
+    expect((await put('arben', `${path}/${other.body.data.message.id}`, { body: 'Taken over' })).status).toBe(404)
+    expect((await put('arben', `${path}/00000000-0000-4000-8000-000000000099`, { body: 'Taken over' })).status).toBe(404)
+    expect((await put('arben', `${path}/not-an-id`, { body: 'Taken over' })).status).toBe(400)
+    const thread = await get('arben', `/conversations/${other.body.data.conversation_id}`)
+    expect(thread.body.data.messages[0]).toMatchObject({ body: 'Elsewhere', edited_at: null })
+  })
+
+  it('refuses an empty or over-long text', async () => {
+    const started = await startConversation('owner', 'admin')
+    const path = `/conversations/${started.body.data.conversation_id}/messages/${started.body.data.message.id}`
+
+    expect((await put('owner', path, { body: '   ' })).status).toBe(400)
+    expect((await put('owner', path, { body: 'x'.repeat(2001) })).status).toBe(400)
+  })
+
+  it('refuses an edit once the author can no longer send, as when student messaging is turned off', async () => {
+    await setStudentMessaging(true)
+    const started = await startConversation('alba', 'arben', 'Can we meet?')
+    await setStudentMessaging(false)
+
+    const response = await put('alba', `/conversations/${started.body.data.conversation_id}/messages/${started.body.data.message.id}`, { body: 'Never mind' })
+
+    expect(response.status).toBe(403)
+    expect(response.body.error).toBe('Messaging students is turned off for this organization.')
+  })
+})
+
+describe('removing a message', () => {
+  it('hides the words from both sides in the thread and the list, keeps the row and its place, and counts as no new activity', async () => {
+    const started = await startConversation('owner', 'admin', 'Wrong person, sorry')
+    const conversationId = started.body.data.conversation_id
+    const messageId = started.body.data.message.id
+
+    const removed = await post('owner', `/conversations/${conversationId}/messages/${messageId}/remove`, {})
+
+    expect(removed.status).toBe(200)
+    expect(removed.body.data).toMatchObject({ id: messageId, body: '', status: 'REMOVED', created_at: started.body.data.message.created_at })
+    for (const viewer of ['owner', 'admin'] as const) {
+      const thread = await get(viewer, `/conversations/${conversationId}`)
+      const list = await get(viewer, '/conversations')
+      expect(thread.body.data.messages).toEqual([removed.body.data])
+      expect(list.body.data[0].last_message).toEqual(removed.body.data)
+      expect(JSON.stringify([thread.body, list.body])).not.toContain('Wrong person')
+    }
+    expect(await prisma.message.count()).toBe(1)
+  })
+
+  it('keeps the other side’s unread count', async () => {
+    const started = await startConversation('owner', 'admin', 'Oops')
+
+    await post('owner', `/conversations/${started.body.data.conversation_id}/messages/${started.body.data.message.id}/remove`, {})
+
+    expect((await get('admin', '/unread-count')).body.data).toEqual({ unread_count: 1 })
+  })
+
+  it('answers a second removal with the removed message and changes nothing', async () => {
+    const started = await startConversation('owner', 'admin', 'Oops')
+    const path = `/conversations/${started.body.data.conversation_id}/messages/${started.body.data.message.id}/remove`
+    const first = await post('owner', path, {})
+
+    const second = await post('owner', path, {})
+
+    expect(second.status).toBe(200)
+    expect(second.body.data).toEqual(first.body.data)
+  })
+
+  it('refuses to edit a removed message with 409', async () => {
+    const started = await startConversation('owner', 'admin', 'Oops')
+    const path = `/conversations/${started.body.data.conversation_id}/messages/${started.body.data.message.id}`
+    await post('owner', `${path}/remove`, {})
+
+    const response = await put('owner', path, { body: 'Back again' })
+
+    expect(response.status).toBe(409)
+    expect((await get('owner', `/conversations/${started.body.data.conversation_id}`)).body.data.messages[0]).toMatchObject({ body: '', status: 'REMOVED' })
+  })
+
+  it('refuses the other participant with 403 and a non-participant or another conversation’s message with 404', async () => {
+    const started = await startConversation('arben', 'gent', 'Private')
+    const other = await startConversation('arben', 'admin', 'Elsewhere')
+    const path = `/conversations/${started.body.data.conversation_id}/messages`
+
+    expect((await post('gent', `${path}/${started.body.data.message.id}/remove`, {})).status).toBe(403)
+    expect((await post('owner', `${path}/${started.body.data.message.id}/remove`, {})).status).toBe(404)
+    expect((await post('arben', `${path}/${other.body.data.message.id}/remove`, {})).status).toBe(404)
+    expect(await prisma.message.count({ where: { status: 'REMOVED' } })).toBe(0)
+  })
+
+  it('answers 404 for a message of another organization, through this organization’s path', async () => {
+    const yllkaOwner = await prisma.membership.findFirstOrThrow({ where: { organization_id: yllkaOrganizationId } })
+    const yllkaAdminUser = await createUser({ email: 'admin@yllka.test' })
+    const yllkaAdmin = await prisma.membership.create({ data: { user_id: yllkaAdminUser.id, organization_id: yllkaOrganizationId, role: 'ADMIN' } })
+    const foreign = await prisma.conversation.create({
+      data: {
+        organization_id: yllkaOrganizationId,
+        pair_key: [yllkaOwner.id, yllkaAdmin.id].sort().join(':'),
+        participants: { create: [{ membership_id: yllkaOwner.id }, { membership_id: yllkaAdmin.id }] },
+        messages: { create: { sender_membership_id: yllkaOwner.id, body: 'Yllka note' } },
+      },
+      select: { id: true, messages: { select: { id: true } } },
+    })
+    const path = `/conversations/${foreign.id}/messages/${foreign.messages[0].id}`
+
+    expect((await put('owner', path, { body: 'Taken over' })).status).toBe(404)
+    expect((await post('owner', `${path}/remove`, {})).status).toBe(404)
+    expect(await prisma.message.findUniqueOrThrow({ where: { id: foreign.messages[0].id }, select: { body: true, status: true } })).toEqual({ body: 'Yllka note', status: 'ACTIVE' })
+  })
+
+  it('refuses a removal once the author can no longer send, as when student messaging is turned off', async () => {
+    await setStudentMessaging(true)
+    const started = await startConversation('alba', 'arben', 'Can we meet?')
+    await setStudentMessaging(false)
+
+    const response = await post('alba', `/conversations/${started.body.data.conversation_id}/messages/${started.body.data.message.id}/remove`, {})
+
+    expect(response.status).toBe(403)
+    expect((await get('alba', `/conversations/${started.body.data.conversation_id}`)).body.data.messages[0]).toMatchObject({ body: 'Can we meet?', status: 'ACTIVE' })
   })
 })

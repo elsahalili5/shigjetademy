@@ -1,5 +1,5 @@
 import { apiClient } from '#/api/client'
-import type { InboxContact, InboxConversation, InboxConversationSummary, InboxMessage, InboxUnreadCount, SendMessageInput, StartConversationInput, StartedConversation } from '@shigjetademy/shared/inbox'
+import type { EditMessageInput, InboxContact, InboxConversation, InboxConversationSummary, InboxMessage, InboxUnreadCount, SendMessageInput, StartConversationInput, StartedConversation } from '@shigjetademy/shared/inbox'
 
 type ConversationParams = {
   organizationId: string
@@ -12,6 +12,12 @@ type StartConversationParams = StartConversationInput & {
 
 type SendMessageParams = SendMessageInput & ConversationParams
 
+type MessageParams = ConversationParams & {
+  messageId: string
+}
+
+type EditMessageParams = EditMessageInput & MessageParams
+
 export const inboxApi = {
   listContacts: (organizationId: string) => apiClient.get<InboxContact[]>(`/organizations/${organizationId}/inbox/contacts`),
   listConversations: (organizationId: string) => apiClient.get<InboxConversationSummary[]>(`/organizations/${organizationId}/inbox/conversations`),
@@ -21,5 +27,9 @@ export const inboxApi = {
     apiClient.post<StartedConversation, StartConversationInput>(`/organizations/${organizationId}/inbox/conversations`, input),
   sendMessage: ({ organizationId, conversationId, ...input }: SendMessageParams) =>
     apiClient.post<InboxMessage, SendMessageInput>(`/organizations/${organizationId}/inbox/conversations/${conversationId}/messages`, input),
+  editMessage: ({ organizationId, conversationId, messageId, ...input }: EditMessageParams) =>
+    apiClient.put<InboxMessage, EditMessageInput>(`/organizations/${organizationId}/inbox/conversations/${conversationId}/messages/${messageId}`, input),
+  removeMessage: ({ organizationId, conversationId, messageId }: MessageParams) =>
+    apiClient.post<InboxMessage>(`/organizations/${organizationId}/inbox/conversations/${conversationId}/messages/${messageId}/remove`),
   getUnreadCount: (organizationId: string) => apiClient.get<InboxUnreadCount>(`/organizations/${organizationId}/inbox/unread-count`),
 }

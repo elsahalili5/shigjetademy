@@ -3,13 +3,17 @@ import { sendError } from '@lib/httpError.ts'
 import type { AuthRequest, TypedRequest } from '@lib/types.ts'
 import type { OrganizationIdParam } from '@modules/organization/organization.types.ts'
 import { InboxService } from './inbox.service.ts'
-import type { ConversationParam, SendMessageInput, StartConversationInput } from './inbox.types.ts'
+import type { ConversationParam, EditMessageInput, MessageParam, SendMessageInput, StartConversationInput } from './inbox.types.ts'
 
 type OrganizationRequest = AuthRequest & TypedRequest<unknown, OrganizationIdParam>
 
 type ConversationRequest = AuthRequest & TypedRequest<unknown, ConversationParam>
 
 type SendMessageRequest = AuthRequest & TypedRequest<SendMessageInput, ConversationParam>
+
+type EditMessageRequest = AuthRequest & TypedRequest<EditMessageInput, MessageParam>
+
+type MessageRequest = AuthRequest & TypedRequest<unknown, MessageParam>
 
 type StartConversationRequest = AuthRequest & TypedRequest<StartConversationInput, OrganizationIdParam>
 
@@ -69,6 +73,28 @@ export const InboxController = {
       return res.status(201).json({ data: message })
     } catch (error) {
       return sendError({ res, error, fallback: 'Failed to send the message' })
+    }
+  },
+
+  editMessage: async (req: EditMessageRequest, res: Response) => {
+    try {
+      const membershipId = findMembershipId(req)
+      if (!membershipId) return res.status(401).json({ error: 'Unauthorized' })
+      const message = await InboxService.editMessage({ ...req.params, membershipId, data: req.body })
+      return res.status(200).json({ data: message })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to save the message' })
+    }
+  },
+
+  removeMessage: async (req: MessageRequest, res: Response) => {
+    try {
+      const membershipId = findMembershipId(req)
+      if (!membershipId) return res.status(401).json({ error: 'Unauthorized' })
+      const message = await InboxService.removeMessage({ ...req.params, membershipId })
+      return res.status(200).json({ data: message })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to remove the message' })
     }
   },
 

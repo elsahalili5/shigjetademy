@@ -1,11 +1,12 @@
 import { Inbox } from 'lucide-react'
-import type { InboxConversationSummary } from '@shigjetademy/shared/inbox'
+import type { InboxConversationSummary, InboxMessage } from '@shigjetademy/shared/inbox'
 import { EmptyMessage } from '#/components/EmptyMessage'
 import { LoadError } from '#/components/LoadError'
 import { SkeletonRows } from '#/components/SkeletonRows'
 import { fullName } from '#/lib/full-name'
 import { useFormatDateTime } from '#/lib/use-format-date'
 import { ROLE_LABELS } from '#/modules/auth/utils/role-labels'
+import { REMOVED_MESSAGE_LABEL } from '../utils/removed-message-label'
 
 interface ConversationListProps {
   status: 'pending' | 'error' | 'success'
@@ -13,6 +14,18 @@ interface ConversationListProps {
   selectedId: string | null
   onSelect: (conversationId: string) => void
   onRetry: () => void
+}
+
+type GetPreviewParams = {
+  lastMessage: InboxMessage | null
+  otherMembershipId: string
+}
+
+/** The last message under a conversation's name: the member's own start with "You:", and a removed one shows only that it was removed */
+const getPreview = ({ lastMessage, otherMembershipId }: GetPreviewParams) => {
+  if (!lastMessage) return ''
+  if (lastMessage.status === 'REMOVED') return REMOVED_MESSAGE_LABEL
+  return `${lastMessage.sender_membership_id === otherMembershipId ? '' : 'You: '}${lastMessage.body}`
 }
 
 /** The member's conversations, newest first; the unread ones carry a dot and their count */
@@ -28,7 +41,7 @@ export function ConversationList({ status, conversations, selectedId, onSelect, 
         const { other, last_message: lastMessage } = conversation
         const isSelected = conversation.id === selectedId
         const hasUnread = conversation.unread_count > 0
-        const preview = lastMessage ? `${lastMessage.sender_membership_id === other.membership_id ? '' : 'You: '}${lastMessage.body}` : ''
+        const preview = getPreview({ lastMessage, otherMembershipId: other.membership_id })
         return (
           <li key={conversation.id} className="border-b border-rule last:border-b-0">
             <button

@@ -27,6 +27,7 @@ type TargetIds = {
   invitationId: string
   guardianId: string
   conversationId: string
+  messageId: string
   announcementId: string
   topicId: string
   replyId: string
@@ -225,6 +226,8 @@ const SCOPED_ENDPOINTS: ScopedEndpoint[] = [
   { method: 'post', route: '/:organizationId/inbox/conversations', body: NEW_CONVERSATION },
   { method: 'get', route: '/:organizationId/inbox/conversations/:conversationId' },
   { method: 'post', route: '/:organizationId/inbox/conversations/:conversationId/messages', body: MESSAGE },
+  { method: 'put', route: '/:organizationId/inbox/conversations/:conversationId/messages/:messageId', body: MESSAGE },
+  { method: 'post', route: '/:organizationId/inbox/conversations/:conversationId/messages/:messageId/remove' },
   { method: 'get', route: '/:organizationId/announcements' },
   { method: 'get', route: '/:organizationId/announcements/unread-count' },
   { method: 'get', route: '/:organizationId/announcements/audiences' },
@@ -271,6 +274,7 @@ const toPath = ({ route, ids }: ToPathParams) =>
     .replace(':invitationId', ids.invitationId)
     .replace(':guardianId', ids.guardianId)
     .replace(':conversationId', ids.conversationId)
+    .replace(':messageId', ids.messageId)
     .replace(':announcementId', ids.announcementId)
     .replace(':topicId', ids.topicId)
     .replace(':replyId', ids.replyId)
@@ -377,6 +381,7 @@ const seedOrganization = async ({ name, slug }: SeedOrganizationParams) => {
       participants: { create: [{ membership_id: ownerMembership.id }, { membership_id: adminMembership.id }] },
       messages: { create: { sender_membership_id: ownerMembership.id, body: `${name} private note` } },
     },
+    select: { id: true, messages: { select: { id: true } } },
   })
   const announcement = await prisma.announcement.create({
     data: { organization_id: organization.id, author_membership_id: ownerMembership.id, title: `${name} notice`, body: `${name} notice`, audience_kind: 'SCHOOL', status: 'PUBLISHED', publish_at: new Date('2026-11-01T09:00:00.000Z') },
@@ -385,7 +390,7 @@ const seedOrganization = async ({ name, slug }: SeedOrganizationParams) => {
     data: { organization_id: organization.id, author_membership_id: ownerMembership.id, space_kind: 'GROUP', group_id: group.id, title: `${name} topic`, body: `${name} topic` },
   })
   const reply = await prisma.discussionReply.create({ data: { topic_id: topic.id, organization_id: organization.id, author_membership_id: ownerMembership.id, body: `${name} reply` } })
-  return { organizationId: organization.id, membershipId: adminMembership.id, locationId: location.id, roomId: room.id, departmentId: department.id, yearId: year.id, termId: term.id, holidayId: holiday.id, studentId: student.id, lecturerId: lecturer.id, courseId: course.id, groupId: group.id, substitutionId: substitution.id, enrolmentId: enrolment.id, rescheduleId: reschedule.id, invitationId: invitation.id, guardianId: guardian.id, conversationId: conversation.id, announcementId: announcement.id, topicId: topic.id, replyId: reply.id }
+  return { organizationId: organization.id, membershipId: adminMembership.id, locationId: location.id, roomId: room.id, departmentId: department.id, yearId: year.id, termId: term.id, holidayId: holiday.id, studentId: student.id, lecturerId: lecturer.id, courseId: course.id, groupId: group.id, substitutionId: substitution.id, enrolmentId: enrolment.id, rescheduleId: reschedule.id, invitationId: invitation.id, guardianId: guardian.id, conversationId: conversation.id, messageId: conversation.messages[0].id, announcementId: announcement.id, topicId: topic.id, replyId: reply.id }
 }
 
 let oxford: TargetIds
@@ -474,7 +479,7 @@ describe('organization isolation', () => {
     const mixed: TargetIds = { ...yllka, organizationId: oxford.organizationId }
 
     // The guardian-only and lecturer-only routes refuse the owner outright; the next tests sweep them as a guardian and as a lecturer
-    for (const endpoint of SCOPED_ENDPOINTS.filter((item) => !item.route.includes('/me/children/') && !item.route.includes('/parent-notes/') && /:(membership|location|room|department|year|term|holiday|student|lecturer|course|group|substitution|enrolment|reschedule|invitation|guardian|conversation|announcement|topic|reply)Id/.test(item.route))) {
+    for (const endpoint of SCOPED_ENDPOINTS.filter((item) => !item.route.includes('/me/children/') && !item.route.includes('/parent-notes/') && /:(membership|location|room|department|year|term|holiday|student|lecturer|course|group|substitution|enrolment|reschedule|invitation|guardian|conversation|message|announcement|topic|reply)Id/.test(item.route))) {
       const response = await send({ ...endpoint, ids: mixed, auth: oxfordOwnerAuth })
       expect(response.status, `${endpoint.method.toUpperCase()} ${endpoint.route} answered ${response.status}`).toBe(404)
     }
@@ -530,6 +535,9 @@ describe('organization isolation', () => {
     const topicInYllkaCourse = await send({ method: 'post', route: '/:organizationId/discussions', body: { ...DISCUSSION_TOPIC, space_kind: 'COURSE', space_id: yllka.courseId }, ids: oxford, auth: oxfordOwnerAuth })
     const yllkaReplyOnOxfordTopic = await send({ method: 'put', route: '/:organizationId/discussions/:topicId/replies/:replyId', body: DISCUSSION_REPLY, ids: { ...oxford, replyId: yllka.replyId }, auth: oxfordOwnerAuth })
     const removedYllkaReply = await send({ method: 'post', route: '/:organizationId/discussions/:topicId/replies/:replyId/remove', ids: { ...oxford, replyId: yllka.replyId }, auth: oxfordOwnerAuth })
+    const yllkaMessageInOxfordConversation: TargetIds = { ...oxford, messageId: yllka.messageId }
+    const editedYllkaMessage = await send({ method: 'put', route: '/:organizationId/inbox/conversations/:conversationId/messages/:messageId', body: MESSAGE, ids: yllkaMessageInOxfordConversation, auth: oxfordOwnerAuth })
+    const removedYllkaMessage = await send({ method: 'post', route: '/:organizationId/inbox/conversations/:conversationId/messages/:messageId/remove', ids: yllkaMessageInOxfordConversation, auth: oxfordOwnerAuth })
     const substitutionWithYllkaLecturer = await send({ method: 'post', route: '/:organizationId/groups/:groupId/substitutions', body: { ...SUBSTITUTION, lecturer_id: yllka.lecturerId }, ids: oxford, auth: oxfordOwnerAuth })
     const transferred = await send({
       method: 'post',
@@ -581,6 +589,9 @@ describe('organization isolation', () => {
     expect(removedYllkaReply.status).toBe(404)
     expect(await prisma.discussionTopic.count({ where: { organization_id: oxford.organizationId } })).toBe(1)
     expect(await prisma.discussionReply.findUniqueOrThrow({ where: { id: yllka.replyId }, select: { status: true, body: true } })).toEqual({ status: 'ACTIVE', body: 'Yllka Kindergarten reply' })
+    expect(editedYllkaMessage.status).toBe(404)
+    expect(removedYllkaMessage.status).toBe(404)
+    expect(await prisma.message.findUniqueOrThrow({ where: { id: yllka.messageId }, select: { status: true, body: true } })).toEqual({ status: 'ACTIVE', body: 'Yllka Kindergarten private note' })
     expect(substitutionWithYllkaLecturer.status).toBe(400)
     expect(await prisma.groupSubstitution.count({ where: { lecturer_id: yllka.lecturerId } })).toBe(0)
     expect(transferred.status).toBe(404)

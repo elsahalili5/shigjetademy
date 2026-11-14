@@ -9,6 +9,7 @@ import { ROLE_LABELS } from '#/modules/auth/utils/role-labels'
 import { useInboxConversation } from '../hooks/use-inbox-conversation'
 import { MessageBubble } from './message-bubble'
 import { MessageComposer } from './message-composer'
+import { OwnMessage } from './own-message'
 import { getDayLabel, getMessageDayKey } from '#/lib/message-days'
 
 interface ConversationThreadProps {
@@ -24,6 +25,9 @@ export function ConversationThread({ organizationId, conversationId }: Conversat
   if (!conversation.data) return <ThreadSkeleton />
   return <LoadedThread organizationId={organizationId} conversation={conversation.data} />
 }
+
+/** Scrolls the newest message into view when it appears; a stable function, so older messages are left where the reader has scrolled to */
+const scrollIntoViewOnMount = (node: HTMLElement | null) => node?.scrollIntoView({ block: 'nearest' })
 
 interface LoadedThreadProps {
   organizationId: string
@@ -59,19 +63,24 @@ function LoadedThread({ organizationId, conversation }: LoadedThreadProps) {
           const isNewDay = !previous || getMessageDayKey(previous.created_at) !== dayKey
           const isFirstInRun = isNewDay || previous?.sender_membership_id !== message.sender_membership_id
           const isLastInRun = !next || getMessageDayKey(next.created_at) !== dayKey || next.sender_membership_id !== message.sender_membership_id
+          const isMine = message.sender_membership_id === conversation.my_membership_id
+          const bubble = {
+            message,
+            isSeen: seenUntil !== null && new Date(message.created_at).getTime() <= seenUntil,
+            isLastInRun,
+            otherName,
+            sentAt: formatTime(message.created_at),
+          }
           return (
             <Fragment key={message.id}>
               {isNewDay ? <DayHeading label={getDayLabel({ iso: message.created_at, now, formatDate })} /> : null}
-              <MessageBubble
-                message={message}
-                isMine={message.sender_membership_id === conversation.my_membership_id}
-                isSeen={seenUntil !== null && new Date(message.created_at).getTime() <= seenUntil}
-                isLatest={index === messages.length - 1}
-                isFirstInRun={isFirstInRun}
-                isLastInRun={isLastInRun}
-                otherName={otherName}
-                sentAt={formatTime(message.created_at)}
-              />
+              <li ref={index === messages.length - 1 ? scrollIntoViewOnMount : undefined} className={`group/row grid gap-0.5 ${isFirstInRun ? 'mt-3 first:mt-0' : 'mt-0.5'}`}>
+                {isMine && conversation.can_send && message.status === 'ACTIVE' ? (
+                  <OwnMessage organizationId={organizationId} conversationId={conversation.id} {...bubble} />
+                ) : (
+                  <MessageBubble {...bubble} isMine={isMine} />
+                )}
+              </li>
             </Fragment>
           )
         })}

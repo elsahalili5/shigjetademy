@@ -3,6 +3,7 @@ import type { SubmitEvent } from 'react'
 
 import { DISCUSSION_REPLY_MAX_LENGTH } from '@shigjetademy/shared/discussions'
 import type { DiscussionReply } from '@shigjetademy/shared/discussions'
+import { ChatBubbleMenu } from '#/components/ChatBubbleMenu'
 import { ConfirmGroup } from '#/components/ConfirmGroup'
 import { FormAlert } from '#/components/FormAlert'
 import { getErrorMessage } from '#/lib/error-message'
@@ -12,7 +13,6 @@ import { useRemoveDiscussionReply } from '../hooks/use-remove-discussion-reply'
 import { useUpdateDiscussionReply } from '../hooks/use-update-discussion-reply'
 import { getRemovedLabel } from '../utils/removed-label'
 import { DiscussionBubble } from './discussion-bubble'
-import { DiscussionReplyMenu } from './discussion-reply-menu'
 
 interface DiscussionReplyItemProps {
   organizationId: string
@@ -53,7 +53,7 @@ export function DiscussionReplyItem({ organizationId, topicId, reply, isMine, is
             <time dateTime={reply.created_at}>{formatTime(reply.created_at)}</time>
           </>
         }
-        menu={canAct ? <DiscussionReplyMenu canEdit={reply.can_edit} canRemove={reply.can_remove} isMine={isMine} onEdit={() => setIsEditing(true)} onRemove={() => setIsConfirmingRemove(true)} /> : null}
+        menu={canAct ? <ChatBubbleMenu label="Reply actions" editLabel="Edit reply" removeLabel="Remove reply" canEdit={reply.can_edit} canRemove={reply.can_remove} isMine={isMine} onEdit={() => setIsEditing(true)} onRemove={() => setIsConfirmingRemove(true)} /> : null}
         actions={
           <>
             {removeReply.isError ? <FormAlert>{getErrorMessage(removeReply.error)}</FormAlert> : null}

@@ -7,7 +7,7 @@ import { prisma } from '@lib/prisma.ts'
 import { canMessage } from './can-message.ts'
 import type { MessagingDirectory } from './messaging-directory.ts'
 import { loadMessagingDirectory } from './messaging-directory.ts'
-import type { SendMessageInput, StartConversationInput } from './inbox.types.ts'
+import type { EditMessageInput, SendMessageInput, StartConversationInput } from './inbox.types.ts'
 
 /** A conversation shows its newest messages; older ones stay stored */
 const THREAD_MESSAGE_LIMIT = 200
@@ -19,11 +19,20 @@ const BLOCKED_MESSAGES: Record<SendBlockedReason, string> = {
   notAllowed: 'You can’t message this person.',
 }
 
-const messageSelect = { id: true, sender_membership_id: true, body: true, created_at: true } as const satisfies Prisma.MessageSelect
+const REMOVED_EDIT_ERROR = 'A removed message can’t be edited.'
+
+const messageSelect = { id: true, sender_membership_id: true, body: true, status: true, edited_at: true, created_at: true } as const satisfies Prisma.MessageSelect
 
 type StoredMessage = Prisma.MessageGetPayload<{ select: typeof messageSelect }>
 
-const toMessageJson = ({ created_at, ...message }: StoredMessage): InboxMessage => ({ ...message, created_at: created_at.toISOString() })
+const toMessageJson = (message: StoredMessage): InboxMessage => ({
+  id: message.id,
+  sender_membership_id: message.sender_membership_id,
+  body: message.status === 'ACTIVE' ? message.body : '',
+  status: message.status,
+  edited_at: message.edited_at?.toISOString() ?? null,
+  created_at: message.created_at.toISOString(),
+})
 
 const otherSelect = { membership: { select: { id: true, role: true, user: { select: { first_name: true, last_name: true } } } } } as const satisfies Prisma.ConversationParticipantSelect
 
@@ -76,6 +85,28 @@ const assertAllowed = (decision: ReturnType<typeof decide>) => {
   if (!decision.allowed) {
     throw new HttpError(403, BLOCKED_MESSAGES[decision.reason])
   }
+}
+
+type MessageScope = ConversationScope & {
+  messageId: string
+}
+
+/**
+ * A message the viewer may change: in a conversation they are part of (404 otherwise, as for a message that isn't there), their own (403),
+ * and only while they could still send into the conversation (403), so turning messaging off also stops edits and removals
+ */
+const findOwnMessage = async ({ messageId, ...scope }: MessageScope) => {
+  const { conversationId, other } = await findParticipation(scope)
+  const message = await prisma.message.findFirst({ where: { id: messageId, conversation_id: conversationId }, select: messageSelect })
+  if (!message) {
+    throw new HttpError(404, 'Message not found')
+  }
+  if (message.sender_membership_id !== scope.membershipId) {
+    throw new HttpError(403, 'You can only change your own messages.')
+  }
+  const directory = await loadMessagingDirectory({ organizationId: scope.organizationId })
+  assertAllowed(decide({ directory, senderId: scope.membershipId, recipientId: other.membership.id }))
+  return message
 }
 
 /** Unread messages per conversation: the other side's messages after the viewer last read it, or all of them before the viewer ever has */
@@ -218,6 +249,25 @@ export const InboxService = {
       const raced = await prisma.conversation.findUniqueOrThrow({ where: { organization_id_pair_key: { organization_id: organizationId, pair_key: pairKey } }, select: { id: true } })
       return { conversation_id: raced.id, message: await appendMessage({ conversationId: raced.id, membershipId, body: data.body }) }
     }
+  },
+
+  // Neither editing nor removing is new activity: the conversation keeps its place, and unread counts and "seen" marks stay as they were
+  editMessage: async ({ data, ...scope }: MessageScope & { data: EditMessageInput }): Promise<InboxMessage> => {
+    const message = await findOwnMessage(scope)
+    if (message.status === 'REMOVED') throw new HttpError(409, REMOVED_EDIT_ERROR)
+    if (message.body === data.body) return toMessageJson(message)
+    // Only an active row is written, so an edit racing a removal never puts words back onto it
+    const { count } = await prisma.message.updateMany({ where: { id: message.id, status: 'ACTIVE' }, data: { body: data.body, edited_at: new Date() } })
+    if (count === 0) throw new HttpError(409, REMOVED_EDIT_ERROR)
+    return toMessageJson(await prisma.message.findUniqueOrThrow({ where: { id: message.id }, select: messageSelect }))
+  },
+
+  // Removing an already removed message changes nothing and answers with it again
+  removeMessage: async (scope: MessageScope): Promise<InboxMessage> => {
+    const message = await findOwnMessage(scope)
+    if (message.status === 'REMOVED') return toMessageJson(message)
+    await prisma.message.updateMany({ where: { id: message.id, status: 'ACTIVE' }, data: { status: 'REMOVED' } })
+    return toMessageJson(await prisma.message.findUniqueOrThrow({ where: { id: message.id }, select: messageSelect }))
   },
 
   getUnreadCount: async (membershipId: string): Promise<InboxUnreadCount> => {
