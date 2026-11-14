@@ -10,6 +10,7 @@ import courseRoutes from '@modules/courses/courses.routes.ts'
 import groupRoutes from '@modules/groups/groups.routes.ts'
 import guardianRoutes from '@modules/guardians/guardians.routes.ts'
 import inboxRoutes from '@modules/inbox/inbox.routes.ts'
+import announcementRoutes from '@modules/announcements/announcements.routes.ts'
 import invitationRoutes from '@modules/invitations/invitations.routes.ts'
 import organizationInvitationRoutes from '@modules/invitations/organization-invitations.routes.ts'
 import lecturerHomeRoutes from '@modules/lecturer-home/lecturer-home.routes.ts'
@@ -66,6 +67,7 @@ app.use('/api/organizations', myChildrenRoutes)
 app.use('/api/organizations', studentRosterRoutes)
 app.use('/api/organizations', parentNotesRoutes)
 app.use('/api/organizations', inboxRoutes)
+app.use('/api/organizations', announcementRoutes)
 app.use('/api/users', userRoutes)
 
 app.get('/api/health', (_req, res) => {

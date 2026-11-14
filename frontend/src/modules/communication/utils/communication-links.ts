@@ -7,7 +7,7 @@ type CommunicationLink = {
   icon: LucideIcon
 }
 
-/** The pages under the sidebar's Communication group, the same for every role; only Inbox is built so far */
+/** The pages under the sidebar's Communication group, the same for every role; Groups & Discussions is not built yet */
 export const COMMUNICATION_LINKS: readonly CommunicationLink[] = [
   { to: '/dashboard/inbox', label: 'Inbox', icon: Inbox },
   { to: '/dashboard/announcements', label: 'Announcements', icon: Megaphone },

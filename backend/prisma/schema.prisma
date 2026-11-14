@@ -193,6 +193,22 @@ enum EmploymentType {
   CONTRACT
 }
 
+/// Where an announcement is addressed: everyone, one role, the people of one course or the people of one group
+enum AnnouncementAudienceKind {
+  SCHOOL
+  ROLE
+  COURSE
+  GROUP
+}
+
+/// Where an announcement is in its life. A SCHEDULED or PUBLISHED one is visible once its publish_at has passed; nothing flips the status at that time.
+enum AnnouncementStatus {
+  DRAFT
+  PUBLISHED
+  SCHEDULED
+  ARCHIVED
+}
+
 enum WeekStart {
   MONDAY
   SUNDAY
@@ -326,6 +342,7 @@ model Organization {
   guardians            Guardian[]
   student_parent_notes StudentParentNote[]
   conversations        Conversation[]
+  announcements        Announcement[]
 }
 
 /// How one organization runs. An organization without a row reads the defaults; the row is written on its first save.
@@ -652,10 +669,11 @@ model Course {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  organization  Organization   @relation(fields: [organization_id], references: [id], onDelete: Cascade)
   /// NoAction: a department with courses can't be deleted (the department service says why), while deleting the organization still removes both, as both sit directly under it
-  department   Department   @relation(fields: [department_id], references: [id], onDelete: NoAction)
-  groups       Group[]
+  department    Department     @relation(fields: [department_id], references: [id], onDelete: NoAction)
+  groups        Group[]
+  announcements Announcement[]
 
   @@unique([organization_id, name])
   @@unique([organization_id, code])
@@ -694,6 +712,7 @@ model Group {
   attendance           AttendanceRecord[]
   reschedules          LessonReschedule[]
   lesson_plans         LessonPlan[]
+  announcements        Announcement[]
 
   @@unique([course_id, academic_year_id, name])
   @@index([organization_id, status])
@@ -882,10 +901,12 @@ model Membership {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  user          User                      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  organization  Organization              @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  conversations ConversationParticipant[]
-  sent_messages Message[]
+  user               User                      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  organization       Organization              @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  conversations      ConversationParticipant[]
+  sent_messages      Message[]
+  announcements      Announcement[]
+  announcement_reads AnnouncementRead[]
 
   @@unique([user_id, organization_id])
   @@index([organization_id, role])
@@ -1006,4 +1027,53 @@ model Message {
 
   @@index([conversation_id, created_at])
   @@index([sender_membership_id])
+}
+
+/// An official one-way notice from staff or a lecturer. Who receives it is worked out when it is read, from its audience: no row per recipient.
+/// Announcements are archived, never deleted. A group or course audience reaches the active students, their guardians and the current lecturers of its active groups.
+model Announcement {
+  id                   String                   @id @default(uuid()) @db.Uuid
+  organization_id      String                   @db.Uuid
+  author_membership_id String                   @db.Uuid
+  title                String
+  body                 String
+  audience_kind        AnnouncementAudienceKind
+  /// Set for the ROLE audience: STUDENT, GUARDIAN or LECTURER
+  audience_role        MemberRole?
+  /// Set for the COURSE audience
+  course_id            String?                  @db.Uuid
+  /// Set for the GROUP audience
+  group_id             String?                  @db.Uuid
+  status               AnnouncementStatus       @default(DRAFT)
+  /// When it becomes visible: the moment of publishing, or the scheduled time; null for a draft
+  publish_at           DateTime?
+  /// Set when it is changed after it became visible
+  edited_at            DateTime?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  organization Organization       @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  author       Membership         @relation(fields: [author_membership_id], references: [id], onDelete: Cascade)
+  course       Course?            @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  group        Group?             @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  reads        AnnouncementRead[]
+
+  @@index([organization_id, status, publish_at])
+  @@index([author_membership_id])
+  @@index([course_id])
+  @@index([group_id])
+}
+
+/// A member opened an announcement; at most one row per pair, so opening it again changes nothing
+model AnnouncementRead {
+  announcement_id String   @db.Uuid
+  membership_id   String   @db.Uuid
+  read_at         DateTime @default(now())
+
+  announcement Announcement @relation(fields: [announcement_id], references: [id], onDelete: Cascade)
+  membership   Membership   @relation(fields: [membership_id], references: [id], onDelete: Cascade)
+
+  @@id([announcement_id, membership_id])
+  @@index([membership_id])
 }
