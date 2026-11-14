@@ -224,7 +224,7 @@ describe('discussions: reading and replying', () => {
     const article = await openTopic(user, /Homework 3/)
 
     await user.type(within(article).getByLabelText('Reply'), 'Thanks!')
-    await user.click(within(article).getByRole('button', { name: 'Reply' }))
+    await user.click(within(article).getByRole('button', { name: 'Send reply' }))
 
     const replies = within(await within(article).findByRole('list', { name: 'Replies' })).getAllByRole('listitem')
     expect(replies).toHaveLength(2)
@@ -233,6 +233,28 @@ describe('discussions: reading and replying', () => {
     expect(within(article).getByLabelText('Reply')).toHaveValue('')
     expect(discussionReplySchema.safeParse(sent).success).toBe(true)
     expect(sent).toEqual({ body: 'Thanks!' })
+  })
+
+  it('sends a reply with Enter, and shows the topic and its replies as chat bubbles under a day heading', async () => {
+    signInWithRole('STUDENT')
+    serveSpaces()
+    serveList([HOMEWORK])
+    serveDetail(detail({ id: 't-homework', title: 'Homework 3', reply_count: 1, replies: [reply({ id: 'r1', body: 'First reply' })] }))
+    let sent: unknown
+    server.use(
+      http.post(`${ORG}/t-homework/replies`, async ({ request }) => {
+        sent = await request.json()
+        return HttpResponse.json({ data: reply({ id: 'r-new', body: 'Sent with Enter', author: ELSA, created_at: '2026-11-12T12:00:00.000Z' }) }, { status: 201 })
+      }),
+    )
+    const { user } = renderRoute('/dashboard/discussions')
+    const article = await openTopic(user, /Homework 3/)
+
+    expect(within(article).getAllByRole('separator').length).toBeGreaterThan(0)
+    await user.type(within(article).getByLabelText('Reply'), 'Sent with Enter{Enter}')
+
+    expect(await within(article).findByText('Sent with Enter')).toBeInTheDocument()
+    expect(sent).toEqual({ body: 'Sent with Enter' })
   })
 
   it('shows the server’s reason when a reply is refused', async () => {
@@ -245,7 +267,7 @@ describe('discussions: reading and replying', () => {
     const article = await openTopic(user, /Homework 3/)
 
     await user.type(within(article).getByLabelText('Reply'), 'Hi')
-    await user.click(within(article).getByRole('button', { name: 'Reply' }))
+    await user.click(within(article).getByRole('button', { name: 'Send reply' }))
 
     expect(await within(article).findByRole('alert')).toHaveTextContent('This topic is locked.')
   })
@@ -428,8 +450,9 @@ describe('discussions: acting on topics and replies', () => {
 
     const [theirs, mine] = within(await within(article).findByRole('list', { name: 'Replies' })).getAllByRole('listitem')
     expect(within(theirs).queryByRole('button')).not.toBeInTheDocument()
-    expect(within(mine).getByRole('button', { name: 'Edit reply' })).toBeInTheDocument()
-    await user.click(within(mine).getByRole('button', { name: 'Remove reply' }))
+    await user.click(within(mine).getByRole('button', { name: 'Reply actions' }))
+    expect(within(mine).getByRole('menuitem', { name: 'Edit reply' })).toBeInTheDocument()
+    await user.click(within(mine).getByRole('menuitem', { name: 'Remove reply' }))
     await user.click(within(screen.getByRole('group', { name: 'Remove this reply' })).getByRole('button', { name: 'Remove' }))
 
     expect(await within(article).findByText('Removed by the author')).toBeInTheDocument()
@@ -445,10 +468,30 @@ describe('discussions: acting on topics and replies', () => {
     const { user } = renderRoute('/dashboard/discussions')
     const article = await openTopic(user, /Homework 3/)
 
-    await user.click(await within(article).findByRole('button', { name: 'Remove reply' }))
+    await user.click(await within(article).findByRole('button', { name: 'Reply actions' }))
+    await user.click(within(article).getByRole('menuitem', { name: 'Remove reply' }))
     await user.click(within(screen.getByRole('group', { name: 'Remove this reply' })).getByRole('button', { name: 'Remove' }))
 
     expect(await within(article).findByText('Removed by a moderator')).toBeInTheDocument()
+  })
+
+  it('opens a reply\u2019s three-dots menu with Edit and Remove, and closes it with Escape', async () => {
+    signInWithRole('STUDENT')
+    serveSpaces()
+    serveList([HOMEWORK])
+    serveDetail(detail({ id: 't-homework', title: 'Homework 3', replies: [reply({ id: 'r2', body: 'Mine', author: ELSA, can_edit: true, can_remove: true }), reply({ id: 'r3', body: 'Theirs', author: ARBEN })] }))
+    const { user } = renderRoute('/dashboard/discussions')
+    const article = await openTopic(user, /Homework 3/)
+
+    expect(within(article).queryByRole('menu')).not.toBeInTheDocument()
+    const triggers = within(article).getAllByRole('button', { name: 'Reply actions' })
+    expect(triggers).toHaveLength(1)
+    await user.click(triggers[0])
+    const menu = within(article).getByRole('menu')
+    expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Edit reply', 'Remove reply'])
+    await user.keyboard('{Escape}')
+
+    expect(within(article).queryByRole('menu')).not.toBeInTheDocument()
   })
 
   it('edits an own reply in place', async () => {
@@ -465,7 +508,8 @@ describe('discussions: acting on topics and replies', () => {
     const { user } = renderRoute('/dashboard/discussions')
     const article = await openTopic(user, /Homework 3/)
 
-    await user.click(await within(article).findByRole('button', { name: 'Edit reply' }))
+    await user.click(await within(article).findByRole('button', { name: 'Reply actions' }))
+    await user.click(within(article).getByRole('menuitem', { name: 'Edit reply' }))
     const box = within(article).getByLabelText('Edit reply', { selector: 'textarea' })
     await user.clear(box)
     await user.type(box, 'Fixed')

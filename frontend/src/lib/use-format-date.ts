@@ -1,4 +1,4 @@
-import { formatDate, formatDateTime, formatDay, formatOrganizationDate, formatOrganizationDateTime, formatOrganizationDay, formatOrganizationLessonDay, formatLessonDay } from '#/lib/format'
+import { formatDate, formatDateTime, formatDay, formatTime, formatOrganizationDate, formatOrganizationDateTime, formatOrganizationDay, formatOrganizationLessonDay, formatLessonDay } from '#/lib/format'
 import { useActiveMembership } from '#/modules/auth/hooks/use-active-membership'
 
 /** Formats dates the way the active organization writes them; without one, like for the platform admin, in the user's locale */
@@ -38,4 +38,9 @@ export function useFormatLessonSlot() {
   if (!membership) return ({ day, time }: LessonSlot) => `${formatLessonDay(day)}, ${time}`
   const { date_format: dateFormat } = membership.organization
   return ({ day, time }: LessonSlot) => `${formatOrganizationLessonDay({ day, dateFormat })}, ${time}`
+}
+
+/** The time of day alone, like "09:15", for chat bubbles under a day heading */
+export function useFormatTime() {
+  return formatTime
 }

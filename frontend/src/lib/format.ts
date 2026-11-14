@@ -15,6 +15,9 @@ export const formatDate = (iso: string) => dateFormatter.format(new Date(iso))
 /** "31 Oct 2026, 09:00" in the user's locale */
 export const formatDateTime = (iso: string) => dateTimeFormatter.format(new Date(iso))
 
+/** "09:15" in the user's locale */
+export const formatTime = (iso: string) => timeFormatter.format(new Date(iso))
+
 /** A calendar day like "2026-09-01" as "1 Sep 2026" in the user's locale */
 export const formatDay = (day: string) => dayFormatter.format(toUtcDate(day))
 

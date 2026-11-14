@@ -33,17 +33,19 @@ export function AnnouncementList({ status, announcements, selectedId, onSelect, 
             <button
               type="button"
               aria-current={isSelected ? 'true' : undefined}
-              className={`grid w-full gap-1 px-5 py-3.5 text-left transition-colors duration-150 hover:bg-mist ${isSelected ? 'bg-green-wash' : ''}`}
+              className={`grid w-full grid-cols-[minmax(0,1fr)] gap-1 px-5 py-3.5 text-left transition-colors duration-150 hover:bg-mist ${isSelected ? 'bg-green-wash' : ''}`}
               onClick={() => onSelect(announcement.id)}
             >
               <span className="flex items-center justify-between gap-3">
                 <span className={`flex min-w-0 items-center gap-2 ${announcement.is_unread ? 'font-bold' : 'font-semibold'}`}>
                   {announcement.is_unread ? <span className="size-2 flex-none rounded-full bg-green-deep" role="img" aria-label="Unread" /> : null}
-                  <span className="truncate">{announcement.title}</span>
+                  <span className="truncate" title={announcement.title}>
+                    {announcement.title}
+                  </span>
                 </span>
                 {isShownWithStatus ? <AnnouncementStatusChip status={announcement.status} /> : null}
               </span>
-              <span className="truncate text-[0.82rem] text-ink-3">
+              <span className="truncate text-[0.82rem] text-ink-3" title={`${getAudienceLabel(announcement)} · ${fullName(announcement.author)}`}>
                 {getAudienceLabel(announcement)} · {fullName(announcement.author)}
               </span>
               <span className="text-[0.82rem] text-ink-3">

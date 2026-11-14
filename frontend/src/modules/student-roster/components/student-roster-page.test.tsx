@@ -104,6 +104,28 @@ describe('StudentRosterPage', () => {
     expect(within(table).queryByText('Besa Berisha')).not.toBeInTheDocument()
   })
 
+  it('filters the list by group, offering each of the lecturer’s groups once, and combines it with the search', async () => {
+    signInAsLecturer()
+    serveRoster([ALBA, BESA, DRITON, { ...ALBA, group: { id: 'group-b', name: 'Group B' } }])
+    const { user } = renderRoute('/dashboard/my-students')
+
+    const table = await screen.findByRole('table', { name: 'Students' })
+    const filter = screen.getByRole('combobox', { name: 'Filter by group' })
+    expect(within(filter).getAllByRole('option').map((option) => option.textContent)).toEqual(['All groups', 'Group A', 'Group B'])
+
+    await user.selectOptions(filter, 'Group B')
+    expect(within(table).getByText('Driton Krasniqi')).toBeInTheDocument()
+    expect(within(table).getByText('Alba Gashi')).toBeInTheDocument()
+    expect(within(table).queryByText('Besa Berisha')).not.toBeInTheDocument()
+
+    await user.type(screen.getByRole('searchbox', { name: 'Search students' }), 'driton')
+    expect(within(table).getByText('Driton Krasniqi')).toBeInTheDocument()
+    expect(within(table).queryByText('Alba Gashi')).not.toBeInTheDocument()
+
+    await user.selectOptions(filter, 'All groups')
+    expect(within(table).getByText('Driton Krasniqi')).toBeInTheDocument()
+  })
+
   it('shows "No matches" when the search finds no one', async () => {
     signInAsLecturer()
     serveRoster([ALBA])

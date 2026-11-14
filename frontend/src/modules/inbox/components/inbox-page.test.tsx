@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import type { AuthUser } from '@shigjetademy/shared/auth'
@@ -128,9 +128,9 @@ describe('the inbox: reading a conversation', () => {
     await user.click(await screen.findByRole('button', { name: /Arben Hoxha/ }))
 
     const [theirs, seen, unseen] = within(await screen.findByRole('list', { name: 'Messages with Arben Hoxha' })).getAllByRole('listitem')
-    expect(within(theirs).queryByText('Seen')).not.toBeInTheDocument()
-    expect(within(seen).getByText('Seen')).toBeInTheDocument()
-    expect(within(unseen).queryByText('Seen')).not.toBeInTheDocument()
+    expect(within(theirs).queryByLabelText('Seen')).not.toBeInTheDocument()
+    expect(within(seen).getByLabelText('Seen')).toBeInTheDocument()
+    expect(within(unseen).queryByLabelText('Seen')).not.toBeInTheDocument()
   })
 
   it('shows no Seen mark while the other person has never opened the conversation', async () => {
@@ -142,7 +142,7 @@ describe('the inbox: reading a conversation', () => {
     await user.click(await screen.findByRole('button', { name: /Arben Hoxha/ }))
 
     await screen.findByRole('list', { name: 'Messages with Arben Hoxha' })
-    expect(screen.queryByText('Seen')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Seen')).not.toBeInTheDocument()
   })
 
   it('offers to try again when a conversation fails to load', async () => {
@@ -187,6 +187,27 @@ describe('the inbox: sending', () => {
     expect(screen.getByRole('textbox', { name: 'Message' })).toHaveValue('')
     expect(threadReads).toBe(1)
     expect(within(await screen.findByRole('button', { name: /Arben Hoxha/ })).getByText('You: Friday at four works')).toBeInTheDocument()
+  })
+
+  it('sends with Enter, keeps a new line on Shift+Enter, and groups the messages under a day heading', async () => {
+    signInAsGuardian()
+    serveConversations([ARBEN_SUMMARY])
+    let sent: unknown
+    server.use(
+      http.get('*/api/organizations/org-1/inbox/conversations/c-arben', () => HttpResponse.json({ data: thread({ id: 'c-arben', other: ARBEN, messages: ARBEN_MESSAGES }) })),
+      http.post('*/api/organizations/org-1/inbox/conversations/c-arben/messages', async ({ request }) => {
+        sent = sendMessageSchema.parse(await request.json())
+        return HttpResponse.json({ data: message({ id: 'm5', body: 'Line one\nLine two', sender_membership_id: ME, created_at: '2026-11-10T12:00:00.000Z' }) }, { status: 201 })
+      }),
+    )
+    const { user } = renderRoute('/dashboard/inbox')
+
+    await user.click(await screen.findByRole('button', { name: /Arben Hoxha/ }))
+    const messages = await screen.findByRole('list', { name: 'Messages with Arben Hoxha' })
+    expect(within(messages).getAllByRole('separator')).toHaveLength(1)
+    await user.type(await screen.findByRole('textbox', { name: 'Message' }), 'Line one{Shift>}{Enter}{/Shift}Line two{Enter}')
+
+    await waitFor(() => expect(sent).toEqual({ body: 'Line one\nLine two' }))
   })
 
   it('does not send a blank message', async () => {

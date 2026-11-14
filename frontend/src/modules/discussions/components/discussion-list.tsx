@@ -46,19 +46,21 @@ export function DiscussionList({ status, topics, hasNoSpaces, isFiltered, select
             <button
               type="button"
               aria-current={isSelected ? 'true' : undefined}
-              className={`grid w-full gap-1 px-5 py-3.5 text-left transition-colors duration-150 hover:bg-mist ${isSelected ? 'bg-green-wash' : ''}`}
+              className={`grid w-full grid-cols-[minmax(0,1fr)] gap-1 px-5 py-3.5 text-left transition-colors duration-150 hover:bg-mist ${isSelected ? 'bg-green-wash' : ''}`}
               onClick={() => onSelect(topic.id)}
             >
               <span className="flex items-center justify-between gap-3">
                 <span className={`flex min-w-0 items-center gap-2 ${topic.is_unread ? 'font-bold' : 'font-semibold'}`}>
                   {topic.is_unread ? <span className="size-2 flex-none rounded-full bg-green-deep" role="img" aria-label="Unread" /> : null}
-                  <span className={`truncate ${isRemoved ? 'font-normal text-ink-3 italic' : ''}`}>{getTopicTitle(topic)}</span>
+                  <span className={`truncate ${isRemoved ? 'font-normal text-ink-3 italic' : ''}`} title={getTopicTitle(topic)}>
+                    {getTopicTitle(topic)}
+                  </span>
                 </span>
                 <span className="flex flex-none items-center gap-1.5">
                   <TopicChips isPinned={topic.is_pinned} isLocked={topic.is_locked} isSpaceArchived={topic.is_space_archived} />
                 </span>
               </span>
-              <span className="truncate text-[0.82rem] text-ink-3">
+              <span className="truncate text-[0.82rem] text-ink-3" title={`${getSpaceLabel(topic.space)} · ${fullName(topic.author)}`}>
                 {getSpaceLabel(topic.space)} · {fullName(topic.author)}
               </span>
               <span className="flex flex-wrap gap-x-2 text-[0.82rem] text-ink-3">

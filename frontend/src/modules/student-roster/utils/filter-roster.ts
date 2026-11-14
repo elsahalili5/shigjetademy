@@ -10,3 +10,15 @@ export const filterRoster = (entries: RosterEntry[], search: string) => {
     return words.every((word) => haystack.includes(word))
   })
 }
+
+/** Entries of one group, or all of them when no group is picked */
+export const filterRosterByGroup = (entries: RosterEntry[], groupId: string) => (groupId ? entries.filter((entry) => entry.group.id === groupId) : entries)
+
+type RosterGroup = RosterEntry['group']
+
+/** The groups the entries belong to, each once, by name, for the group filter */
+export const getRosterGroups = (entries: RosterEntry[]): RosterGroup[] => {
+  const groups = new Map<string, RosterGroup>()
+  for (const { group } of entries) groups.set(group.id, group)
+  return [...groups.values()].sort((a, b) => a.name.localeCompare(b.name))
+}
