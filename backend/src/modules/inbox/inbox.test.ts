@@ -603,7 +603,7 @@ describe('editing a message', () => {
     const response = await put('alba', `/conversations/${started.body.data.conversation_id}/messages/${started.body.data.message.id}`, { body: 'Never mind' })
 
     expect(response.status).toBe(403)
-    expect(response.body.error).toBe('Messaging students is turned off for this organization.')
+    expect(response.body.error).toBe('Messaging between students and the school’s teachers and admins is turned off.')
   })
 })
 
