@@ -9,6 +9,8 @@ import { server } from '#/test/server'
 const signInWithRole = (role: MemberRole) =>
   signInAs(buildUser({ memberships: [{ id: 'membership-1', role, permissions: [], organization: { id: 'org-1', name: 'Oxford Academy', type: 'ACADEMY', status: 'ACTIVE', ...DEFAULT_SETTINGS } }] }))
 
+const serveAnnouncements = () => server.use(http.get('*/api/organizations/org-1/announcements', () => HttpResponse.json({ data: [] })))
+
 const serveUnreadCount = (count: number) => server.use(http.get('*/api/organizations/org-1/inbox/unread-count', () => HttpResponse.json({ data: { unread_count: count } })))
 
 const ROLES: [string, MemberRole][] = [
@@ -45,6 +47,7 @@ describe('the sidebar’s Communication group', () => {
 
   it('opens by itself on a Communication page and marks the page as current', async () => {
     signInWithRole('LECTURER')
+    serveAnnouncements()
     renderRoute('/dashboard/announcements')
 
     expect(await screen.findByRole('button', { name: 'Communication' })).toHaveAttribute('aria-expanded', 'true')
@@ -53,6 +56,7 @@ describe('the sidebar’s Communication group', () => {
 
   it('replaces the owner’s old Messages item', async () => {
     signInWithRole('OWNER')
+    serveAnnouncements()
     renderRoute('/dashboard/announcements')
 
     await screen.findByRole('button', { name: 'Communication' })
@@ -94,17 +98,25 @@ describe('the sidebar’s Communication group', () => {
 })
 
 describe('the placeholder communication pages', () => {
-  it.each(ROLES)('opens Announcements and Groups & Discussions as coming soon for %s', async (_name, role) => {
+  it.each(ROLES)('opens Groups & Discussions as coming soon for %s', async (_name, role) => {
     signInWithRole(role)
-    const { user } = renderRoute('/dashboard/announcements')
+    const { user } = renderRoute('/dashboard/profile')
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Announcements' })).toBeInTheDocument()
-    expect(screen.getByText('Coming soon.')).toBeInTheDocument()
-
+    await user.click(await screen.findByRole('button', { name: 'Communication' }))
     await user.click(screen.getByRole('link', { name: 'Groups & Discussions' }))
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Groups & Discussions' })).toBeInTheDocument()
     expect(screen.getByText('Coming soon.')).toBeInTheDocument()
+  })
+
+  it.each(ROLES)('opens Announcements as a page of its own for %s', async (_name, role) => {
+    signInWithRole(role)
+    serveAnnouncements()
+    renderRoute('/dashboard/announcements')
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Announcements' })).toBeInTheDocument()
+    expect(await screen.findByText('No announcements yet.')).toBeInTheDocument()
+    expect(screen.queryByText('Coming soon.')).not.toBeInTheDocument()
   })
 
   it('sends the old Messages module to the Inbox', async () => {

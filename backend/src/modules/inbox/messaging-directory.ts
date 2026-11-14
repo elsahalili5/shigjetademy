@@ -3,7 +3,7 @@ import type { MemberRole } from '@shigjetademy/shared/auth'
 import { toDate } from '@lib/calendar-day.ts'
 import { getOrganizationToday } from '@lib/current-period.ts'
 import { prisma } from '@lib/prisma.ts'
-import { activeEnrolments } from '@modules/groups/group-selects.ts'
+import { activeEnrolments, assignmentCoveringDay } from '@modules/groups/group-selects.ts'
 import type { MessagingContext, MessagingParty } from './inbox.types.ts'
 
 export type MessagingPerson = MessagingParty & {
@@ -34,7 +34,7 @@ const addStudent = (studentsByUser: StudentsByUser, userId: string | null, stude
  */
 export const loadMessagingDirectory = async ({ organizationId }: LoadMessagingDirectoryParams): Promise<MessagingDirectory> => {
   const today = toDate(await getOrganizationToday({ db: prisma, organizationId }))
-  const coversToday = { start_date: { lte: today }, OR: [{ end_date: null }, { end_date: { gte: today } }], lecturer: { status: 'ACTIVE' as const, user_id: { not: null } } }
+  const coversToday = { ...assignmentCoveringDay(today), lecturer: { status: 'ACTIVE' as const, user_id: { not: null } } }
   const [settings, memberships, students, guardianLinks, enrolments] = await Promise.all([
     prisma.organizationSettings.findUnique({ where: { organization_id: organizationId }, select: { student_messaging_enabled: true } }),
     prisma.membership.findMany({
