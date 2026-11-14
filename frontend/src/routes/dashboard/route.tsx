@@ -5,7 +5,7 @@ import { hasOrganizationPermission } from '@shigjetademy/shared/auth'
 import type { Permission } from '@shigjetademy/shared/auth'
 import type { OrganizationStatus } from '@shigjetademy/shared/organization'
 import { Link, Outlet, createFileRoute, useMatchRoute, useNavigate, useRouterState } from '@tanstack/react-router'
-import wordmark from '#/assets/brand/shigjetademy-wordmark.png'
+import wordmark from '#/assets/brand/shigjetademy-wordmark-light.png'
 import { ADMIN_MODULES } from '#/lib/admin-modules'
 import { UserAvatar } from '#/components/UserAvatar'
 import { useMediaQuery } from '#/hooks/useMediaQuery'
@@ -114,14 +114,18 @@ function DashboardLayout() {
       >
         <aside data-sidebar={isRail ? 'rail' : 'full'} className="flex min-h-0 min-w-0 flex-col gap-5 px-3 py-4 max-[860px]:gap-3 max-[860px]:pb-3">
           <SidebarRailContext value={{ isRail, expand: () => handleCollapsedChange(false) }}>
-            <div className="flex items-center justify-between gap-3 rail:justify-center">
-              <Link to="/" className="rounded-[14px] bg-haze px-3.5 py-2.5 no-underline transition-colors duration-200 hover:bg-white rail:hidden" aria-label="Shigjetademy website">
-                <img className="block h-7 w-auto" src={wordmark} alt="Shigjetademy" width={112} height={28} />
+            <div className="flex min-h-11 items-center justify-between gap-3 pl-2.5 rail:justify-center rail:pl-0">
+              <Link
+                to="/"
+                className="rounded-lg no-underline opacity-95 transition-opacity duration-200 hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-green rail:hidden"
+                aria-label="Shigjetademy website"
+              >
+                <img className="block h-7.5 w-auto" src={wordmark} alt="Shigjetademy" width={120} height={30} />
               </Link>
               <button
                 type="button"
                 onClick={() => handleCollapsedChange(!isRail)}
-                className="grid size-10 flex-none place-items-center rounded-xl text-on-navy-2 transition-colors duration-200 hover:bg-navy-2 hover:text-white max-[860px]:hidden"
+                className="grid size-9 flex-none place-items-center rounded-lg text-on-navy-2 transition-colors duration-200 hover:bg-navy-2 hover:text-white max-[860px]:hidden"
                 aria-label={isRail ? 'Expand sidebar' : 'Collapse sidebar'}
                 title={isRail ? 'Expand sidebar' : 'Collapse sidebar'}
               >
