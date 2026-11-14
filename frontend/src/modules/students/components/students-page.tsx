@@ -24,6 +24,8 @@ import { StudentInviteDialog } from './student-invite-dialog'
 import type { StudentInviteTarget } from './student-invite-dialog'
 import { StudentTable } from './student-table'
 import { TableToolbar } from '#/components/TableToolbar'
+import { GroupFilterSelect } from '#/components/GroupFilterSelect'
+import { useStudentGroupOptions } from '../hooks/use-student-group-options'
 
 const STATUS_TAB_LABELS = {
   ACTIVE: 'Active',
@@ -45,7 +47,12 @@ export function StudentsPage({ organizationId, organizationName }: StudentsPageP
   const searchId = useId()
   const studentSearch = useDebouncedSearch()
   const [status, setStatus] = useState<StudentStatus>('ACTIVE')
-  const students = useStudents({ organizationId, search: studentSearch.search, status })
+  const [groupId, setGroupId] = useState('')
+  const groupOptions = useStudentGroupOptions(organizationId)
+  const groups = (groupOptions.data ?? []).map(({ id, name, course_name }) => ({ id, label: `${course_name} · ${name}` }))
+  // A group that was archived or removed falls back to all groups
+  const pickedGroupId = groups.some((group) => group.id === groupId) ? groupId : ''
+  const students = useStudents({ organizationId, search: studentSearch.search, status, groupId: pickedGroupId })
   const setStudentStatus = useSetStudentStatus(organizationId)
   const studentInvitation = useStudentInvitationAction(organizationId)
   const [dialogMode, setDialogMode] = useState<StudentDialogMode>({ kind: 'add', openCount: 0 })
@@ -133,20 +140,23 @@ export function StudentsPage({ organizationId, organizationName }: StudentsPageP
           addLabel="Add student"
           onAdd={handleAdd}
           search={
-            <div className="relative w-[min(100%,340px)]">
-                <label htmlFor={searchId} className="visually-hidden">
-                  Search students
-                </label>
-                <Search className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-ink-3" size={17} strokeWidth={2} aria-hidden="true" />
-                <input
-                  id={searchId}
-                  type="search"
-                  placeholder="Name or student number"
-                  className="min-h-11 w-full rounded-full border border-rule-strong bg-white pr-4 pl-10 text-base transition-[border-color,box-shadow] duration-150 placeholder:text-ink-3 hover:border-ink-3 focus:border-green-deep focus:shadow-[0_0_0_3px_var(--green-wash)] focus:outline-none"
-                  value={studentSearch.text}
-                  onChange={(event) => studentSearch.change(event.target.value)}
-                />
-              </div>
+            <div className="flex min-w-0 items-center gap-2 max-[560px]:flex-wrap">
+              <div className="relative w-[min(100%,340px)]">
+                  <label htmlFor={searchId} className="visually-hidden">
+                    Search students
+                  </label>
+                  <Search className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-ink-3" size={17} strokeWidth={2} aria-hidden="true" />
+                  <input
+                    id={searchId}
+                    type="search"
+                    placeholder="Name or student number"
+                    className="min-h-11 w-full rounded-full border border-rule-strong bg-white pr-4 pl-10 text-base transition-[border-color,box-shadow] duration-150 placeholder:text-ink-3 hover:border-ink-3 focus:border-green-deep focus:shadow-[0_0_0_3px_var(--green-wash)] focus:outline-none"
+                    value={studentSearch.text}
+                    onChange={(event) => studentSearch.change(event.target.value)}
+                  />
+                </div>
+              <GroupFilterSelect groups={groups} value={pickedGroupId} onChange={setGroupId} />
+            </div>
           }
         />
         <section className="rounded-card border border-rule" role="tabpanel" aria-label={STATUS_TAB_LABELS[status]}>
@@ -154,7 +164,7 @@ export function StudentsPage({ organizationId, organizationName }: StudentsPageP
             status={students.status}
             data={students.data}
             listStatus={status}
-            hasSearch={!!studentSearch.search}
+            hasSearch={!!studentSearch.search || !!pickedGroupId}
             hasNextPage={students.hasNextPage}
             isLoadingMore={students.isFetchingNextPage}
             onRetry={() => void students.refetch()}

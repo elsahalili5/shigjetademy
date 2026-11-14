@@ -6,5 +6,8 @@ const noUnreadMessages = http.get('*/api/organizations/*/inbox/unread-count', ()
 const noUnreadAnnouncements = http.get('*/api/organizations/*/announcements/unread-count', () => HttpResponse.json({ data: { unread_count: 0 } }))
 const noUnreadDiscussions = http.get('*/api/organizations/*/discussions/unread-count', () => HttpResponse.json({ data: { unread_count: 0 } }))
 
+// The students list loads its group filter's options; a test that filters by group serves its own
+const noStudentGroups = http.get('*/api/organizations/*/students/groups', () => HttpResponse.json({ data: [] }))
+
 // Each test adds the handlers it needs with server.use()
-export const server = setupServer(noUnreadMessages, noUnreadAnnouncements, noUnreadDiscussions)
+export const server = setupServer(noUnreadMessages, noUnreadAnnouncements, noUnreadDiscussions, noStudentGroups)

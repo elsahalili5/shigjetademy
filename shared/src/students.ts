@@ -58,11 +58,20 @@ export const listStudentsQuerySchema = z.object({
   /** Part of a name or a student number, in any case */
   search: z.string().trim().max(SEARCH_MAX).default(''),
   status: z.enum(STUDENT_STATUSES, 'Unknown status').default('ACTIVE'),
+  /** Only the students actively enrolled in this group */
+  group_id: z.uuid('Unknown group').optional(),
   page: z.coerce.number().int().min(1).default(1),
   page_size: z.coerce.number().int().min(1).max(STUDENT_PAGE_SIZE_MAX).default(STUDENT_PAGE_SIZE),
 })
 
 export type ListStudentsQuery = z.infer<typeof listStudentsQuerySchema>
+
+/** An active group the students list can be filtered by, named with its course */
+export type StudentGroupOption = {
+  id: string
+  name: string
+  course_name: string
+}
 
 /** Whether a login is linked to the record: none, invited by email and waiting, or linked */
 export type StudentLoginStatus = 'NONE' | 'INVITED' | 'LINKED'

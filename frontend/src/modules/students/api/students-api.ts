@@ -1,6 +1,6 @@
 import { apiClient } from '#/api/client'
 import type { InviteRecordInput } from '@shigjetademy/shared/invitations'
-import type { CreateStudentInput, ListStudentsQuery, Student, StudentPage, UpdateStudentInput } from '@shigjetademy/shared/students'
+import type { CreateStudentInput, ListStudentsQuery, Student, StudentGroupOption, StudentPage, UpdateStudentInput } from '@shigjetademy/shared/students'
 
 type ListStudentsParams = ListStudentsQuery & {
   organizationId: string
@@ -26,6 +26,7 @@ const invitationPath = ({ organizationId, studentId }: StudentActionParams) => `
 
 export const studentsApi = {
   list: ({ organizationId, ...params }: ListStudentsParams) => apiClient.get<StudentPage>(`/organizations/${organizationId}/students`, { params }),
+  groupOptions: (organizationId: string) => apiClient.get<StudentGroupOption[]>(`/organizations/${organizationId}/students/groups`),
   create: ({ organizationId, ...input }: CreateStudentParams) => apiClient.post<Student, CreateStudentInput>(`/organizations/${organizationId}/students`, input),
   update: ({ organizationId, studentId, ...input }: UpdateStudentParams) =>
     apiClient.put<Student, UpdateStudentInput>(`/organizations/${organizationId}/students/${studentId}`, input),

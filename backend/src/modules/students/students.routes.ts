@@ -23,6 +23,9 @@ router.get(
   StudentController.listStudents,
 )
 
+// Registered before the :studentId routes, so 'groups' is never read as a student id
+router.get(`${STUDENTS}/groups`, authMiddleware, validateRequestMiddleware(organizationIdParamSchema, 'params'), canManage, StudentController.listGroupOptions)
+
 router.post(STUDENTS, authMiddleware, validateRequestMiddleware(organizationIdParamSchema, 'params'), canManage, validateRequestMiddleware(createStudentSchema), StudentController.createStudent)
 
 router.get(STUDENT, authMiddleware, validateRequestMiddleware(studentParamSchema, 'params'), canManage, StudentController.getStudent)
