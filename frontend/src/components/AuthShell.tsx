@@ -21,10 +21,6 @@ export function AuthShell({ children }: AuthShellProps) {
         <div className="mx-auto w-[min(100%,440px)] self-center [&_h1]:text-[clamp(2rem,3.4vw,2.8rem)] [&_h1]:font-bold [&_h1]:tracking-[-0.034em]">
           {children}
         </div>
-
-        <p className="self-end text-[0.953rem] text-ink-3 [&_a]:no-underline">
-          <Link to="/">← Back to the website</Link>
-        </p>
       </main>
 
       {/* Quiet brand panel: the logo's arcs and one line, nothing to read past */}
