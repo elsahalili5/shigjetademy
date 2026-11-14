@@ -21,6 +21,7 @@ import { useRemoveMember } from '../hooks/use-remove-member'
 import { PERMISSION_LABELS } from '../utils/permission-labels'
 import { AdminAccessDialog } from './admin-access-dialog'
 import type { AdminAccessDialogMode } from './admin-access-dialog'
+import { TableAddButton } from '#/components/TableToolbar'
 
 const SHOWN_PERMISSIONS = 3
 const SKELETON_ROWS = 2
@@ -109,16 +110,12 @@ export function MembersPage({ organizationId, organizationName }: MembersPagePro
         icon={Users}
         title="Members"
         subtitle={`${organizationName} · ${adminCount} ${adminCount === 1 ? 'school admin' : 'school admins'} · ${pendingCount} pending`}
-      >
-        <button type="button" className="button button--primary min-h-11 px-4 text-base" onClick={handleOpenInvite}>
-          <UserPlus size={17} strokeWidth={2} aria-hidden="true" />
-          Invite admin
-        </button>
-      </DashboardPageHeader>
+      />
 
       <div className="grid max-w-[1040px] gap-6 px-[clamp(20px,3.4vw,44px)] pb-10">
         {notice ? <NoticeBar notice={notice} onDismiss={() => setNotice(null)} /> : null}
 
+        <TableAddButton label="Invite admin" icon={UserPlus} onClick={handleOpenInvite} />
         <section className="rounded-card border border-rule" aria-labelledby="pending-title">
           <div className="flex items-center justify-between gap-3 border-b border-rule px-5 py-4">
             <h2 id="pending-title" className="text-[1.15rem] font-[650]">
@@ -129,7 +126,6 @@ export function MembersPage({ organizationId, organizationName }: MembersPagePro
           <InvitationList
             query={invitations}
             isChanging={invitationAction.isPending}
-            onInvite={handleOpenInvite}
             onResend={handleResend}
             onCopyLink={handleCopyLink}
             onRevoke={handleRevoke}
@@ -208,10 +204,9 @@ type InvitationHandlers = {
 
 interface InvitationListProps extends InvitationHandlers {
   query: ListQuery<OrganizationInvitation>
-  onInvite: () => void
 }
 
-function InvitationList({ query, onInvite, ...handlers }: InvitationListProps) {
+function InvitationList({ query, ...handlers }: InvitationListProps) {
   if (query.status === 'pending') return <SkeletonRows />
   if (query.status === 'error') return <LoadError what="invitations" onRetry={() => void query.refetch()} />
 
@@ -221,9 +216,6 @@ function InvitationList({ query, onInvite, ...handlers }: InvitationListProps) {
       <div className="grid justify-items-center gap-2 px-5 py-10 text-center">
         <Mail className="text-ink-3" size={24} strokeWidth={1.7} aria-hidden="true" />
         <p className="text-ink-2">No open invitations.</p>
-        <button type="button" className="text-[0.95rem] font-semibold text-green-deep hover:underline" onClick={onInvite}>
-          Invite a school admin
-        </button>
       </div>
     )
   }

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { CalendarRange, Plus } from 'lucide-react'
+import { CalendarRange } from 'lucide-react'
 import type { AcademicYear } from '@shigjetademy/shared/academic-periods'
 import { DashboardPageHeader } from '#/components/DashboardPageHeader'
 import { NoticeBar } from '#/components/NoticeBar'
@@ -18,6 +18,7 @@ import type { RemoveAcademicYearInput } from './academic-year-list'
 import { YearPeriodDialog } from './year-period-dialog'
 import type { YearPeriodDialogMode } from './year-period-dialog'
 import type { AddYearPeriodInput, YearPeriodChange } from './year-period-list'
+import { TableAddButton } from '#/components/TableToolbar'
 
 const pluralRules = new Intl.PluralRules()
 
@@ -114,7 +115,8 @@ export function AcademicPeriodsPage({ organizationId, organizationName, isEditab
       <div className="grid max-w-[1040px] gap-6 px-[clamp(20px,3.4vw,44px)] pb-10">
         {notice ? <NoticeBar notice={notice} onDismiss={() => setNotice(null)} /> : null}
 
-        <SectionCard title="School years" action={shouldOfferAddYear ? <AddButton label="Add year" onClick={handleAddYear} /> : null}>
+        {shouldOfferAddYear ? <TableAddButton label="Add year" onClick={handleAddYear} /> : null}
+        <SectionCard title="School years">
           <AcademicYearList
             status={years.status}
             years={years.data}
@@ -137,19 +139,5 @@ export function AcademicPeriodsPage({ organizationId, organizationName, isEditab
         </>
       ) : null}
     </div>
-  )
-}
-
-interface AddButtonProps {
-  label: string
-  onClick: () => void
-}
-
-function AddButton({ label, onClick }: AddButtonProps) {
-  return (
-    <button type="button" className="button button--primary min-h-10 px-3.5 text-[0.95rem]" onClick={onClick}>
-      <Plus size={16} strokeWidth={2.2} aria-hidden="true" />
-      {label}
-    </button>
   )
 }

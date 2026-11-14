@@ -93,7 +93,7 @@ describe('LocationsPage: locations', () => {
 
     const region = await locationsRegion()
     expect(await within(region).findByText('No locations yet.')).toBeInTheDocument()
-    await user.click(within(region).getByRole('button', { name: 'Add location' }))
+    await user.click(screen.getByRole('button', { name: 'Add location' }))
     const dialog = screen.getByRole('dialog', { name: 'Add a location' })
     expect(within(dialog).getByRole('checkbox', { name: 'Main location' })).toBeChecked()
     await user.type(within(dialog).getByLabelText('Name'), 'Main campus')
@@ -108,7 +108,7 @@ describe('LocationsPage: locations', () => {
     signInAsOwner()
     const { user } = renderRoute('/dashboard/locations')
 
-    await user.click(await within(await locationsRegion()).findByRole('button', { name: 'Add location' }))
+    await user.click(await screen.findByRole('button', { name: 'Add location' }))
     const dialog = screen.getByRole('dialog', { name: 'Add a location' })
     await user.click(within(dialog).getByRole('button', { name: 'Add location' }))
 
@@ -215,7 +215,7 @@ describe('LocationsPage: locations', () => {
 
     const region = await locationsRegion()
     expect(await within(region).findByRole('button', { name: 'Try again' })).toBeInTheDocument()
-    expect(within(region).queryByRole('button', { name: 'Add location' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add location' })).not.toBeInTheDocument()
   })
 
   it('only offers adding a location once the list has loaded', async () => {
@@ -228,7 +228,7 @@ describe('LocationsPage: locations', () => {
 
     const region = await locationsRegion()
     expect(within(region).getByRole('list', { name: 'Loading' })).toBeInTheDocument()
-    expect(within(region).queryByRole('button', { name: 'Add location' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add location' })).not.toBeInTheDocument()
   })
 
   it('does not make a new location main when others exist', async () => {
@@ -237,7 +237,7 @@ describe('LocationsPage: locations', () => {
 
     const region = await locationsRegion()
     await within(region).findAllByRole('listitem')
-    await user.click(within(region).getByRole('button', { name: 'Add location' }))
+    await user.click(screen.getByRole('button', { name: 'Add location' }))
 
     expect(within(screen.getByRole('dialog', { name: 'Add a location' })).getByRole('checkbox', { name: 'Main location' })).not.toBeChecked()
   })
@@ -272,7 +272,7 @@ describe('LocationsPage: departments', () => {
     const { user } = renderRoute('/dashboard/locations')
 
     const region = await departmentsRegion()
-    await user.click(within(region).getByRole('button', { name: 'Add department' }))
+    await user.click(screen.getByRole('button', { name: 'Add department' }))
     const dialog = screen.getByRole('dialog', { name: 'Add a department' })
     await user.type(within(dialog).getByLabelText('Name'), 'Languages')
     await user.selectOptions(within(dialog).getByRole('combobox', { name: /^Location/ }), 'Main campus')
@@ -287,7 +287,7 @@ describe('LocationsPage: departments', () => {
     server.use(http.post(DEPARTMENTS_PATH, () => HttpResponse.json({ error: 'There is already a department with this name' }, { status: 409 })))
     const { user } = renderRoute('/dashboard/locations')
 
-    await user.click(within(await departmentsRegion()).getByRole('button', { name: 'Add department' }))
+    await user.click(await screen.findByRole('button', { name: 'Add department' }))
     const dialog = screen.getByRole('dialog', { name: 'Add a department' })
     await user.type(within(dialog).getByLabelText('Name'), 'languages')
     await user.click(within(dialog).getByRole('button', { name: 'Add department' }))

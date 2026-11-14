@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { MapPin, Plus } from 'lucide-react'
+import { MapPin } from 'lucide-react'
 import type { OrganizationDepartment, OrganizationLocation } from '@shigjetademy/shared/location'
 import type { OrganizationRoom } from '@shigjetademy/shared/rooms'
 import { DashboardPageHeader } from '#/components/DashboardPageHeader'
@@ -17,6 +17,7 @@ import { LocationDialog } from './location-dialog'
 import type { LocationDialogMode } from './location-dialog'
 import { LocationList } from './location-list'
 import type { RemoveLocationInput } from './location-list'
+import { TableAddButton } from '#/components/TableToolbar'
 
 const pluralRules = new Intl.PluralRules()
 
@@ -121,7 +122,8 @@ export function LocationsPage({ organizationId, organizationName, isOwner }: Loc
       <div className="grid max-w-[1040px] gap-6 px-[clamp(20px,3.4vw,44px)] pb-10">
         {notice ? <NoticeBar notice={notice} onDismiss={() => setNotice(null)} /> : null}
 
-        <SectionCard title="Locations" action={canAddLocation ? <AddButton label="Add location" onClick={handleAddLocation} /> : null}>
+        {canAddLocation ? <TableAddButton label="Add location" onClick={handleAddLocation} /> : null}
+        <SectionCard title="Locations">
           <LocationList
             organizationId={organizationId}
             status={locations.status}
@@ -135,7 +137,8 @@ export function LocationsPage({ organizationId, organizationName, isOwner }: Loc
           />
         </SectionCard>
 
-        <SectionCard title="Departments" action={isOwner ? <AddButton label="Add department" onClick={handleAddDepartment} /> : null}>
+        {isOwner ? <TableAddButton label="Add department" onClick={handleAddDepartment} /> : null}
+        <SectionCard title="Departments">
           <DepartmentList
             status={departments.status}
             departments={departments.data}
@@ -161,19 +164,5 @@ export function LocationsPage({ organizationId, organizationName, isOwner }: Loc
         </>
       ) : null}
     </div>
-  )
-}
-
-interface AddButtonProps {
-  label: string
-  onClick: () => void
-}
-
-function AddButton({ label, onClick }: AddButtonProps) {
-  return (
-    <button type="button" className="button button--primary min-h-10 px-3.5 text-[0.95rem]" onClick={onClick}>
-      <Plus size={16} strokeWidth={2.2} aria-hidden="true" />
-      {label}
-    </button>
   )
 }

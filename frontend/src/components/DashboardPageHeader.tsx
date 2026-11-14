@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ArrowLeft, type LucideIcon } from 'lucide-react'
+import { NotificationBell } from './NotificationBell'
 
 export interface DashboardPageHeaderBackTo {
   to: string
@@ -33,7 +34,10 @@ export function DashboardPageHeader({ icon: Icon, title, subtitle, backTo, child
             <p className="mt-1.5 text-ink-2">{subtitle}</p>
           </div>
         </div>
-        {children}
+        <div className="flex items-center gap-3 self-center">
+          {children}
+          <NotificationBell />
+        </div>
       </div>
       {backTo ? (
         <Link className="button button--ghost mt-4 min-h-11 px-4 text-base" to={backTo.to}>

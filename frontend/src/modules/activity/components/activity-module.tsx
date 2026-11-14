@@ -6,6 +6,7 @@ import { useClients } from '#/modules/organization/hooks/use-clients'
 import { useActivity } from '../hooks/use-activity'
 import { ACTIVITY_ACTION_LABELS } from '../utils/labels'
 import { ActivityRow, ActivityRowSkeleton } from './activity-row'
+import { NotificationBell } from '#/components/NotificationBell'
 
 const SKELETON_ROWS = 6
 
@@ -31,16 +32,21 @@ export function ActivityModule() {
   return (
     <div className="flex h-full min-w-0 flex-col overflow-y-auto">
       <header className="bg-linear-to-b from-green-wash to-white px-[clamp(20px,3.4vw,44px)] pt-[clamp(24px,3.4vw,40px)] pb-6">
-        <div className="flex items-start gap-4">
-          <span
-            className="grid size-14 flex-none place-items-center rounded-2xl bg-white text-green-deep shadow-[0_1px_2px_rgba(22,34,46,0.06),0_10px_24px_-12px_rgba(22,34,46,0.3)]"
-            aria-hidden="true"
-          >
-            <History size={26} strokeWidth={1.7} />
-          </span>
-          <div>
-            <h1 className="font-display text-[clamp(1.7rem,2.6vw,2.3rem)] leading-[1.05] font-[680] tracking-[-0.03em]">Activity</h1>
-            <p className="mt-1.5 text-ink-2">Who did what on Shigjetademy, and when</p>
+        <div className="flex flex-wrap items-start justify-between gap-5">
+          <div className="flex items-start gap-4">
+            <span
+              className="grid size-14 flex-none place-items-center rounded-2xl bg-white text-green-deep shadow-[0_1px_2px_rgba(22,34,46,0.06),0_10px_24px_-12px_rgba(22,34,46,0.3)]"
+              aria-hidden="true"
+            >
+              <History size={26} strokeWidth={1.7} />
+            </span>
+            <div>
+              <h1 className="font-display text-[clamp(1.7rem,2.6vw,2.3rem)] leading-[1.05] font-[680] tracking-[-0.03em]">Activity</h1>
+              <p className="mt-1.5 text-ink-2">Who did what on Shigjetademy, and when</p>
+            </div>
+          </div>
+          <div className="self-center">
+            <NotificationBell />
           </div>
         </div>
 
