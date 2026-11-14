@@ -9,6 +9,10 @@ import { server } from '#/test/server'
 const signInWithRole = (role: MemberRole) =>
   signInAs(buildUser({ memberships: [{ id: 'membership-1', role, permissions: [], organization: { id: 'org-1', name: 'Oxford Academy', type: 'ACADEMY', status: 'ACTIVE', ...DEFAULT_SETTINGS } }] }))
 
+const serveDiscussions = () => {
+  server.use(http.get('*/api/organizations/org-1/discussions', () => HttpResponse.json({ data: [] })), http.get('*/api/organizations/org-1/discussions/spaces', () => HttpResponse.json({ data: [] })))
+}
+
 const serveAnnouncements = () => server.use(http.get('*/api/organizations/org-1/announcements', () => HttpResponse.json({ data: [] })))
 
 const serveUnreadCount = (count: number) => server.use(http.get('*/api/organizations/org-1/inbox/unread-count', () => HttpResponse.json({ data: { unread_count: count } })))
@@ -37,7 +41,10 @@ describe('the sidebar’s Communication group', () => {
     const group = screen.getByRole('group', { name: 'Communication' })
     expect(within(group).getByRole('link', { name: 'Inbox' })).toHaveAttribute('href', '/dashboard/inbox')
     expect(within(group).getByRole('link', { name: 'Announcements' })).toHaveAttribute('href', '/dashboard/announcements')
-    expect(within(group).getByRole('link', { name: 'Groups & Discussions' })).toHaveAttribute('href', '/dashboard/discussions')
+    const discussions = within(group).queryByRole('link', { name: 'Groups & Discussions' })
+    // Guardians take no part in discussions
+    if (role === 'GUARDIAN') expect(discussions).not.toBeInTheDocument()
+    else expect(discussions).toHaveAttribute('href', '/dashboard/discussions')
 
     await user.click(button)
 
@@ -75,6 +82,44 @@ describe('the sidebar’s Communication group', () => {
     expect(within(screen.getByRole('link', { name: /Inbox/ })).getByLabelText('3 unread messages')).toBeInTheDocument()
   })
 
+  it('adds the unread announcements and topics to the closed group’s badge', async () => {
+    signInWithRole('STUDENT')
+    serveUnreadCount(1)
+    server.use(
+      http.get('*/api/organizations/org-1/announcements/unread-count', () => HttpResponse.json({ data: { unread_count: 2 } })),
+      http.get('*/api/organizations/org-1/discussions/unread-count', () => HttpResponse.json({ data: { unread_count: 4 } })),
+    )
+    const { user } = renderRoute('/dashboard/profile')
+
+    const button = await screen.findByRole('button', { name: /Communication/ })
+    expect(await within(button).findByLabelText('7 unread')).toBeInTheDocument()
+    await user.click(button)
+
+    expect(within(screen.getByRole('link', { name: /Inbox/ })).getByLabelText('1 unread messages')).toBeInTheDocument()
+    expect(within(screen.getByRole('link', { name: /Announcements/ })).getByLabelText('2 unread announcements')).toBeInTheDocument()
+    expect(within(screen.getByRole('link', { name: /Groups & Discussions/ })).getByLabelText('4 unread topics')).toBeInTheDocument()
+  })
+
+  it('counts unread topics alone on the closed group', async () => {
+    signInWithRole('LECTURER')
+    server.use(http.get('*/api/organizations/org-1/discussions/unread-count', () => HttpResponse.json({ data: { unread_count: 3 } })))
+    renderRoute('/dashboard/profile')
+
+    const button = await screen.findByRole('button', { name: /Communication/ })
+
+    expect(await within(button).findByLabelText('3 unread')).toBeInTheDocument()
+  })
+
+  it('counts nothing from discussions for a guardian', async () => {
+    signInWithRole('GUARDIAN')
+    server.use(http.get('*/api/organizations/org-1/discussions/unread-count', () => HttpResponse.json({ data: { unread_count: 9 } })))
+    renderRoute('/dashboard/profile')
+
+    await screen.findByRole('button', { name: 'Communication' })
+
+    expect(screen.queryByLabelText(/unread/)).not.toBeInTheDocument()
+  })
+
   it('shows no badge when nothing is unread', async () => {
     signInWithRole('STUDENT')
     const { user } = renderRoute('/dashboard/profile')
@@ -97,16 +142,18 @@ describe('the sidebar’s Communication group', () => {
   })
 })
 
-describe('the placeholder communication pages', () => {
-  it.each(ROLES)('opens Groups & Discussions as coming soon for %s', async (_name, role) => {
+describe('the communication pages', () => {
+  it.each(ROLES.filter(([, role]) => role !== 'GUARDIAN'))('opens Groups & Discussions as a page of its own for %s', async (_name, role) => {
     signInWithRole(role)
+    serveDiscussions()
     const { user } = renderRoute('/dashboard/profile')
 
     await user.click(await screen.findByRole('button', { name: 'Communication' }))
     await user.click(screen.getByRole('link', { name: 'Groups & Discussions' }))
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Groups & Discussions' })).toBeInTheDocument()
-    expect(screen.getByText('Coming soon.')).toBeInTheDocument()
+    expect(await screen.findByText('You are not in a group or course yet.')).toBeInTheDocument()
+    expect(screen.queryByText('Coming soon.')).not.toBeInTheDocument()
   })
 
   it.each(ROLES)('opens Announcements as a page of its own for %s', async (_name, role) => {

@@ -1,11 +1,13 @@
 import { useId, useState } from 'react'
 import { ChevronDown, MessageSquare } from 'lucide-react'
 import { Link, useMatchRoute } from '@tanstack/react-router'
+import type { MemberRole } from '@shigjetademy/shared/auth'
 import { useMediaQuery } from '#/hooks/useMediaQuery'
 import { useActiveMembership } from '#/modules/auth/hooks/use-active-membership'
 import { useAnnouncementUnreadCount } from '#/modules/announcements/hooks/use-announcement-unread-count'
+import { useDiscussionUnreadCount } from '#/modules/discussions/hooks/use-discussion-unread-count'
 import { useInboxUnreadCount } from '#/modules/inbox/hooks/use-inbox-unread-count'
-import { COMMUNICATION_LINKS, NARROW_SIDEBAR_QUERY } from '../utils/communication-links'
+import { NARROW_SIDEBAR_QUERY, getCommunicationLinks } from '../utils/communication-links'
 
 const MAX_BADGE_COUNT = 99
 
@@ -20,11 +22,12 @@ interface CommunicationNavGroupProps {
 export function CommunicationNavGroup({ linkClassName }: CommunicationNavGroupProps) {
   const membership = useActiveMembership()
   if (!membership) return null
-  return <CommunicationLinks organizationId={membership.organization.id} linkClassName={linkClassName} />
+  return <CommunicationLinks organizationId={membership.organization.id} role={membership.role} linkClassName={linkClassName} />
 }
 
 interface CommunicationLinksProps {
   organizationId: string
+  role: MemberRole
   linkClassName: string
 }
 
@@ -35,18 +38,22 @@ type OpenOverride = {
 }
 
 /** An expandable group: it opens by itself on a Communication page, and on narrow screens its links sit in the row with the others */
-function CommunicationLinks({ organizationId, linkClassName }: CommunicationLinksProps) {
+function CommunicationLinks({ organizationId, role, linkClassName }: CommunicationLinksProps) {
   const matchRoute = useMatchRoute()
   const isNarrow = useMediaQuery(NARROW_SIDEBAR_QUERY)
   const unread = useInboxUnreadCount(organizationId)
   const announcementsUnread = useAnnouncementUnreadCount(organizationId)
+  const links = getCommunicationLinks(role)
+  const hasDiscussions = links.some((link) => link.to === '/dashboard/discussions')
+  const discussionsUnread = useDiscussionUnreadCount({ organizationId, isEnabled: hasDiscussions })
   const [override, setOverride] = useState<OpenOverride | null>(null)
   const listId = useId()
-  const isOnRoute = COMMUNICATION_LINKS.some((link) => !!matchRoute({ to: link.to }))
+  const isOnRoute = links.some((link) => !!matchRoute({ to: link.to }))
   const isOpen = override && override.wasOnRoute === isOnRoute ? override.isOpen : isOnRoute
   const unreadCount = unread.data?.unread_count ?? 0
   const unreadAnnouncementCount = announcementsUnread.data?.unread_count ?? 0
-  const totalUnreadCount = unreadCount + unreadAnnouncementCount
+  const unreadDiscussionCount = hasDiscussions ? (discussionsUnread.data?.unread_count ?? 0) : 0
+  const totalUnreadCount = unreadCount + unreadAnnouncementCount + unreadDiscussionCount
 
   const handleToggle = () => setOverride({ isOpen: !isOpen, wasOnRoute: isOnRoute })
 
@@ -62,12 +69,13 @@ function CommunicationLinks({ organizationId, linkClassName }: CommunicationLink
       )}
       {isNarrow || isOpen ? (
         <div id={listId} className="flex flex-col gap-0.5 max-[860px]:flex-none max-[860px]:flex-row max-[860px]:gap-1.5">
-          {COMMUNICATION_LINKS.map((link) => (
+          {links.map((link) => (
             <Link key={link.to} to={link.to} className={`${linkClassName} min-[861px]:pl-10`}>
               <link.icon size={18} strokeWidth={1.9} aria-hidden="true" />
               {link.label}
               {link.to === '/dashboard/inbox' && unreadCount > 0 ? <UnreadBadge count={unreadCount} label="unread messages" /> : null}
               {link.to === '/dashboard/announcements' && unreadAnnouncementCount > 0 ? <UnreadBadge count={unreadAnnouncementCount} label="unread announcements" /> : null}
+              {link.to === '/dashboard/discussions' && unreadDiscussionCount > 0 ? <UnreadBadge count={unreadDiscussionCount} label="unread topics" /> : null}
             </Link>
           ))}
         </div>
