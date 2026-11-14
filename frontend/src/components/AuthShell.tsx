@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { ArrowLeft } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import wordmark from '#/assets/brand/shigjetademy-wordmark.png'
 import { Arcs } from '#/components/Arcs'
@@ -14,19 +15,29 @@ export function AuthShell({ children }: AuthShellProps) {
     <div className="grid h-svh grid-cols-2 gap-(--frame) overflow-hidden bg-haze p-(--frame) max-[900px]:h-auto max-[900px]:min-h-svh max-[900px]:grid-cols-1 max-[900px]:overflow-visible">
       {/* Equal outer rows keep the form at the vertical middle, not pushed by the logo */}
       <main className="grid min-h-0 grid-rows-[1fr_auto_1fr] gap-6 overflow-y-auto px-[clamp(20px,5vw,72px)] py-[clamp(20px,3vw,36px)]">
-        <Link
-          className="group flex items-center self-start justify-self-start rounded-lg no-underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-green"
-          to="/"
-          aria-label="Shigjetademy home"
-        >
-          <img
-            className="origin-left transition-[transform,filter] duration-200 ease-out group-hover:-translate-y-0.5 group-hover:scale-[1.04] group-hover:drop-shadow-[0_6px_14px_rgba(31,176,139,0.28)] group-active:scale-[0.98] motion-reduce:transition-none motion-reduce:group-hover:translate-y-0 motion-reduce:group-hover:scale-100"
-            src={wordmark}
-            alt="Shigjetademy"
-            width={152}
-            height={38}
-          />
-        </Link>
+        <div className="flex items-center justify-between gap-4 self-start">
+          <Link
+            className="group flex items-center rounded-lg no-underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-green"
+            to="/"
+            aria-label="Shigjetademy home"
+          >
+            <img
+              className="origin-left transition-[transform,filter] duration-200 ease-out group-hover:-translate-y-0.5 group-hover:scale-[1.04] group-hover:drop-shadow-[0_6px_14px_rgba(31,176,139,0.28)] group-active:scale-[0.98] motion-reduce:transition-none motion-reduce:group-hover:translate-y-0 motion-reduce:group-hover:scale-100"
+              src={wordmark}
+              alt="Shigjetademy"
+              width={152}
+              height={38}
+            />
+          </Link>
+
+          <Link
+            to="/"
+            className="group inline-flex min-h-11 items-center gap-1.5 rounded-lg px-1 text-[0.953rem] font-[550] whitespace-nowrap text-ink-3 no-underline transition-colors duration-200 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green"
+          >
+            <ArrowLeft className="transition-transform duration-200 ease-out group-hover:-translate-x-0.5 motion-reduce:transition-none" size={16} strokeWidth={2} aria-hidden="true" />
+            Back to website
+          </Link>
+        </div>
 
         {/* data-flush-end opts out of the marketing pages' bottom padding on main's last child, which would push the form up */}
         <div data-flush-end className="mx-auto w-[min(100%,440px)] self-center [&_h1]:text-[clamp(2rem,3.4vw,2.8rem)] [&_h1]:font-bold [&_h1]:tracking-[-0.034em]">
