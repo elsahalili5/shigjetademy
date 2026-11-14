@@ -13,6 +13,11 @@ export const sendMessageSchema = z.object({
 
 export type SendMessageInput = z.infer<typeof sendMessageSchema>
 
+/** Editing a message takes the same text rules as sending one */
+export const editMessageSchema = sendMessageSchema
+
+export type EditMessageInput = z.infer<typeof editMessageSchema>
+
 export const startConversationSchema = z.object({
   recipient_membership_id: z.uuid('Choose who to message.'),
   body: messageBodySchema,
@@ -31,10 +36,17 @@ export type InboxContact = {
 /** The other side of a conversation; they stay listed even after they leave or can no longer be messaged */
 export type InboxParticipant = InboxContact
 
+/** A removed message keeps its place in the thread, but none of its words */
+export type InboxMessageStatus = 'ACTIVE' | 'REMOVED'
+
+/** One message. A removed message keeps no words: its body is empty. */
 export type InboxMessage = {
   id: string
   sender_membership_id: string
   body: string
+  status: InboxMessageStatus
+  /** ISO timestamp in UTC of the author's last change to the text, null when never edited */
+  edited_at: string | null
   /** ISO timestamp in UTC */
   created_at: string
 }
@@ -42,6 +54,7 @@ export type InboxMessage = {
 export type InboxConversationSummary = {
   id: string
   other: InboxParticipant
+  /** A removed last message is listed with its status and no words */
   last_message: InboxMessage | null
   unread_count: number
   /** ISO timestamp in UTC */

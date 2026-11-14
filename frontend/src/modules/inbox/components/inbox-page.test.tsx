@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import type { AuthUser } from '@shigjetademy/shared/auth'
-import { sendMessageSchema, startConversationSchema } from '@shigjetademy/shared/inbox'
+import { editMessageSchema, sendMessageSchema, startConversationSchema } from '@shigjetademy/shared/inbox'
 import type { InboxContact, InboxConversation, InboxConversationSummary, InboxMessage } from '@shigjetademy/shared/inbox'
 import { buildUser, DEFAULT_SETTINGS, OWNER_MEMBERSHIPS, signInAs } from '#/test/fixtures'
 import { renderRoute } from '#/test/render-route'
@@ -20,6 +20,8 @@ const ELSA: InboxContact = { membership_id: '5b1f2c4e-8f7a-4d2b-9c3e-1a2b3c4d5e0
 
 const message = (overrides: Partial<InboxMessage> & Pick<InboxMessage, 'id' | 'body'>): InboxMessage => ({
   sender_membership_id: ARBEN.membership_id,
+  status: 'ACTIVE',
+  edited_at: null,
   created_at: '2026-11-10T09:00:00.000Z',
   ...overrides,
 })
@@ -322,5 +324,193 @@ describe('the inbox: new message', () => {
     const dialog = await screen.findByRole('dialog', { name: 'New message' })
     expect(await within(dialog).findByText('There is nobody you can message yet.')).toBeInTheDocument()
     expect(within(dialog).queryByRole('button', { name: 'Send message' })).not.toBeInTheDocument()
+  })
+})
+
+describe('the inbox: editing and removing own messages', () => {
+  const openArben = async () => {
+    const { user } = renderRoute('/dashboard/inbox')
+    await user.click(await screen.findByRole('button', { name: /Arben Hoxha/ }))
+    const messages = await screen.findByRole('list', { name: 'Messages with Arben Hoxha' })
+    return { user, items: within(messages).getAllByRole('listitem') }
+  }
+
+  it('offers the message actions only on the member’s own messages that are not removed', async () => {
+    signInAsGuardian()
+    serveConversations([ARBEN_SUMMARY])
+    serveThread(thread({ id: 'c-arben', other: ARBEN, messages: [...ARBEN_MESSAGES, message({ id: 'm4', body: '', status: 'REMOVED', sender_membership_id: ME, created_at: '2026-11-10T12:00:00.000Z' })] }))
+    const { user, items } = await openArben()
+    const [theirs, mine, , removed] = items
+
+    expect(within(theirs).queryByRole('button', { name: 'Message actions' })).not.toBeInTheDocument()
+    expect(within(removed).queryByRole('button', { name: 'Message actions' })).not.toBeInTheDocument()
+    await user.click(within(mine).getByRole('button', { name: 'Message actions' }))
+    const menu = within(mine).getByRole('menu', { name: 'Message actions' })
+    expect(within(menu).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Edit message', 'Remove message'])
+    await user.keyboard('{Escape}')
+    expect(within(mine).queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  it('offers no message actions when the member can no longer send in the conversation', async () => {
+    signInAsGuardian()
+    serveConversations([ARBEN_SUMMARY])
+    serveThread(thread({ id: 'c-arben', other: ARBEN, messages: ARBEN_MESSAGES, can_send: false, send_blocked_reason: 'notAllowed' }))
+    await openArben()
+
+    expect(screen.queryByRole('button', { name: 'Message actions' })).not.toBeInTheDocument()
+  })
+
+  it('edits a message in place, saves with Enter, marks it edited and updates the list without loading again', async () => {
+    signInAsGuardian()
+    serveConversations([ARBEN_SUMMARY])
+    let threadReads = 0
+    let saved: unknown
+    server.use(
+      http.get('*/api/organizations/org-1/inbox/conversations/c-arben', () => {
+        threadReads += 1
+        return HttpResponse.json({ data: thread({ id: 'c-arben', other: ARBEN, messages: ARBEN_MESSAGES }) })
+      }),
+      http.put('*/api/organizations/org-1/inbox/conversations/c-arben/messages/m3', async ({ request }) => {
+        saved = editMessageSchema.parse(await request.json())
+        return HttpResponse.json({ data: { ...ARBEN_MESSAGES[2], body: 'Can we talk on Monday?', edited_at: '2026-11-10T11:30:00.000Z' } })
+      }),
+    )
+    const { user, items } = await openArben()
+    const last = items[2]
+
+    await user.click(within(last).getByRole('button', { name: 'Message actions' }))
+    await user.click(within(last).getByRole('menuitem', { name: 'Edit message' }))
+    const box = within(last).getByRole('textbox', { name: 'Edit message' })
+    expect(box).toHaveValue('Can we talk on Friday?')
+    expect(within(last).getByRole('button', { name: 'Save message' })).toBeInTheDocument()
+    await user.clear(box)
+    await user.type(box, 'Can we talk on Monday?{Enter}')
+
+    expect(await within(last).findByText('Can we talk on Monday?')).toBeInTheDocument()
+    expect(within(last).getByText('(edited)')).toBeInTheDocument()
+    expect(within(last).queryByRole('textbox')).not.toBeInTheDocument()
+    expect(saved).toEqual({ body: 'Can we talk on Monday?' })
+    expect(threadReads).toBe(1)
+    expect(within(screen.getByRole('button', { name: /Arben Hoxha/ })).getByText('You: Can we talk on Monday?')).toBeInTheDocument()
+  })
+
+  it('cancels an edit with Escape and with Cancel, sending nothing', async () => {
+    signInAsGuardian()
+    serveConversations([ARBEN_SUMMARY])
+    serveThread(thread({ id: 'c-arben', other: ARBEN, messages: ARBEN_MESSAGES }))
+    let saves = 0
+    server.use(
+      http.put('*/api/organizations/org-1/inbox/conversations/c-arben/messages/:messageId', () => {
+        saves += 1
+        return HttpResponse.json({}, { status: 500 })
+      }),
+    )
+    const { user, items } = await openArben()
+    const mine = items[1]
+
+    await user.click(within(mine).getByRole('button', { name: 'Message actions' }))
+    await user.click(within(mine).getByRole('menuitem', { name: 'Edit message' }))
+    await user.type(within(mine).getByRole('textbox', { name: 'Edit message' }), ' changed{Escape}')
+    expect(within(mine).queryByRole('textbox')).not.toBeInTheDocument()
+    expect(within(mine).getByText('Thank you for telling me')).toBeInTheDocument()
+    await user.click(within(mine).getByRole('button', { name: 'Message actions' }))
+    await user.click(within(mine).getByRole('menuitem', { name: 'Edit message' }))
+    await user.click(within(mine).getByRole('button', { name: 'Cancel' }))
+
+    expect(within(mine).queryByRole('textbox')).not.toBeInTheDocument()
+    expect(saves).toBe(0)
+  })
+
+  it('removes a message after one confirmation, keeps its tick and shows it removed in the thread and the list', async () => {
+    signInAsGuardian()
+    serveConversations([ARBEN_SUMMARY])
+    let removals = 0
+    server.use(
+      http.get('*/api/organizations/org-1/inbox/conversations/c-arben', () =>
+        HttpResponse.json({ data: thread({ id: 'c-arben', other: ARBEN, messages: ARBEN_MESSAGES, other_last_read_at: '2026-11-10T11:30:00.000Z' }) }),
+      ),
+      http.post('*/api/organizations/org-1/inbox/conversations/c-arben/messages/m3/remove', () => {
+        removals += 1
+        return HttpResponse.json({ data: { ...ARBEN_MESSAGES[2], body: '', status: 'REMOVED' } })
+      }),
+    )
+    const { user, items } = await openArben()
+    const last = items[2]
+
+    await user.click(within(last).getByRole('button', { name: 'Message actions' }))
+    await user.click(within(last).getByRole('menuitem', { name: 'Remove message' }))
+    const confirm = within(last).getByRole('group', { name: 'Remove this message' })
+    expect(confirm).toHaveTextContent('Remove this message?')
+    expect(removals).toBe(0)
+    await user.click(within(confirm).getByRole('button', { name: 'Remove' }))
+
+    expect(await within(last).findByText('Message removed')).toHaveClass('italic')
+    expect(within(last).queryByText('Can we talk on Friday?')).not.toBeInTheDocument()
+    expect(within(last).getByLabelText('Seen')).toBeInTheDocument()
+    expect(within(last).queryByRole('button', { name: 'Message actions' })).not.toBeInTheDocument()
+    expect(removals).toBe(1)
+    expect(within(screen.getByRole('button', { name: /Arben Hoxha/ })).getByText('Message removed')).toBeInTheDocument()
+  })
+
+  it('loads the conversation again when an edit is refused, so a message removed elsewhere shows removed and loses its actions', async () => {
+    signInAsGuardian()
+    serveConversations([ARBEN_SUMMARY])
+    let threadReads = 0
+    server.use(
+      http.get('*/api/organizations/org-1/inbox/conversations/c-arben', () => {
+        threadReads += 1
+        const messages = threadReads === 1 ? ARBEN_MESSAGES : [...ARBEN_MESSAGES.slice(0, 2), { ...ARBEN_MESSAGES[2], body: '', status: 'REMOVED' as const }]
+        return HttpResponse.json({ data: thread({ id: 'c-arben', other: ARBEN, messages }) })
+      }),
+      http.put('*/api/organizations/org-1/inbox/conversations/c-arben/messages/m3', () => HttpResponse.json({ error: 'A removed message can’t be edited.' }, { status: 409 })),
+    )
+    const { user, items } = await openArben()
+    const last = items[2]
+
+    await user.click(within(last).getByRole('button', { name: 'Message actions' }))
+    await user.click(within(last).getByRole('menuitem', { name: 'Edit message' }))
+    await user.type(within(last).getByRole('textbox', { name: 'Edit message' }), ' please{Enter}')
+
+    expect(await within(last).findByText('Message removed')).toBeInTheDocument()
+    expect(within(last).queryByRole('textbox')).not.toBeInTheDocument()
+    expect(within(last).queryByRole('button', { name: 'Message actions' })).not.toBeInTheDocument()
+  })
+
+  it('loads the conversation again when a removal is refused, so the actions go once the member can no longer send', async () => {
+    signInAsGuardian()
+    serveConversations([ARBEN_SUMMARY])
+    let threadReads = 0
+    server.use(
+      http.get('*/api/organizations/org-1/inbox/conversations/c-arben', () => {
+        threadReads += 1
+        const blocked = threadReads === 1 ? {} : { can_send: false, send_blocked_reason: 'notAllowed' as const }
+        return HttpResponse.json({ data: thread({ id: 'c-arben', other: ARBEN, messages: ARBEN_MESSAGES, ...blocked }) })
+      }),
+      http.post('*/api/organizations/org-1/inbox/conversations/c-arben/messages/m3/remove', () => HttpResponse.json({ error: 'You can’t message this person.' }, { status: 403 })),
+    )
+    const { user, items } = await openArben()
+    const last = items[2]
+
+    await user.click(within(last).getByRole('button', { name: 'Message actions' }))
+    await user.click(within(last).getByRole('menuitem', { name: 'Remove message' }))
+    await user.click(within(last).getByRole('button', { name: 'Remove' }))
+
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Message actions' })).not.toBeInTheDocument())
+    expect(await screen.findByRole('note')).toBeInTheDocument()
+    expect(within(last).getByText('Can we talk on Friday?')).toBeInTheDocument()
+  })
+
+  it('shows removed and edited messages from the server as such, in the thread and as the list’s last message', async () => {
+    signInAsGuardian()
+    const removed = message({ id: 'm9', body: '', status: 'REMOVED', created_at: '2026-11-10T12:00:00.000Z' })
+    const edited = message({ id: 'm1', body: 'Alba is doing very well', edited_at: '2026-11-10T09:30:00.000Z' })
+    serveConversations([{ ...ARBEN_SUMMARY, last_message: removed, last_message_at: removed.created_at }])
+    serveThread(thread({ id: 'c-arben', other: ARBEN, messages: [edited, ...ARBEN_MESSAGES.slice(1), removed] }))
+    const { items } = await openArben()
+
+    expect(within(screen.getByRole('button', { name: /Arben Hoxha/ })).getByText('Message removed')).toBeInTheDocument()
+    expect(within(items[0]).getByText('(edited)')).toBeInTheDocument()
+    expect(within(items[1]).queryByText('(edited)')).not.toBeInTheDocument()
+    expect(within(items[3]).getByText('Message removed')).toBeInTheDocument()
   })
 })

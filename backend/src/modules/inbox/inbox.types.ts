@@ -1,10 +1,12 @@
 import type { z } from 'zod'
 import type { MemberRole } from '@shigjetademy/shared/auth'
-import type { conversationParamSchema } from './inbox.schema.ts'
+import type { conversationParamSchema, messageParamSchema } from './inbox.schema.ts'
 
-export type { SendMessageInput, StartConversationInput } from '@shigjetademy/shared/inbox'
+export type { EditMessageInput, SendMessageInput, StartConversationInput } from '@shigjetademy/shared/inbox'
 
 export type ConversationParam = z.infer<typeof conversationParamSchema>
+
+export type MessageParam = z.infer<typeof messageParamSchema>
 
 /** One active member as the messaging rules see them */
 export type MessagingParty = {

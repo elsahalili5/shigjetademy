@@ -221,6 +221,12 @@ enum DiscussionStatus {
   REMOVED
 }
 
+/// A removed inbox message keeps its row and is shown as removed, never deleted; only its author removes it
+enum MessageStatus {
+  ACTIVE
+  REMOVED
+}
+
 /// Who removed a topic or reply: its author or a moderator
 enum DiscussionRemovedBy {
   AUTHOR
@@ -1040,10 +1046,13 @@ model ConversationParticipant {
 }
 
 model Message {
-  id                   String @id @default(uuid()) @db.Uuid
-  conversation_id      String @db.Uuid
-  sender_membership_id String @db.Uuid
+  id                   String        @id @default(uuid()) @db.Uuid
+  conversation_id      String        @db.Uuid
+  sender_membership_id String        @db.Uuid
   body                 String
+  status               MessageStatus @default(ACTIVE)
+  /// When its author last changed the text; editing or removing it is not new activity, so unread counts and read marks keep using created_at
+  edited_at            DateTime?
 
   created_at DateTime @default(now())
 

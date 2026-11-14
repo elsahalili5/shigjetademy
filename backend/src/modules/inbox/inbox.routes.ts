@@ -5,19 +5,22 @@ import { requireMembership } from '@shared/middleware/membershipMiddleware.ts'
 import { validateRequestMiddleware } from '@shared/middleware/validateRequest.middleware.ts'
 import { organizationIdParamSchema } from '@modules/organization/organization.schema.ts'
 import { InboxController } from './inbox.controller.ts'
-import { conversationParamSchema, sendMessageSchema, startConversationSchema } from './inbox.schema.ts'
+import { conversationParamSchema, editMessageSchema, messageParamSchema, sendMessageSchema, startConversationSchema } from './inbox.schema.ts'
 
 // Mounted at /api/organizations. Every member of the organization has an inbox; who they can message and which conversations they read
-// is decided by the service: canMessage for sending, and only the two participants read a conversation.
+// is decided by the service: canMessage for sending, and only the two participants read a conversation. Only a message's author edits or removes it.
 const router = Router()
 
 const INBOX = '/:organizationId/inbox'
 const CONVERSATIONS = `${INBOX}/conversations`
 const CONVERSATION = `${CONVERSATIONS}/:conversationId`
+const MESSAGES = `${CONVERSATION}/messages`
+const MESSAGE = `${MESSAGES}/:messageId`
 
 const isMember = requireMembership([...MEMBER_ROLES])
 const organizationParam = validateRequestMiddleware(organizationIdParamSchema, 'params')
 const conversationParam = validateRequestMiddleware(conversationParamSchema, 'params')
+const messageParam = validateRequestMiddleware(messageParamSchema, 'params')
 
 router.get(`${INBOX}/contacts`, authMiddleware, organizationParam, isMember, InboxController.listContacts)
 
@@ -29,6 +32,10 @@ router.post(CONVERSATIONS, authMiddleware, organizationParam, isMember, validate
 
 router.get(CONVERSATION, authMiddleware, conversationParam, isMember, InboxController.getConversation)
 
-router.post(`${CONVERSATION}/messages`, authMiddleware, conversationParam, isMember, validateRequestMiddleware(sendMessageSchema), InboxController.sendMessage)
+router.post(MESSAGES, authMiddleware, conversationParam, isMember, validateRequestMiddleware(sendMessageSchema), InboxController.sendMessage)
+
+router.put(MESSAGE, authMiddleware, messageParam, isMember, validateRequestMiddleware(editMessageSchema), InboxController.editMessage)
+
+router.post(`${MESSAGE}/remove`, authMiddleware, messageParam, isMember, InboxController.removeMessage)
 
 export default router
