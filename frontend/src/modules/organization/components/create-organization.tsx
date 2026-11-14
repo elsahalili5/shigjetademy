@@ -64,7 +64,7 @@ export function CreateOrganization({ variant, onCreate, onEdit, isPending, backe
   return (
     <div className="grid h-svh grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-(--frame) bg-haze p-(--frame) max-[960px]:h-auto max-[960px]:min-h-svh max-[960px]:grid-cols-1">
       <main className="min-h-0 overflow-y-auto px-[clamp(20px,5vw,72px)] py-[clamp(20px,3vw,36px)]">
-        <Link className="inline-flex no-underline" to="/" aria-label="Shigjetademy home">
+        <Link className="inline-flex no-underline" to="/home" aria-label="Shigjetademy home">
           <img src={wordmark} alt="Shigjetademy" width={152} height={38} />
         </Link>
 

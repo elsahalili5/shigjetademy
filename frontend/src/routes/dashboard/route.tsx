@@ -201,7 +201,7 @@ function MobileSidebar() {
 function SidebarWordmark() {
   return (
     <Link
-      to="/"
+      to="/home"
       className="rounded-lg no-underline opacity-95 transition-opacity duration-200 hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-green rail:hidden"
       aria-label="Shigjetademy website"
     >

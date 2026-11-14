@@ -17,7 +17,7 @@ export function AuthShell({ children }: AuthShellProps) {
         <div className="flex items-center justify-between gap-4 self-start">
           <Link
             className="group flex items-center rounded-lg no-underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-green"
-            to="/"
+            to="/home"
             aria-label="Shigjetademy home"
           >
             <img

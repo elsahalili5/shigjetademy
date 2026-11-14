@@ -9,13 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as appRouteRouteImport } from './routes/(app)/route'
 import { Route as authRouteRouteImport } from './routes/(auth)/route'
 import { Route as DashboardRouteRouteImport } from './routes/dashboard/route'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
-import { Route as appIndexRouteImport } from './routes/(app)/index'
 import { Route as appContactRouteImport } from './routes/(app)/contact'
 import { Route as appFeaturesRouteImport } from './routes/(app)/features'
+import { Route as appHomeRouteImport } from './routes/(app)/home'
 import { Route as appPrivacyRouteImport } from './routes/(app)/privacy'
 import { Route as appResourcesRouteImport } from './routes/(app)/resources'
 import { Route as appSecurityRouteImport } from './routes/(app)/security'
@@ -59,6 +60,11 @@ import { Route as DashboardMyChildrenStudentIdRouteImport } from './routes/dashb
 import { Route as DashboardMyStudentsStudentIdRouteImport } from './routes/dashboard/my-students_.$studentId'
 import { Route as DashboardStudentsStudentIdRouteImport } from './routes/dashboard/students_.$studentId'
 
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const appRouteRoute = appRouteRouteImport.update({
   id: '/(app)',
   getParentRoute: () => rootRouteImport,
@@ -77,11 +83,6 @@ const OnboardingRoute = OnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
-const appIndexRoute = appIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => appRouteRoute,
-} as any)
 const appContactRoute = appContactRouteImport.update({
   id: '/contact',
   path: '/contact',
@@ -90,6 +91,11 @@ const appContactRoute = appContactRouteImport.update({
 const appFeaturesRoute = appFeaturesRouteImport.update({
   id: '/features',
   path: '/features',
+  getParentRoute: () => appRouteRoute,
+} as any)
+const appHomeRoute = appHomeRouteImport.update({
+  id: '/home',
+  path: '/home',
   getParentRoute: () => appRouteRoute,
 } as any)
 const appPrivacyRoute = appPrivacyRouteImport.update({
@@ -312,10 +318,12 @@ const DashboardStudentsStudentIdRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/contact': typeof appContactRoute
   '/features': typeof appFeaturesRoute
+  '/home': typeof appHomeRoute
   '/privacy': typeof appPrivacyRoute
   '/resources': typeof appResourcesRoute
   '/security': typeof appSecurityRoute
@@ -349,7 +357,6 @@ export interface FileRoutesByFullPath {
   '/dashboard/students': typeof DashboardStudentsRoute
   '/invite/$token': typeof InviteTokenRoute
   '/organizations/new': typeof OrganizationsNewRoute
-  '/': typeof appIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/platform/$slug': typeof appPlatformSlugRoute
   '/dashboard/clients/$organizationId': typeof DashboardClientsOrganizationIdRoute
@@ -361,9 +368,11 @@ export interface FileRoutesByFullPath {
   '/platform/': typeof appPlatformIndexRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof IndexRoute
   '/onboarding': typeof OnboardingRoute
   '/contact': typeof appContactRoute
   '/features': typeof appFeaturesRoute
+  '/home': typeof appHomeRoute
   '/privacy': typeof appPrivacyRoute
   '/resources': typeof appResourcesRoute
   '/security': typeof appSecurityRoute
@@ -397,7 +406,6 @@ export interface FileRoutesByTo {
   '/dashboard/students': typeof DashboardStudentsRoute
   '/invite/$token': typeof InviteTokenRoute
   '/organizations/new': typeof OrganizationsNewRoute
-  '/': typeof appIndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/platform/$slug': typeof appPlatformSlugRoute
   '/dashboard/clients/$organizationId': typeof DashboardClientsOrganizationIdRoute
@@ -410,12 +418,14 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
   '/(app)': typeof appRouteRouteWithChildren
   '/(auth)': typeof authRouteRouteWithChildren
   '/dashboard': typeof DashboardRouteRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/(app)/contact': typeof appContactRoute
   '/(app)/features': typeof appFeaturesRoute
+  '/(app)/home': typeof appHomeRoute
   '/(app)/privacy': typeof appPrivacyRoute
   '/(app)/resources': typeof appResourcesRoute
   '/(app)/security': typeof appSecurityRoute
@@ -449,7 +459,6 @@ export interface FileRoutesById {
   '/dashboard/students': typeof DashboardStudentsRoute
   '/invite/$token': typeof InviteTokenRoute
   '/organizations/new': typeof OrganizationsNewRoute
-  '/(app)/': typeof appIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/(app)/platform/$slug': typeof appPlatformSlugRoute
   '/dashboard/clients/$organizationId': typeof DashboardClientsOrganizationIdRoute
@@ -463,10 +472,12 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/'
     | '/dashboard'
     | '/onboarding'
     | '/contact'
     | '/features'
+    | '/home'
     | '/privacy'
     | '/resources'
     | '/security'
@@ -500,7 +511,6 @@ export interface FileRouteTypes {
     | '/dashboard/students'
     | '/invite/$token'
     | '/organizations/new'
-    | '/'
     | '/dashboard/'
     | '/platform/$slug'
     | '/dashboard/clients/$organizationId'
@@ -512,9 +522,11 @@ export interface FileRouteTypes {
     | '/platform/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/'
     | '/onboarding'
     | '/contact'
     | '/features'
+    | '/home'
     | '/privacy'
     | '/resources'
     | '/security'
@@ -548,7 +560,6 @@ export interface FileRouteTypes {
     | '/dashboard/students'
     | '/invite/$token'
     | '/organizations/new'
-    | '/'
     | '/dashboard'
     | '/platform/$slug'
     | '/dashboard/clients/$organizationId'
@@ -560,12 +571,14 @@ export interface FileRouteTypes {
     | '/platform'
   id:
     | '__root__'
+    | '/'
     | '/(app)'
     | '/(auth)'
     | '/dashboard'
     | '/onboarding'
     | '/(app)/contact'
     | '/(app)/features'
+    | '/(app)/home'
     | '/(app)/privacy'
     | '/(app)/resources'
     | '/(app)/security'
@@ -599,7 +612,6 @@ export interface FileRouteTypes {
     | '/dashboard/students'
     | '/invite/$token'
     | '/organizations/new'
-    | '/(app)/'
     | '/dashboard/'
     | '/(app)/platform/$slug'
     | '/dashboard/clients/$organizationId'
@@ -612,6 +624,7 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
   appRouteRoute: typeof appRouteRouteWithChildren
   authRouteRoute: typeof authRouteRouteWithChildren
   DashboardRouteRoute: typeof DashboardRouteRouteWithChildren
@@ -622,6 +635,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/(app)': {
       id: '/(app)'
       path: ''
@@ -650,13 +670,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(app)/': {
-      id: '/(app)/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof appIndexRouteImport
-      parentRoute: typeof appRouteRoute
-    }
     '/(app)/contact': {
       id: '/(app)/contact'
       path: '/contact'
@@ -669,6 +682,13 @@ declare module '@tanstack/react-router' {
       path: '/features'
       fullPath: '/features'
       preLoaderRoute: typeof appFeaturesRouteImport
+      parentRoute: typeof appRouteRoute
+    }
+    '/(app)/home': {
+      id: '/(app)/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof appHomeRouteImport
       parentRoute: typeof appRouteRoute
     }
     '/(app)/privacy': {
@@ -971,12 +991,12 @@ declare module '@tanstack/react-router' {
 interface appRouteRouteChildren {
   appContactRoute: typeof appContactRoute
   appFeaturesRoute: typeof appFeaturesRoute
+  appHomeRoute: typeof appHomeRoute
   appPrivacyRoute: typeof appPrivacyRoute
   appResourcesRoute: typeof appResourcesRoute
   appSecurityRoute: typeof appSecurityRoute
   appSolutionsRoute: typeof appSolutionsRoute
   appTermsRoute: typeof appTermsRoute
-  appIndexRoute: typeof appIndexRoute
   appPlatformSlugRoute: typeof appPlatformSlugRoute
   appPlatformIndexRoute: typeof appPlatformIndexRoute
 }
@@ -984,12 +1004,12 @@ interface appRouteRouteChildren {
 const appRouteRouteChildren: appRouteRouteChildren = {
   appContactRoute: appContactRoute,
   appFeaturesRoute: appFeaturesRoute,
+  appHomeRoute: appHomeRoute,
   appPrivacyRoute: appPrivacyRoute,
   appResourcesRoute: appResourcesRoute,
   appSecurityRoute: appSecurityRoute,
   appSolutionsRoute: appSolutionsRoute,
   appTermsRoute: appTermsRoute,
-  appIndexRoute: appIndexRoute,
   appPlatformSlugRoute: appPlatformSlugRoute,
   appPlatformIndexRoute: appPlatformIndexRoute,
 }
@@ -1085,6 +1105,7 @@ const DashboardRouteRouteWithChildren = DashboardRouteRoute._addFileChildren(
 )
 
 const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
   appRouteRoute: appRouteRouteWithChildren,
   authRouteRoute: authRouteRouteWithChildren,
   DashboardRouteRoute: DashboardRouteRouteWithChildren,

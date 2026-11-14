@@ -9,7 +9,7 @@ import { ClosingCta } from "#/components/ClosingCta";
 import { useTitle } from '#/lib/use-title'
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/(app)/')({
+export const Route = createFileRoute('/(app)/home')({
   component: Home,
 })
 ;

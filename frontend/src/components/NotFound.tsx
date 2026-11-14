@@ -10,7 +10,7 @@ export function NotFound() {
       title="This page doesn’t exist."
       intro="The link may be old or mistyped. Head back to the homepage to find what you need."
     >
-      <Link className="button bg-green text-navy shadow-[0_1px_2px_rgba(0,0,0,0.2),0_14px_28px_-12px_rgba(31,176,139,0.55)] hover:bg-[#2bc49c]" to="/">
+      <Link className="button bg-green text-navy shadow-[0_1px_2px_rgba(0,0,0,0.2),0_14px_28px_-12px_rgba(31,176,139,0.55)] hover:bg-[#2bc49c]" to="/home">
         Go to the homepage
       </Link>
     </PageHeader>

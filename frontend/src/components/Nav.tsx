@@ -53,7 +53,7 @@ export function Nav() {
         >
           <Link
             className="flex items-center gap-2.5 font-display text-[1.22rem] font-bold tracking-[-0.02em] text-ink no-underline max-[640px]:text-[1.08rem]"
-            to="/"
+            to="/home"
             aria-label="Shigjetademy home"
             onClick={() => setOpen(false)}
           >
