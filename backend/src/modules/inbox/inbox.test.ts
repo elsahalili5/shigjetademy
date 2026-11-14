@@ -115,18 +115,23 @@ describe('who a member can contact', () => {
     expect(await contactNames('owner')).toEqual(['Admin', 'Arben', 'Gent', 'Gigi', 'Gina', 'Lola', 'Teuta'])
   })
 
-  it('shows an admin the same, with the owner instead of themselves', async () => {
+  it('shows an admin the same, with the owner instead of themselves and every student', async () => {
+    expect(await contactNames('admin')).toEqual(['Alba', 'Arben', 'Besa', 'Gent', 'Gigi', 'Gina', 'Lola', 'Owner', 'Teuta'])
+  })
+
+  it('shows an admin no student while student messaging is off', async () => {
+    await setStudentMessaging(false)
+
     expect(await contactNames('admin')).toEqual(['Arben', 'Gent', 'Gigi', 'Gina', 'Lola', 'Owner', 'Teuta'])
   })
 
-  it('shows a lecturer the staff and the guardians of the students they teach, and their students only when student messaging is on', async () => {
-    expect(await contactNames('arben')).toEqual(['Admin', 'Gent', 'Owner'])
-    await setStudentMessaging(true)
+  it('shows a lecturer the staff and the guardians of the students they teach, and their students only while student messaging is on', async () => {
     expect(await contactNames('arben')).toEqual(['Admin', 'Alba', 'Gent', 'Owner'])
+    await setStudentMessaging(false)
+    expect(await contactNames('arben')).toEqual(['Admin', 'Gent', 'Owner'])
   })
 
   it('shows a lecturer without a group only the staff', async () => {
-    await setStudentMessaging(true)
     expect(await contactNames('lola')).toEqual(['Admin', 'Owner'])
   })
 
@@ -135,10 +140,40 @@ describe('who a member can contact', () => {
     expect(await contactNames('gigi')).toEqual(['Admin', 'Owner'])
   })
 
-  it('shows a student nobody until student messaging is on, then only the lecturers of their groups', async () => {
+  it('shows a student the lecturers of their groups and every admin, but not the owner, other lecturers, guardians or students', async () => {
+    expect(await contactNames('alba')).toEqual(['Admin', 'Arben'])
+  })
+
+  it('shows a student nobody while student messaging is off', async () => {
+    await setStudentMessaging(false)
+
     expect(await contactNames('alba')).toEqual([])
-    await setStudentMessaging(true)
-    expect(await contactNames('alba')).toEqual(['Arben'])
+  })
+
+  it.each([
+    ['an archived student record', 'archived'],
+    ['no student record', 'none'],
+  ] as const)('keeps a student with %s away from the admins, in contacts, starting and sending', async (_name, kind) => {
+    const started = await startConversation('alba', 'admin', 'Before')
+    const path = `/conversations/${started.body.data.conversation_id}/messages`
+    if (kind === 'archived') await prisma.student.update({ where: { id: albaStudentId }, data: { status: 'ARCHIVED' } })
+    else await prisma.student.update({ where: { id: albaStudentId }, data: { user_id: null } })
+
+    expect(await contactNames('admin')).not.toContain('Alba')
+    expect(await contactNames('alba')).toEqual([])
+    expect((await startConversation('admin', 'alba')).status).toBe(403)
+    expect((await startConversation('alba', 'admin')).status).toBe(403)
+    expect((await post('admin', path, { body: 'Hi' })).status).toBe(403)
+    expect((await post('alba', path, { body: 'Hi' })).status).toBe(403)
+    expect(await prisma.message.count()).toBe(1)
+  })
+
+  it('shows a student every admin, not only the first', async () => {
+    const second = await createUser({ email: 'admin2@oxford.test' })
+    await prisma.user.update({ where: { id: second.id }, data: { first_name: 'Admin2', last_name: 'Person' } })
+    await prisma.membership.create({ data: { user_id: second.id, organization_id: organizationId, role: 'ADMIN' } })
+
+    expect(await contactNames('alba')).toEqual(['Admin', 'Admin2', 'Arben'])
   })
 
   it('returns the role and membership id of each contact', async () => {
@@ -148,7 +183,6 @@ describe('who a member can contact', () => {
   })
 
   it('counts only the groups a lecturer teaches today: not an ended or future assignment, an archived group or a withdrawn student', async () => {
-    await setStudentMessaging(true)
     const ended = await addGroup({ name: 'Ended', lecturerId: arbenLecturerId, assignment: { start: '2020-01-01', end: '2020-12-31' } })
     const future = await addGroup({ name: 'Future', lecturerId: arbenLecturerId, assignment: { start: '2999-01-01', end: null } })
     const archived = await addGroup({ name: 'Archived', lecturerId: arbenLecturerId, status: 'ARCHIVED' })
@@ -194,30 +228,39 @@ describe('starting a conversation', () => {
     ['a guardian to a guardian', 'gent', 'gina'],
     ['a guardian to a lecturer who does not teach their child', 'gent', 'teuta'],
     ['a lecturer to another lecturer', 'arben', 'teuta'],
-    ['an admin to a student', 'admin', 'alba'],
-    ['a student to an admin', 'alba', 'admin'],
+    ['the owner to a student', 'owner', 'alba'],
+    ['a student to the owner', 'alba', 'owner'],
+    ['a student to a lecturer of another group', 'alba', 'teuta'],
     ['a student to a guardian', 'alba', 'gent'],
     ['a student to another student', 'alba', 'besa'],
     ['a lecturer to a student they do not teach', 'teuta', 'alba'],
     ['someone to themselves', 'owner', 'owner'],
   ] as const)('refuses %s', async (_name, from, to) => {
-    await setStudentMessaging(true)
-
     const response = await startConversation(from, to)
 
     expect(response.status).toBe(403)
     expect(await prisma.conversation.count()).toBe(0)
   })
 
-  it('refuses a student and their lecturer with a clear message while student messaging is off, and allows it once it is on', async () => {
-    const refused = await startConversation('alba', 'arben')
-    const refusedFromLecturer = await startConversation('arben', 'alba')
-
-    expect(refused.status).toBe(403)
-    expect(refused.body.error).toBe('Messaging students is turned off for this organization.')
-    expect(refusedFromLecturer.status).toBe(403)
-    await setStudentMessaging(true)
+  it('lets a student start one with their lecturer and with an admin, and an admin start one with any student', async () => {
     expect((await startConversation('alba', 'arben')).status).toBe(201)
+    expect((await startConversation('alba', 'admin')).status).toBe(201)
+    expect((await startConversation('admin', 'besa')).status).toBe(201)
+    expect((await startConversation('arben', 'alba')).status).toBe(201)
+  })
+
+  it('refuses a conversation with a student, to a lecturer or an admin and back, with a clear message while student messaging is off, and allows it once it is on', async () => {
+    await setStudentMessaging(false)
+    const clearMessage = 'Messaging between students and the school’s teachers and admins is turned off.'
+
+    for (const [from, to] of [['alba', 'arben'], ['arben', 'alba'], ['alba', 'admin'], ['admin', 'alba']] as const) {
+      const refused = await startConversation(from, to)
+      expect(refused.status).toBe(403)
+      expect(refused.body.error).toBe(clearMessage)
+    }
+    expect(await prisma.conversation.count()).toBe(0)
+    await setStudentMessaging(true)
+    expect((await startConversation('alba', 'admin')).status).toBe(201)
   })
 
   it('answers 404 for a member who is not in the organization, removed or unknown', async () => {
@@ -425,7 +468,6 @@ describe('reading a conversation', () => {
 
 describe('when student messaging is turned off', () => {
   it('keeps an existing conversation readable but refuses new messages, for the student and the lecturer', async () => {
-    await setStudentMessaging(true)
     const started = await startConversation('alba', 'arben', 'Can we meet?')
     const conversationId = started.body.data.conversation_id
     await setStudentMessaging(false)
@@ -440,13 +482,48 @@ describe('when student messaging is turned off', () => {
     expect(asStudent.body.data.messages).toHaveLength(1)
     expect(asLecturer.body.data).toMatchObject({ can_send: false, send_blocked_reason: 'studentMessagingDisabled' })
     expect(sentByStudent.status).toBe(403)
-    expect(sentByStudent.body.error).toBe('Messaging students is turned off for this organization.')
+    expect(sentByStudent.body.error).toBe('Messaging between students and the school’s teachers and admins is turned off.')
     expect(sentByLecturer.status).toBe(403)
     expect((await get('alba', '/conversations')).body.data).toHaveLength(1)
     expect((await get('arben', '/conversations')).body.data).toHaveLength(1)
   })
 
+  it('does the same for a student and an admin, in both directions', async () => {
+    const started = await startConversation('alba', 'admin', 'Where is my certificate?')
+    const conversationId = started.body.data.conversation_id
+    await setStudentMessaging(false)
+
+    const asStudent = await get('alba', `/conversations/${conversationId}`)
+    const asAdmin = await get('admin', `/conversations/${conversationId}`)
+
+    expect(asStudent.body.data).toMatchObject({ can_send: false, send_blocked_reason: 'studentMessagingDisabled' })
+    expect(asAdmin.body.data).toMatchObject({ can_send: false, send_blocked_reason: 'studentMessagingDisabled' })
+    expect(asAdmin.body.data.messages).toHaveLength(1)
+    expect((await post('alba', `/conversations/${conversationId}/messages`, { body: 'Hi' })).status).toBe(403)
+    expect((await post('admin', `/conversations/${conversationId}/messages`, { body: 'Hi' })).status).toBe(403)
+    expect(await prisma.message.count()).toBe(1)
+  })
+
+  it('lets an admin reply to a student who wrote first, and sends again once it is turned back on', async () => {
+    const started = await startConversation('alba', 'admin', 'Question')
+    const path = `/conversations/${started.body.data.conversation_id}/messages`
+
+    expect((await post('admin', path, { body: 'Answer' })).status).toBe(201)
+    await setStudentMessaging(false)
+    expect((await post('admin', path, { body: 'Blocked' })).status).toBe(403)
+    await setStudentMessaging(true)
+    expect((await post('alba', path, { body: 'Thanks' })).status).toBe(201)
+  })
+
+  it('refuses the owner and a student who are not allowed to message at all, with the plain refusal', async () => {
+    const response = await startConversation('owner', 'alba')
+
+    expect(response.status).toBe(403)
+    expect(response.body.error).toBe('You can’t message this person.')
+  })
+
   it('still lets the lecturer message guardians and staff', async () => {
+    await setStudentMessaging(false)
     expect((await startConversation('arben', 'gent')).status).toBe(201)
     expect((await startConversation('arben', 'admin')).status).toBe(201)
   })

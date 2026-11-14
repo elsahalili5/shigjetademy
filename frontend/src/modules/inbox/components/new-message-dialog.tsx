@@ -6,6 +6,7 @@ import { EmptyMessage } from '#/components/EmptyMessage'
 import { FormAlert } from '#/components/FormAlert'
 import { FormDialog } from '#/components/FormDialog'
 import { LoadError } from '#/components/LoadError'
+import { useActiveMembership } from '#/modules/auth/hooks/use-active-membership'
 import { fullName } from '#/lib/full-name'
 import { getErrorMessage, getFieldError } from '#/lib/error-message'
 import { FieldError, INPUT_CLASS } from '#/modules/auth/components/auth-field'
@@ -40,6 +41,17 @@ export function NewMessageDialog({ dialogRef, organizationId, onStarted }: NewMe
   )
 }
 
+const EMPTY_TEXT = 'Who you can write to depends on your role and, for lecturers, guardians and students, on the groups you share.'
+const EMPTY_TEXT_STUDENT = 'You can write to the lecturers of your groups and to the school’s admins.'
+const EMPTY_TEXT_STUDENT_OFF = 'Messaging between students and the school’s teachers and admins is turned off.'
+
+type ActiveMembership = ReturnType<typeof useActiveMembership>
+
+const getEmptyText = (membership: ActiveMembership) => {
+  if (membership?.role !== 'STUDENT') return EMPTY_TEXT
+  return membership.organization.student_messaging_enabled ? EMPTY_TEXT_STUDENT : EMPTY_TEXT_STUDENT_OFF
+}
+
 interface NewMessageFormProps {
   organizationId: string
   contacts: InboxContact[]
@@ -51,6 +63,7 @@ function NewMessageForm({ organizationId, contacts, onStarted, onCancel }: NewMe
   const form = useNewMessageForm()
   const startConversation = useStartConversation(organizationId)
   const bodyId = useId()
+  const membership = useActiveMembership()
   const { errors } = form.formState
   const isPending = startConversation.isPending
   const fieldError = (fieldName: keyof StartConversationInput) => getFieldError<StartConversationInput>({ fieldName, formErrors: errors, backendError: startConversation.error })
@@ -58,7 +71,7 @@ function NewMessageForm({ organizationId, contacts, onStarted, onCancel }: NewMe
   if (contacts.length === 0) {
     return (
       <>
-        <EmptyMessage icon={Users} title="There is nobody you can message yet." text="Who you can write to depends on your role and, for lecturers and students, on the groups you share." />
+        <EmptyMessage icon={Users} title="There is nobody you can message yet." text={getEmptyText(membership)} />
         <footer className="flex justify-end border-t border-rule px-6 py-4">
           <button type="button" className="button button--ghost min-h-11 px-4 text-base" onClick={onCancel}>
             Close

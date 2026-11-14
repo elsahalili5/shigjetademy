@@ -15,7 +15,7 @@ const THREAD_MESSAGE_LIMIT = 200
 const UNIQUE_VIOLATION = 'P2002'
 
 const BLOCKED_MESSAGES: Record<SendBlockedReason, string> = {
-  studentMessagingDisabled: 'Messaging students is turned off for this organization.',
+  studentMessagingDisabled: 'Messaging between students and the school’s teachers and admins is turned off.',
   notAllowed: 'You can’t message this person.',
 }
 

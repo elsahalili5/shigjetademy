@@ -101,10 +101,10 @@ describe('organization settings: general preferences', () => {
     await user.click(within(section).getByRole('button', { name: 'Save preferences' }))
 
     expect(await within(section).findByText('The preferences are saved.')).toBeInTheDocument()
-    expect(sent).toEqual({ time_zone: 'Europe/Tirane', week_start: 'MONDAY', date_format: 'DAY_MONTH_YEAR', student_messaging_enabled: false })
+    expect(sent).toEqual({ time_zone: 'Europe/Tirane', week_start: 'MONDAY', date_format: 'DAY_MONTH_YEAR', student_messaging_enabled: true })
   })
 
-  it('keeps students from messaging their lecturers until the owner turns it on, and saves the choice', async () => {
+  it('lets students message teachers and admins by default, and saves turning it off', async () => {
     signInAsOwner()
     let sent: UpdateOrganizationSettingsInput | undefined
     server.use(
@@ -116,26 +116,26 @@ describe('organization settings: general preferences', () => {
     const { user } = renderRoute('/dashboard/organization-settings')
 
     const section = await preferences()
-    const toggle = within(section).getByRole('checkbox', { name: 'Let students message their lecturers' })
-    expect(toggle).not.toBeChecked()
+    const toggle = within(section).getByRole('checkbox', { name: 'Let students message teachers and admins' })
+    expect(toggle).toBeChecked()
     expect(toggle).toHaveAccessibleDescription(/existing conversations stay readable/)
 
     await user.click(toggle)
     await user.click(within(section).getByRole('button', { name: 'Save preferences' }))
 
     expect(await within(section).findByText('The preferences are saved.')).toBeInTheDocument()
-    expect(sent?.student_messaging_enabled).toBe(true)
-    expect(toggle).toBeChecked()
+    expect(sent?.student_messaging_enabled).toBe(false)
+    expect(toggle).not.toBeChecked()
   })
 
-  it('shows student messaging as on when the organization has turned it on', async () => {
+  it('shows student messaging as off when the organization has turned it off', async () => {
     signInAs(buildUser({ memberships: OWNER_MEMBERSHIPS }))
-    serveSettings({ ...DEFAULT_SETTINGS, student_messaging_enabled: true })
+    serveSettings({ ...DEFAULT_SETTINGS, student_messaging_enabled: false })
     renderRoute('/dashboard/organization-settings')
 
     const section = await preferences()
 
-    expect(within(section).getByRole('checkbox', { name: 'Let students message their lecturers' })).toBeChecked()
+    expect(within(section).getByRole('checkbox', { name: 'Let students message teachers and admins' })).not.toBeChecked()
   })
 
   it('previews the date format before saving it', async () => {

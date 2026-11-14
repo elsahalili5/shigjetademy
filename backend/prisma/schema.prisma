@@ -378,8 +378,8 @@ model OrganizationSettings {
   time_zone                 String
   week_start                WeekStart  @default(MONDAY)
   date_format               DateFormat @default(DAY_MONTH_YEAR)
-  /// Whether students and their lecturers may message each other; off until the owner turns it on
-  student_messaging_enabled Boolean    @default(false)
+  /// Whether students may message the lecturers of their groups and the school admins, and they them; on by default, the owner can turn it off
+  student_messaging_enabled Boolean    @default(true)
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
