@@ -1,12 +1,15 @@
+import { Fragment, useState } from 'react'
 import { MessagesSquare } from 'lucide-react'
 import type { InboxConversation } from '@shigjetademy/shared/inbox'
 import { LoadError } from '#/components/LoadError'
 import { fullName } from '#/lib/full-name'
-import { useFormatDateTime } from '#/lib/use-format-date'
+import { initials } from '#/lib/initials'
+import { useFormatDate, useFormatTime } from '#/lib/use-format-date'
 import { ROLE_LABELS } from '#/modules/auth/utils/role-labels'
 import { useInboxConversation } from '../hooks/use-inbox-conversation'
 import { MessageBubble } from './message-bubble'
 import { MessageComposer } from './message-composer'
+import { getDayLabel, getMessageDayKey } from '#/lib/message-days'
 
 interface ConversationThreadProps {
   organizationId: string
@@ -28,31 +31,66 @@ interface LoadedThreadProps {
 }
 
 function LoadedThread({ organizationId, conversation }: LoadedThreadProps) {
-  const formatDateTime = useFormatDateTime()
+  const formatDate = useFormatDate()
+  const formatTime = useFormatTime()
+  // Read once, so the "Today" headings don't change while the thread is open
+  const [now] = useState(() => new Date())
   const { other, messages } = conversation
+  const otherName = fullName(other)
   // A message is seen once the other side opened the conversation at or after it was sent
   const seenUntil = conversation.other_last_read_at ? new Date(conversation.other_last_read_at).getTime() : null
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="border-b border-rule px-5 py-3.5">
-        <h2 className="text-[1.15rem] font-[650]">{fullName(other)}</h2>
-        <p className="text-[0.93rem] text-ink-3">{ROLE_LABELS[other.role]}</p>
+      <header className="flex items-center gap-3 border-b border-rule px-5 py-3.5">
+        <span className="grid size-10 flex-none place-items-center rounded-full bg-green-wash text-[0.9rem] font-bold text-green-deep" aria-hidden="true">
+          {initials(otherName)}
+        </span>
+        <div className="min-w-0">
+          <h2 className="truncate text-[1.15rem] font-[650]">{otherName}</h2>
+          <p className="text-[0.93rem] text-ink-3">{ROLE_LABELS[other.role]}</p>
+        </div>
       </header>
-      <ul className="flex min-h-[260px] flex-1 flex-col gap-3 overflow-y-auto px-5 py-5" aria-label={`Messages with ${fullName(other)}`}>
-        {messages.map((message, index) => (
-          <MessageBubble
-            key={message.id}
-            message={message}
-            isMine={message.sender_membership_id === conversation.my_membership_id}
-            isSeen={seenUntil !== null && new Date(message.created_at).getTime() <= seenUntil}
-            isLatest={index === messages.length - 1}
-            sentAt={formatDateTime(message.created_at)}
-          />
-        ))}
+      <ul className="flex max-h-[min(62svh,640px)] min-h-[300px] flex-1 flex-col overflow-y-auto bg-mist/40 px-5 py-5" aria-label={`Messages with ${otherName}`}>
+        {messages.map((message, index) => {
+          const previous = messages[index - 1]
+          const next = messages[index + 1]
+          const dayKey = getMessageDayKey(message.created_at)
+          const isNewDay = !previous || getMessageDayKey(previous.created_at) !== dayKey
+          const isFirstInRun = isNewDay || previous?.sender_membership_id !== message.sender_membership_id
+          const isLastInRun = !next || getMessageDayKey(next.created_at) !== dayKey || next.sender_membership_id !== message.sender_membership_id
+          return (
+            <Fragment key={message.id}>
+              {isNewDay ? <DayHeading label={getDayLabel({ iso: message.created_at, now, formatDate })} /> : null}
+              <MessageBubble
+                message={message}
+                isMine={message.sender_membership_id === conversation.my_membership_id}
+                isSeen={seenUntil !== null && new Date(message.created_at).getTime() <= seenUntil}
+                isLatest={index === messages.length - 1}
+                isFirstInRun={isFirstInRun}
+                isLastInRun={isLastInRun}
+                otherName={otherName}
+                sentAt={formatTime(message.created_at)}
+              />
+            </Fragment>
+          )
+        })}
       </ul>
       <MessageComposer organizationId={organizationId} conversationId={conversation.id} other={other} blockedReason={conversation.send_blocked_reason} />
     </div>
+  )
+}
+
+interface DayHeadingProps {
+  label: string
+}
+
+/** The pill between days of a chat: Today, Yesterday or a date */
+function DayHeading({ label }: DayHeadingProps) {
+  return (
+    <li role="separator" aria-label={label} className="my-3 flex justify-center first:mt-0">
+      <span className="rounded-full bg-white px-3 py-1 text-[0.8rem] font-semibold text-ink-3 shadow-[0_1px_1px_rgba(22,34,46,0.06)] ring-1 ring-rule">{label}</span>
+    </li>
   )
 }
 

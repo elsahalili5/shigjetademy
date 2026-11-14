@@ -2,7 +2,7 @@ import request from 'supertest'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { app } from '../../app.ts'
 import { prisma } from '@lib/prisma.ts'
-import { createOrganization, createUser, loginAs } from '../../../test/factories.ts'
+import { createCourse, createOrganization, createUser, loginAs } from '../../../test/factories.ts'
 
 let organizationId: string
 let studentsPath: string
@@ -185,6 +185,33 @@ describe('student records', () => {
     expect(await namesIn({ query: { page: '2', page_size: '2' } })).toEqual(['Dren Hoxha'])
     expect((await listStudents({ query: { page_size: '2' } })).body.data).toMatchObject({ total: 3, counts: { ACTIVE: 3, ARCHIVED: 0 } })
     expect((await listStudents({ query: { status: 'GONE' } })).status).toBe(400)
+  })
+
+  it('filters the list to a group\u2019s actively enrolled students, and offers the active groups by course and name', async () => {
+    const arta = (await addStudent(student({ first_name: 'Arta', last_name: 'Gashi' }))).body.data
+    const besa = (await addStudent(student({ first_name: 'Besa', last_name: 'Berisha' }))).body.data
+    const dren = (await addStudent(student({ first_name: 'Dren', last_name: 'Hoxha' }))).body.data
+    const courseId = (await createCourse({ organizationId, name: 'Mathematics' })).id
+    const yearId = (await prisma.academicYear.create({ data: { organization_id: organizationId, name: '2026\u201327', start_date: new Date('2026-09-01'), end_date: new Date('2027-06-30'), is_current: true } })).id
+    const groupB = await prisma.group.create({ data: { organization_id: organizationId, course_id: courseId, name: 'Group B', academic_year_id: yearId } })
+    const groupA = await prisma.group.create({ data: { organization_id: organizationId, course_id: courseId, name: 'Group A', academic_year_id: yearId } })
+    await prisma.group.create({ data: { organization_id: organizationId, course_id: courseId, name: 'Old group', academic_year_id: yearId, status: 'ARCHIVED' } })
+    await prisma.groupEnrolment.create({ data: { group_id: groupA.id, student_id: arta.id, enrolled_on: new Date('2026-09-01') } })
+    await prisma.groupEnrolment.create({ data: { group_id: groupA.id, student_id: besa.id, enrolled_on: new Date('2026-09-01'), withdrawn_on: new Date('2026-10-01') } })
+    await prisma.groupEnrolment.create({ data: { group_id: groupB.id, student_id: dren.id, enrolled_on: new Date('2026-09-01') } })
+
+    expect(await namesIn({ query: { group_id: groupA.id } })).toEqual(['Arta Gashi'])
+    expect(await namesIn({ query: { group_id: groupB.id, search: 'dren' } })).toEqual(['Dren Hoxha'])
+    expect((await listStudents({ query: { group_id: groupA.id } })).body.data).toMatchObject({ total: 1, counts: { ACTIVE: 1, ARCHIVED: 0 } })
+    expect((await listStudents({ query: { group_id: 'not-a-group' } })).status).toBe(400)
+
+    const options = await request(app).get(`${studentsPath}/groups`).set('Authorization', ownerAuth)
+    expect(options.status).toBe(200)
+    expect(options.body.data).toEqual([
+      { id: groupA.id, name: 'Group A', course_name: 'Mathematics' },
+      { id: groupB.id, name: 'Group B', course_name: 'Mathematics' },
+    ])
+    expect((await request(app).get(`${studentsPath}/groups`).set('Authorization', await loginAs('lecturer@oxford.test'))).status).toBe(403)
   })
 
   it('archives a student out of the active list and restores her, keeping the record', async () => {

@@ -5,10 +5,11 @@ import { DashboardPageHeader } from '#/components/DashboardPageHeader'
 import { EmptyMessage } from '#/components/EmptyMessage'
 import { LoadError } from '#/components/LoadError'
 import { SectionCard } from '#/components/SectionCard'
+import { GroupFilterSelect } from '#/components/GroupFilterSelect'
 import { SkeletonRows } from '#/components/SkeletonRows'
 import type { UseQueryResult } from '@tanstack/react-query'
 import { useStudentRoster } from '../hooks/use-student-roster'
-import { filterRoster } from '../utils/filter-roster'
+import { filterRoster, filterRosterByGroup, getRosterGroups } from '../utils/filter-roster'
 import { StudentRosterTable } from './student-roster-table'
 
 interface StudentRosterPageProps {
@@ -29,7 +30,11 @@ const rosterSubtitle = (entries: RosterEntry[]) => {
 export function StudentRosterPage({ organizationId }: StudentRosterPageProps) {
   const roster = useStudentRoster(organizationId)
   const [search, setSearch] = useState('')
+  const [groupId, setGroupId] = useState('')
   const searchId = useId()
+  const groups = getRosterGroups(roster.data ?? [])
+  // A group that left the roster, like one they no longer teach, falls back to all groups
+  const pickedGroupId = groups.some((group) => group.id === groupId) ? groupId : ''
 
   return (
     <div className="flex h-full min-w-0 flex-col overflow-y-auto">
@@ -40,24 +45,27 @@ export function StudentRosterPage({ organizationId }: StudentRosterPageProps) {
           title="Students"
           action={
             roster.data && roster.data.length > 0 ? (
-              <div className="relative w-[min(100%,300px)]">
-                <label htmlFor={searchId} className="visually-hidden">
-                  Search students
-                </label>
-                <Search className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-ink-3" size={17} strokeWidth={2} aria-hidden="true" />
-                <input
-                  id={searchId}
-                  type="search"
-                  placeholder="Name, email or group"
-                  className="min-h-10 w-full rounded-full border border-rule-strong bg-white pr-4 pl-10 text-[0.95rem] transition-[border-color,box-shadow] duration-150 placeholder:text-ink-3 hover:border-ink-3 focus:border-green-deep focus:shadow-[0_0_0_3px_var(--green-wash)] focus:outline-none"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                />
+              <div className="flex items-center gap-2 max-[560px]:flex-wrap">
+                <GroupFilterSelect groups={groups.map(({ id, name }) => ({ id, label: name }))} value={pickedGroupId} onChange={setGroupId} />
+                <div className="relative w-[min(100%,280px)] min-w-0">
+                  <label htmlFor={searchId} className="visually-hidden">
+                    Search students
+                  </label>
+                  <Search className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-ink-3" size={17} strokeWidth={2} aria-hidden="true" />
+                  <input
+                    id={searchId}
+                    type="search"
+                    placeholder="Name, email or group"
+                    className="min-h-10 w-full rounded-full border border-rule-strong bg-white pr-4 pl-10 text-[0.95rem] transition-[border-color,box-shadow] duration-150 placeholder:text-ink-3 hover:border-ink-3 focus:border-green-deep focus:shadow-[0_0_0_3px_var(--green-wash)] focus:outline-none"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                  />
+                </div>
               </div>
             ) : null
           }
         >
-          <StudentRosterContent roster={roster} search={search} />
+          <StudentRosterContent roster={roster} search={search} groupId={pickedGroupId} />
         </SectionCard>
       </div>
     </div>
@@ -67,14 +75,15 @@ export function StudentRosterPage({ organizationId }: StudentRosterPageProps) {
 interface StudentRosterContentProps {
   roster: UseQueryResult<RosterEntry[]>
   search: string
+  groupId: string
 }
 
-function StudentRosterContent({ roster, search }: StudentRosterContentProps) {
+function StudentRosterContent({ roster, search, groupId }: StudentRosterContentProps) {
   if (roster.status === 'error') return <LoadError what="students" onRetry={() => void roster.refetch()} />
   if (!roster.data) return <SkeletonRows />
   if (roster.data.length === 0) return <EmptyMessage icon={Users} title="No students yet" text="Once you’re teaching a group with students, they’ll show up here." />
 
-  const matches = filterRoster(roster.data, search)
-  if (matches.length === 0) return <EmptyMessage icon={Search} title="No matches" text="Try a different name, email or group." />
+  const matches = filterRoster(filterRosterByGroup(roster.data, groupId), search)
+  if (matches.length === 0) return <EmptyMessage icon={Search} title="No matches" text="Try a different name, email or group, or pick another group." />
   return <StudentRosterTable entries={matches} />
 }

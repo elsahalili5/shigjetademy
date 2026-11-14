@@ -34,13 +34,15 @@ export function ConversationList({ status, conversations, selectedId, onSelect, 
             <button
               type="button"
               aria-current={isSelected ? 'true' : undefined}
-              className={`grid w-full gap-1 px-5 py-3.5 text-left transition-colors duration-150 hover:bg-mist ${isSelected ? 'bg-green-wash' : ''}`}
+              className={`grid w-full grid-cols-[minmax(0,1fr)] gap-1 px-5 py-3.5 text-left transition-colors duration-150 hover:bg-mist ${isSelected ? 'bg-green-wash' : ''}`}
               onClick={() => onSelect(conversation.id)}
             >
               <span className="flex items-center justify-between gap-3">
                 <span className={`flex min-w-0 items-center gap-2 ${hasUnread ? 'font-bold' : 'font-semibold'}`}>
                   {hasUnread ? <span className="size-2 flex-none rounded-full bg-green-deep" aria-hidden="true" /> : null}
-                  <span className="truncate">{fullName(other)}</span>
+                  <span className="truncate" title={fullName(other)}>
+                    {fullName(other)}
+                  </span>
                 </span>
                 {hasUnread ? (
                   <span className="min-w-6 flex-none rounded-full bg-green-deep px-2 py-0.5 text-center text-[0.8rem] font-bold text-white" aria-label={`${conversation.unread_count} unread`}>
@@ -51,7 +53,9 @@ export function ConversationList({ status, conversations, selectedId, onSelect, 
               <span className="text-[0.82rem] text-ink-3">
                 {ROLE_LABELS[other.role]} · <time dateTime={conversation.last_message_at}>{formatDateTime(conversation.last_message_at)}</time>
               </span>
-              <span className={`truncate text-[0.95rem] ${hasUnread ? 'text-ink' : 'text-ink-2'}`}>{preview}</span>
+              <span className={`truncate text-[0.95rem] ${hasUnread ? 'text-ink' : 'text-ink-2'}`} title={preview}>
+                {preview}
+              </span>
             </button>
           </li>
         )

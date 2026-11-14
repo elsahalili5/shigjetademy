@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Archive, Megaphone, Pencil } from 'lucide-react'
+import { Archive, CalendarClock, Megaphone, Pencil, UserRound, Users } from 'lucide-react'
 import type { AnnouncementDetail } from '@shigjetademy/shared/announcements'
 import { ConfirmGroup } from '#/components/ConfirmGroup'
 import { FormAlert } from '#/components/FormAlert'
@@ -44,35 +44,37 @@ function LoadedAnnouncement({ organizationId, announcement }: LoadedAnnouncement
 
   return (
     <article className="flex min-h-0 flex-1 flex-col" aria-labelledby="announcement-title">
-      <header className="grid gap-2 border-b border-rule px-5 py-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <h2 id="announcement-title" className="min-w-0 text-[1.3rem] leading-tight font-[680] break-words">
+      <header className="grid gap-3 border-b border-rule px-5 py-4">
+        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+          <h2 id="announcement-title" className="min-w-0 flex-1 text-[1.35rem] leading-tight font-[680] tracking-[-0.02em] break-words">
             {announcement.title}
           </h2>
           {announcement.can_manage && announcement.status !== 'PUBLISHED' ? <AnnouncementStatusChip status={announcement.status} /> : null}
         </div>
-        <dl className="grid gap-x-6 gap-y-1 text-[0.93rem] text-ink-2 sm:grid-cols-2">
-          <div className="flex gap-1.5">
-            <dt className="text-ink-3">From</dt>
-            <dd>{fullName(announcement.author)}</dd>
-          </div>
-          <div className="flex gap-1.5">
-            <dt className="text-ink-3">To</dt>
-            <dd>{getAudienceLabel(announcement)}</dd>
-          </div>
-          <div className="flex gap-1.5">
-            <dt className="text-ink-3">{announcement.status === 'SCHEDULED' ? 'Goes out' : 'Published'}</dt>
-            <dd>{announcement.publish_at ? <time dateTime={announcement.publish_at}>{formatDateTime(announcement.publish_at)}</time> : 'Not yet'}</dd>
-          </div>
+        <ul aria-label="About this announcement" className="flex flex-wrap items-center gap-2 text-[0.88rem]">
+          <li className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-green-wash px-3 py-1 font-semibold text-green-deep">
+            <Users className="flex-none" size={14} strokeWidth={2} aria-hidden="true" />
+            <span className="sr-only">To</span>
+            <span className="truncate">{getAudienceLabel(announcement)}</span>
+          </li>
+          <li className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white px-3 py-1 text-ink-2 ring-1 ring-rule">
+            <UserRound className="flex-none text-ink-3" size={14} strokeWidth={2} aria-hidden="true" />
+            <span className="sr-only">From</span>
+            <span className="truncate">{fullName(announcement.author)}</span>
+          </li>
+          <li className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-ink-2 ring-1 ring-rule">
+            <CalendarClock className="flex-none text-ink-3" size={14} strokeWidth={2} aria-hidden="true" />
+            <span className="text-ink-3">{announcement.status === 'SCHEDULED' ? 'Goes out' : 'Published'}</span>
+            {announcement.publish_at ? <time dateTime={announcement.publish_at}>{formatDateTime(announcement.publish_at)}</time> : <span>Not yet</span>}
+          </li>
           {announcement.edited_at ? (
-            <div className="flex gap-1.5">
-              <dt className="text-ink-3">Edited</dt>
-              <dd>
-                <time dateTime={announcement.edited_at}>{formatDateTime(announcement.edited_at)}</time>
-              </dd>
-            </div>
+            <li className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-ink-2 ring-1 ring-rule">
+              <Pencil className="flex-none text-ink-3" size={14} strokeWidth={2} aria-hidden="true" />
+              <span className="text-ink-3">Edited</span>
+              <time dateTime={announcement.edited_at}>{formatDateTime(announcement.edited_at)}</time>
+            </li>
           ) : null}
-        </dl>
+        </ul>
       </header>
 
       <div className="min-h-[200px] flex-1 overflow-y-auto px-5 py-5">

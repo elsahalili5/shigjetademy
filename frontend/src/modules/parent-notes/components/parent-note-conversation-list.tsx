@@ -48,12 +48,16 @@ function ConversationListContent({ conversations, selectedStudentId, onSelect }:
               </span>
               <span className="grid min-w-0 flex-1 gap-0.5">
                 <span className="flex items-baseline justify-between gap-3">
-                  <span className="truncate font-semibold">{name}</span>
+                  <span className="truncate font-semibold" title={name}>
+                    {name}
+                  </span>
                   <time className="tabular flex-none text-[0.85rem] text-ink-3" dateTime={last_note.created_at}>
                     {formatDateTime(last_note.created_at)}
                   </time>
                 </span>
-                <span className="truncate text-[0.93rem] text-ink-2">{last_note.body}</span>
+                <span className="truncate text-[0.93rem] text-ink-2" title={last_note.body}>
+                  {last_note.body}
+                </span>
               </span>
             </button>
           </li>

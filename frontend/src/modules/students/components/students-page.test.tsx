@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { delay, http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createStudentSchema, updateStudentSchema } from '@shigjetademy/shared/students'
@@ -154,6 +154,25 @@ describe('StudentsPage: list states', () => {
 
     expect(await screen.findByText('Dren Hoxha')).toBeInTheDocument()
     expect(screen.queryByText('Arta Gashi')).not.toBeInTheDocument()
+  })
+
+  it('filters by group from the dropdown next to the search, naming each group with its course', async () => {
+    const requests = signInAsOwner({ active: [ARTA, BESA] })
+    server.use(
+      http.get('*/api/organizations/org-1/students/groups', () =>
+        HttpResponse.json({ data: [{ id: '0a5c1e7e-1111-4c2e-9d3a-0b6f2a1c0001', name: 'Group A', course_name: 'Mathematics' }] }),
+      ),
+    )
+    const { user } = renderRoute('/dashboard/students')
+
+    await studentsTable()
+    const filter = await screen.findByRole('combobox', { name: 'Filter by group' })
+    await waitFor(() => expect(within(filter).getAllByRole('option').map((option) => option.textContent)).toEqual(['All groups', 'Mathematics · Group A']))
+    await user.selectOptions(filter, 'Mathematics · Group A')
+
+    await waitFor(() => expect(requests.at(-1)?.get('group_id')).toBe('0a5c1e7e-1111-4c2e-9d3a-0b6f2a1c0001'))
+    await user.selectOptions(filter, 'All groups')
+    await waitFor(() => expect(requests.at(-1)?.get('group_id')).toBeNull())
   })
 
   it('loads the next page', async () => {

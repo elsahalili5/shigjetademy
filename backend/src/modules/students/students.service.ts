@@ -7,6 +7,8 @@ import type { OrganizationScope } from '@lib/organization-lock.ts'
 import { prisma } from '@lib/prisma.ts'
 import { revokePendingRecordInvitation } from '@modules/invitations/invitations.service.ts'
 import type { CreateStudentInput, ListStudentsQuery, StudentLoginStatus, StudentStatus, UpdateStudentInput } from './students.types.ts'
+import type { StudentGroupOption } from '@shigjetademy/shared/students'
+import { activeEnrolments } from '@modules/groups/group-selects.ts'
 
 const studentSelect = {
   id: true,
@@ -145,9 +147,20 @@ const STATUS_CHANGE = {
 } as const satisfies Record<StudentStatus, { action: Prisma.ActivityLogCreateInput['action']; alreadyMessage: string }>
 
 export const StudentService = {
-  // Counts follow the search, so each status tab says how many of its students match
+  /** The organization's active groups, by course and name, for the students list's group filter */
+  listGroupOptions: async ({ organizationId }: { organizationId: string }): Promise<StudentGroupOption[]> => {
+    const groups = await prisma.group.findMany({
+      where: { organization_id: organizationId, status: 'ACTIVE' },
+      orderBy: [{ course: { name: 'asc' } }, { name: 'asc' }],
+      select: { id: true, name: true, course: { select: { name: true } } },
+    })
+    return groups.map(({ id, name, course }) => ({ id, name, course_name: course.name }))
+  },
+
+  // Counts follow the search and the group, so each status tab says how many of its students match
   listStudents: async ({ organizationId, query }: ListStudentsParams) => {
-    const where = { organization_id: organizationId, ...matching(query.search) }
+    const inGroup = query.group_id ? { group_enrolments: { some: { group_id: query.group_id, ...activeEnrolments, group: { organization_id: organizationId } } } } : {}
+    const where = { organization_id: organizationId, ...matching(query.search), ...inGroup }
     const [students, groups] = await Promise.all([
       prisma.student.findMany({
         where: { ...where, status: query.status },

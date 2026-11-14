@@ -23,6 +23,15 @@ export const StudentController = {
     }
   },
 
+  listGroupOptions: async (req: TypedRequest<unknown, OrganizationIdParam>, res: Response) => {
+    try {
+      const groups = await StudentService.listGroupOptions({ organizationId: req.params.organizationId })
+      return res.status(200).json({ data: groups })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to fetch groups' })
+    }
+  },
+
   getStudent: async (req: StudentRequest, res: Response) => {
     try {
       const student = await StudentService.getStudent(req.params)

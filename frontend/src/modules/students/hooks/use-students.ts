@@ -9,6 +9,8 @@ export const studentsQueryKey = (organizationId: string) => ['organizations', or
 type StudentFilters = {
   search: string
   status: StudentStatus
+  /** Only this group's students, or '' for all */
+  groupId: string
 }
 
 type UseStudentsParams = StudentFilters & {
@@ -33,10 +35,10 @@ const flattenPages = (data: InfiniteData<StudentPage, number>): LoadedStudents =
 })
 
 /** The organization's students in one status, by last name, matching the search; fetchNextPage loads the next page */
-export function useStudents({ organizationId, search, status }: UseStudentsParams) {
+export function useStudents({ organizationId, search, status, groupId }: UseStudentsParams) {
   return useInfiniteQuery<StudentPage, DefaultError, LoadedStudents, StudentsQueryKey, number>({
-    queryKey: [...studentsQueryKey(organizationId), { search, status }],
-    queryFn: ({ pageParam }) => studentsApi.list({ organizationId, search, status, page: pageParam, page_size: STUDENT_PAGE_SIZE }),
+    queryKey: [...studentsQueryKey(organizationId), { search, status, groupId }],
+    queryFn: ({ pageParam }) => studentsApi.list({ organizationId, search, status, group_id: groupId || undefined, page: pageParam, page_size: STUDENT_PAGE_SIZE }),
     initialPageParam: FIRST_PAGE,
     getNextPageParam: getNextPage,
     select: flattenPages,

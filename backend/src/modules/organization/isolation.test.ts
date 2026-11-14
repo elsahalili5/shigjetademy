@@ -145,6 +145,7 @@ const SCOPED_ENDPOINTS: ScopedEndpoint[] = [
   { method: 'post', route: '/:organizationId/settings/deactivate', body: { confirm_name: 'Yllka Kindergarten', password: 'password123' } },
   { method: 'post', route: '/:organizationId/settings/reactivate', body: { password: 'password123' } },
   { method: 'get', route: '/:organizationId/students' },
+  { method: 'get', route: '/:organizationId/students/groups' },
   { method: 'post', route: '/:organizationId/students', body: STUDENT },
   { method: 'get', route: '/:organizationId/students/:studentId' },
   { method: 'put', route: '/:organizationId/students/:studentId', body: STUDENT },
