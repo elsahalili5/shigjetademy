@@ -1,9 +1,8 @@
 // Educational conversations in a group or a course. Who may read, post and moderate is decided here from the group's and course's current people (see
-// discussion-access). Topics and replies are removed softly. A topic is unread for someone when another person posted in it after they last read it.
+// groups/space-access). Topics and replies are removed softly. A topic is unread for someone when another person posted in it after they last read it.
 import type {
   DiscussionReply,
   DiscussionSpace,
-  DiscussionSpaceRef,
   DiscussionTopicDetail,
   DiscussionTopicSummary,
   DiscussionUnreadCount,
@@ -11,8 +10,10 @@ import type {
 import type { Prisma } from '@generated/prisma/client.ts'
 import { HttpError } from '@lib/httpError.ts'
 import { prisma } from '@lib/prisma.ts'
-import { findViewerSpace, loadViewerSpaces, topicsInSpaces } from './discussion-access.ts'
-import type { CreateDiscussionTopicInput, DiscussionReplyInput, DiscussionViewer, UpdateDiscussionTopicInput } from './discussions.types.ts'
+import { findViewerSpace, loadViewerSpaces, spaceSelect, toSpaceRef } from '@modules/groups/space-access.ts'
+import type { SpaceViewer } from '@modules/groups/space-access.ts'
+import { topicsInSpaces } from './discussion-access.ts'
+import type { CreateDiscussionTopicInput, DiscussionReplyInput, UpdateDiscussionTopicInput } from './discussions.types.ts'
 
 /** The list holds this many topics at most, pinned first and then the latest activity; older ones stay stored */
 const LIST_LIMIT = 200
@@ -28,7 +29,7 @@ const authorSelect = { select: { user: { select: { first_name: true, last_name: 
 
 const topicSelect = {
   id: true,
-  space_kind: true,
+  ...spaceSelect,
   title: true,
   body: true,
   is_pinned: true,
@@ -40,8 +41,6 @@ const topicSelect = {
   created_at: true,
   author_membership_id: true,
   author: authorSelect,
-  group: { select: { id: true, name: true, status: true, course: { select: { name: true } } } },
-  course: { select: { id: true, name: true, status: true } },
   _count: { select: { replies: { where: { status: 'ACTIVE' } } } },
 } as const satisfies Prisma.DiscussionTopicSelect
 
@@ -63,7 +62,7 @@ type StoredReply = Prisma.DiscussionReplyGetPayload<{ select: typeof replySelect
 
 type ViewerScope = {
   organizationId: string
-  viewer: DiscussionViewer
+  viewer: SpaceViewer
 }
 
 type TopicScope = ViewerScope & {
@@ -72,12 +71,6 @@ type TopicScope = ViewerScope & {
 
 type ReplyScope = TopicScope & {
   replyId: string
-}
-
-const toSpaceRef = (topic: StoredTopic): DiscussionSpaceRef => {
-  if (topic.space_kind === 'GROUP' && topic.group) return { kind: 'GROUP', id: topic.group.id, name: topic.group.name, course_name: topic.group.course.name }
-  if (topic.course) return { kind: 'COURSE', id: topic.course.id, name: topic.course.name, course_name: null }
-  throw new Error(`Discussion topic ${topic.id} has no space`)
 }
 
 const isSpaceArchived = (topic: StoredTopic) => (topic.space_kind === 'GROUP' ? topic.group?.status === 'ARCHIVED' : topic.course?.status === 'ARCHIVED')
@@ -108,7 +101,7 @@ const toSummary = ({ topic, isUnread }: ToSummaryParams): DiscussionTopicSummary
 })
 
 type ReplyViewer = {
-  viewer: DiscussionViewer
+  viewer: SpaceViewer
   isModerator: boolean
   /** An archived group or course takes no edits, even of what was written before */
   isSpaceArchived: boolean
@@ -168,7 +161,7 @@ const findReachableTopic = async ({ organizationId, viewer, topicId }: TopicScop
 type UnreadCandidate = Pick<StoredTopic, 'id' | 'author_membership_id' | 'created_at'>
 
 /** The topics where someone else posted, the topic itself or a reply, after the viewer last read it (or they never opened it) */
-const findUnreadTopicIds = async ({ viewer, topics }: { viewer: DiscussionViewer; topics: UnreadCandidate[] }) => {
+const findUnreadTopicIds = async ({ viewer, topics }: { viewer: SpaceViewer; topics: UnreadCandidate[] }) => {
   if (topics.length === 0) return new Set<string>()
   const ids = topics.map((topic) => topic.id)
   const [reads, newestReplies] = await Promise.all([

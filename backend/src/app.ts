@@ -16,6 +16,7 @@ import invitationRoutes from '@modules/invitations/invitations.routes.ts'
 import organizationInvitationRoutes from '@modules/invitations/organization-invitations.routes.ts'
 import lecturerHomeRoutes from '@modules/lecturer-home/lecturer-home.routes.ts'
 import lecturerRoutes from '@modules/lecturers/lecturers.routes.ts'
+import materialRoutes from '@modules/materials/materials.routes.ts'
 import lessonPlanRoutes from '@modules/attendance/lesson-plans.routes.ts'
 import locationRoutes from '@modules/location/location.routes.ts'
 import myChildrenRoutes from '@modules/my-children/my-children.routes.ts'
@@ -70,6 +71,7 @@ app.use('/api/organizations', parentNotesRoutes)
 app.use('/api/organizations', inboxRoutes)
 app.use('/api/organizations', announcementRoutes)
 app.use('/api/organizations', discussionRoutes)
+app.use('/api/organizations', materialRoutes)
 app.use('/api/users', userRoutes)
 
 app.get('/api/health', (_req, res) => {

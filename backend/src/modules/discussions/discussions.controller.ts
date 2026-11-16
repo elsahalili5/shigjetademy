@@ -2,13 +2,13 @@ import type { Response } from 'express'
 import { sendError } from '@lib/httpError.ts'
 import type { AuthRequest, TypedRequest } from '@lib/types.ts'
 import type { OrganizationIdParam } from '@modules/organization/organization.types.ts'
+import type { SpaceViewer } from '@modules/groups/space-access.ts'
 import { DiscussionService } from './discussions.service.ts'
 import type {
   CreateDiscussionTopicInput,
   DiscussionParam,
   DiscussionReplyInput,
   DiscussionReplyParam,
-  DiscussionViewer,
   LockDiscussionTopicInput,
   PinDiscussionTopicInput,
   UpdateDiscussionTopicInput,
@@ -33,7 +33,7 @@ type ReplyUpdateRequest = AuthRequest & TypedRequest<DiscussionReplyInput, Discu
 type ReplyRemoveRequest = AuthRequest & TypedRequest<unknown, DiscussionReplyParam>
 
 /** The caller's seat in the organization of the path; the route already checked they are a member */
-const findViewer = (req: AuthRequest): DiscussionViewer | null => {
+const findViewer = (req: AuthRequest): SpaceViewer | null => {
   const membership = req.user?.memberships.find((item) => item.organization.id === req.params.organizationId)
   if (!req.user || !membership) return null
   return { membershipId: membership.id, userId: req.user.id, role: membership.role }

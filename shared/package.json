@@ -27,7 +27,9 @@
     "./parent-notes": "./src/parent-notes.ts",
     "./inbox": "./src/inbox.ts",
     "./announcements": "./src/announcements.ts",
-    "./discussions": "./src/discussions.ts"
+    "./discussions": "./src/discussions.ts",
+    "./spaces": "./src/spaces.ts",
+    "./materials": "./src/materials.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

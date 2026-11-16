@@ -8,7 +8,7 @@ import { SelectField } from '#/components/SelectField'
 import { getErrorMessage, getFieldError } from '#/lib/error-message'
 import { FieldError, INPUT_CLASS } from '#/modules/auth/components/auth-field'
 import type { DiscussionFormValues } from '../utils/discussion-form'
-import { getSpaceKey, getSpaceLabel } from '../utils/space'
+import { getSpaceKey, getSpaceLabel } from '#/lib/space'
 
 interface DiscussionFormFieldsProps {
   form: UseFormReturn<DiscussionFormValues>

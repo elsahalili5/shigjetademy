@@ -31,6 +31,7 @@ type TargetIds = {
   announcementId: string
   topicId: string
   replyId: string
+  materialId: string
 }
 
 type ScopedEndpoint = {
@@ -98,6 +99,9 @@ const MESSAGE = { body: 'Taken over' } as const
 const DISCUSSION_REPLY = { body: 'Taken over' } as const
 const DISCUSSION_TOPIC = { title: 'Taken over', body: 'Taken over' } as const
 const ANNOUNCEMENT = { title: 'Taken over', body: 'Taken over', audience_kind: 'SCHOOL', publish_mode: 'NOW' } as const
+const MATERIAL_DETAILS = { title: 'Taken over', description: '', section: '' } as const
+// A well-formed course id, so the sweep passes validation and reaches the organization checks
+const MATERIAL_LINK = { kind: 'LINK', title: 'Taken over', description: '', section: '', url: 'https://example.com', space_kind: 'COURSE', space_id: '00000000-0000-4000-8000-000000000005' } as const
 
 const GROUP = { course_id: '00000000-0000-4000-8000-000000000001', name: 'Taken over', academic_year_id: '00000000-0000-4000-8000-000000000002', academic_term_id: null, room_id: null, capacity: null, lecturer_id: null, lecturer_effective_from: null, schedule: SCHEDULE } as const
 
@@ -247,6 +251,13 @@ const SCOPED_ENDPOINTS: ScopedEndpoint[] = [
   { method: 'post', route: '/:organizationId/discussions/:topicId/replies', body: DISCUSSION_REPLY },
   { method: 'put', route: '/:organizationId/discussions/:topicId/replies/:replyId', body: DISCUSSION_REPLY },
   { method: 'post', route: '/:organizationId/discussions/:topicId/replies/:replyId/remove' },
+  { method: 'get', route: '/:organizationId/materials' },
+  { method: 'get', route: '/:organizationId/materials/spaces' },
+  { method: 'post', route: '/:organizationId/materials', body: MATERIAL_LINK },
+  { method: 'post', route: '/:organizationId/materials/files' },
+  { method: 'get', route: '/:organizationId/materials/:materialId/download' },
+  { method: 'put', route: '/:organizationId/materials/:materialId', body: MATERIAL_DETAILS },
+  { method: 'delete', route: '/:organizationId/materials/:materialId' },
 ]
 
 type ToPathParams = {
@@ -278,6 +289,7 @@ const toPath = ({ route, ids }: ToPathParams) =>
     .replace(':announcementId', ids.announcementId)
     .replace(':topicId', ids.topicId)
     .replace(':replyId', ids.replyId)
+    .replace(':materialId', ids.materialId)
     .replace(':date', LESSON_DATE)
     .replace(':startTime', LESSON_START)}`
 
@@ -308,7 +320,7 @@ type SeedOrganizationParams = {
   slug: string
 }
 
-/** An organization with an owner, a school admin, a location, a department, a school year with a term and a holiday, a student with an open login invitation, a lecturer with an open login invitation, a private conversation between the owner and the admin, a course with a group that has a lecturer, a Wednesday meeting, a substitution, the student enrolled and marked present on LESSON_DATE, the next Wednesday's session moved to the Thursday, and an open admin invitation */
+/** An organization with an owner, a school admin, a location, a department, a school year with a term and a holiday, a student with an open login invitation, a lecturer with an open login invitation, a private conversation between the owner and the admin, a course with a group that has a lecturer, a Wednesday meeting, a substitution, the student enrolled and marked present on LESSON_DATE, the next Wednesday's session moved to the Thursday, a link shared with the group, and an open admin invitation */
 const seedOrganization = async ({ name, slug }: SeedOrganizationParams) => {
   const owner = await createUser({ email: `owner@${slug}.test` })
   const admin = await createUser({ email: `admin@${slug}.test` })
@@ -390,7 +402,10 @@ const seedOrganization = async ({ name, slug }: SeedOrganizationParams) => {
     data: { organization_id: organization.id, author_membership_id: ownerMembership.id, space_kind: 'GROUP', group_id: group.id, title: `${name} topic`, body: `${name} topic` },
   })
   const reply = await prisma.discussionReply.create({ data: { topic_id: topic.id, organization_id: organization.id, author_membership_id: ownerMembership.id, body: `${name} reply` } })
-  return { organizationId: organization.id, membershipId: adminMembership.id, locationId: location.id, roomId: room.id, departmentId: department.id, yearId: year.id, termId: term.id, holidayId: holiday.id, studentId: student.id, lecturerId: lecturer.id, courseId: course.id, groupId: group.id, substitutionId: substitution.id, enrolmentId: enrolment.id, rescheduleId: reschedule.id, invitationId: invitation.id, guardianId: guardian.id, conversationId: conversation.id, messageId: conversation.messages[0].id, announcementId: announcement.id, topicId: topic.id, replyId: reply.id }
+  const material = await prisma.material.create({
+    data: { organization_id: organization.id, author_membership_id: ownerMembership.id, space_kind: 'GROUP', group_id: group.id, kind: 'LINK', title: `${name} reading`, url: 'https://example.com/reading' },
+  })
+  return { organizationId: organization.id, membershipId: adminMembership.id, locationId: location.id, roomId: room.id, departmentId: department.id, yearId: year.id, termId: term.id, holidayId: holiday.id, studentId: student.id, lecturerId: lecturer.id, courseId: course.id, groupId: group.id, substitutionId: substitution.id, enrolmentId: enrolment.id, rescheduleId: reschedule.id, invitationId: invitation.id, guardianId: guardian.id, conversationId: conversation.id, messageId: conversation.messages[0].id, announcementId: announcement.id, topicId: topic.id, replyId: reply.id, materialId: material.id }
 }
 
 let oxford: TargetIds
@@ -446,6 +461,8 @@ const yllkaAsItsOwnerSeesIt = async () => {
     discussion: await read('/:organizationId/discussions/:topicId'),
     discussionUnreadCount: await read('/:organizationId/discussions/unread-count'),
     discussionSpaces: await read('/:organizationId/discussions/spaces'),
+    materialSpaces: await read('/:organizationId/materials/spaces'),
+    groupMaterials: await read(`/:organizationId/materials?space_kind=GROUP&space_id=${yllka.groupId}`),
   }
 }
 
@@ -475,11 +492,11 @@ describe('organization isolation', () => {
 
   it('does not reach another organization’s records through ids in its own paths', async () => {
     const before = await yllkaAsItsOwnerSeesIt()
-    // Oxford's own organization id with Yllka's member, location, department, academic period, student, lecturer, course, group, substitution, enrolment, reschedule and invitation ids
+    // Oxford's own organization id with Yllka's member, location, department, academic period, student, lecturer, course, group, substitution, enrolment, reschedule, invitation and material ids
     const mixed: TargetIds = { ...yllka, organizationId: oxford.organizationId }
 
     // The guardian-only and lecturer-only routes refuse the owner outright; the next tests sweep them as a guardian and as a lecturer
-    for (const endpoint of SCOPED_ENDPOINTS.filter((item) => !item.route.includes('/me/children/') && !item.route.includes('/parent-notes/') && /:(membership|location|room|department|year|term|holiday|student|lecturer|course|group|substitution|enrolment|reschedule|invitation|guardian|conversation|message|announcement|topic|reply)Id/.test(item.route))) {
+    for (const endpoint of SCOPED_ENDPOINTS.filter((item) => !item.route.includes('/me/children/') && !item.route.includes('/parent-notes/') && /:(membership|location|room|department|year|term|holiday|student|lecturer|course|group|substitution|enrolment|reschedule|invitation|guardian|conversation|message|announcement|topic|reply|material)Id/.test(item.route))) {
       const response = await send({ ...endpoint, ids: mixed, auth: oxfordOwnerAuth })
       expect(response.status, `${endpoint.method.toUpperCase()} ${endpoint.route} answered ${response.status}`).toBe(404)
     }
@@ -535,6 +552,18 @@ describe('organization isolation', () => {
     const topicInYllkaCourse = await send({ method: 'post', route: '/:organizationId/discussions', body: { ...DISCUSSION_TOPIC, space_kind: 'COURSE', space_id: yllka.courseId }, ids: oxford, auth: oxfordOwnerAuth })
     const yllkaReplyOnOxfordTopic = await send({ method: 'put', route: '/:organizationId/discussions/:topicId/replies/:replyId', body: DISCUSSION_REPLY, ids: { ...oxford, replyId: yllka.replyId }, auth: oxfordOwnerAuth })
     const removedYllkaReply = await send({ method: 'post', route: '/:organizationId/discussions/:topicId/replies/:replyId/remove', ids: { ...oxford, replyId: yllka.replyId }, auth: oxfordOwnerAuth })
+    const linkInYllkaGroup = await send({ method: 'post', route: '/:organizationId/materials', body: { ...MATERIAL_LINK, space_kind: 'GROUP', space_id: yllka.groupId }, ids: oxford, auth: oxfordOwnerAuth })
+    const linkInYllkaCourse = await send({ method: 'post', route: '/:organizationId/materials', body: { ...MATERIAL_LINK, space_kind: 'COURSE', space_id: yllka.courseId }, ids: oxford, auth: oxfordOwnerAuth })
+    const fileInYllkaGroup = await request(app)
+      .post(toPath({ route: '/:organizationId/materials/files', ids: oxford }))
+      .set('Authorization', oxfordOwnerAuth)
+      .field('title', 'Taken over')
+      .field('description', '')
+      .field('section', '')
+      .field('space_kind', 'GROUP')
+      .field('space_id', yllka.groupId)
+      .attach('file', Buffer.from('Taken over'), { filename: 'taken.txt', contentType: 'text/plain' })
+    const readYllkaGroupMaterials = await send({ method: 'get', route: `/:organizationId/materials?space_kind=GROUP&space_id=${yllka.groupId}`, ids: oxford, auth: oxfordOwnerAuth })
     const yllkaMessageInOxfordConversation: TargetIds = { ...oxford, messageId: yllka.messageId }
     const editedYllkaMessage = await send({ method: 'put', route: '/:organizationId/inbox/conversations/:conversationId/messages/:messageId', body: MESSAGE, ids: yllkaMessageInOxfordConversation, auth: oxfordOwnerAuth })
     const removedYllkaMessage = await send({ method: 'post', route: '/:organizationId/inbox/conversations/:conversationId/messages/:messageId/remove', ids: yllkaMessageInOxfordConversation, auth: oxfordOwnerAuth })
@@ -589,6 +618,12 @@ describe('organization isolation', () => {
     expect(removedYllkaReply.status).toBe(404)
     expect(await prisma.discussionTopic.count({ where: { organization_id: oxford.organizationId } })).toBe(1)
     expect(await prisma.discussionReply.findUniqueOrThrow({ where: { id: yllka.replyId }, select: { status: true, body: true } })).toEqual({ status: 'ACTIVE', body: 'Yllka Kindergarten reply' })
+    expect(linkInYllkaGroup.status).toBe(404)
+    expect(linkInYllkaCourse.status).toBe(404)
+    expect(fileInYllkaGroup.status).toBe(404)
+    expect(readYllkaGroupMaterials.status).toBe(404)
+    expect(await prisma.material.count({ where: { organization_id: oxford.organizationId } })).toBe(1)
+    expect(await prisma.material.findUniqueOrThrow({ where: { id: yllka.materialId }, select: { title: true } })).toEqual({ title: 'Yllka Kindergarten reading' })
     expect(editedYllkaMessage.status).toBe(404)
     expect(removedYllkaMessage.status).toBe(404)
     expect(await prisma.message.findUniqueOrThrow({ where: { id: yllka.messageId }, select: { status: true, body: true } })).toEqual({ status: 'ACTIVE', body: 'Yllka Kindergarten private note' })

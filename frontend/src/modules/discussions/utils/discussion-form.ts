@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { discussionTopicTextSchema } from '@shigjetademy/shared/discussions'
 import type { CreateDiscussionTopicInput, DiscussionSpace, DiscussionTopicDetail } from '@shigjetademy/shared/discussions'
-import { getSpaceKey } from './space'
+import { getSpaceKey } from '#/lib/space'
 
 /** The form's fields: the space is picked as one string, "GROUP:<id>" or "COURSE:<id>", until it is turned into an input */
 export const discussionFormSchema = discussionTopicTextSchema.extend({ space: z.string().min(1, 'Choose where to post it.') })

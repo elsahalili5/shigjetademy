@@ -5,7 +5,7 @@ import { LoadError } from '#/components/LoadError'
 import { SkeletonRows } from '#/components/SkeletonRows'
 import { fullName } from '#/lib/full-name'
 import { useFormatDateTime } from '#/lib/use-format-date'
-import { getSpaceLabel } from '../utils/space'
+import { getSpaceLabel } from '#/lib/space'
 import { TopicChips } from './discussion-chips'
 
 const getTopicTitle = (topic: DiscussionTopicSummary) => (topic.status === 'REMOVED' ? 'Removed topic' : topic.title)
