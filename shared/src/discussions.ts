@@ -1,15 +1,13 @@
 // Discussions: conversations in a group or a course. The forms and the endpoints that store them share these schemas and response shapes.
 import { z } from 'zod'
+import { SPACE_KINDS } from './spaces.ts'
+import type { Space, SpaceRef } from './spaces.ts'
 
 export const DISCUSSION_TITLE_MAX_LENGTH = 150
 
 export const DISCUSSION_BODY_MAX_LENGTH = 5000
 
 export const DISCUSSION_REPLY_MAX_LENGTH = 2000
-
-export const DISCUSSION_SPACE_KINDS = ['GROUP', 'COURSE'] as const
-
-export type DiscussionSpaceKind = (typeof DISCUSSION_SPACE_KINDS)[number]
 
 export const DISCUSSION_REMOVERS = ['AUTHOR', 'MODERATOR'] as const
 
@@ -27,7 +25,7 @@ export const discussionReplyBodySchema = z.string().trim().min(1, 'Write a reply
 export const discussionTopicTextSchema = z.object({ title: titleSchema, body: bodySchema })
 
 export const createDiscussionTopicSchema = discussionTopicTextSchema.extend({
-  space_kind: z.enum(DISCUSSION_SPACE_KINDS, 'Choose where to post it.'),
+  space_kind: z.enum(SPACE_KINDS, 'Choose where to post it.'),
   space_id: z.uuid('Choose where to post it.'),
 })
 
@@ -55,19 +53,11 @@ export type DiscussionAuthor = {
   last_name: string
 }
 
-/** A group or a course topics are posted in. A group also carries its course's name. */
-export type DiscussionSpaceRef = {
-  kind: DiscussionSpaceKind
-  id: string
-  name: string
-  course_name: string | null
-}
+/** A group or a course topics are posted in */
+export type DiscussionSpaceRef = SpaceRef
 
 /** A space the viewer can read; they can start a topic in it unless it is archived */
-export type DiscussionSpace = DiscussionSpaceRef & {
-  is_archived: boolean
-  can_post: boolean
-}
+export type DiscussionSpace = Space
 
 /** One topic in the list. Dates are ISO timestamps in UTC. A removed topic keeps no words: its title is empty. */
 export type DiscussionTopicSummary = {

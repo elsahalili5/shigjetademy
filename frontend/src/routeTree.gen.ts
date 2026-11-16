@@ -36,6 +36,7 @@ import { Route as DashboardInboxRouteImport } from './routes/dashboard/inbox'
 import { Route as DashboardLecturersRouteImport } from './routes/dashboard/lecturers'
 import { Route as DashboardLessonsRouteImport } from './routes/dashboard/lessons'
 import { Route as DashboardLocationsRouteImport } from './routes/dashboard/locations'
+import { Route as DashboardMaterialsRouteImport } from './routes/dashboard/materials'
 import { Route as DashboardMembersRouteImport } from './routes/dashboard/members'
 import { Route as DashboardMyChildrenRouteImport } from './routes/dashboard/my-children'
 import { Route as DashboardMyNotesRouteImport } from './routes/dashboard/my-notes'
@@ -194,6 +195,11 @@ const DashboardLocationsRoute = DashboardLocationsRouteImport.update({
   path: '/locations',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
+const DashboardMaterialsRoute = DashboardMaterialsRouteImport.update({
+  id: '/materials',
+  path: '/materials',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
 const DashboardMembersRoute = DashboardMembersRouteImport.update({
   id: '/members',
   path: '/members',
@@ -342,6 +348,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/lecturers': typeof DashboardLecturersRoute
   '/dashboard/lessons': typeof DashboardLessonsRoute
   '/dashboard/locations': typeof DashboardLocationsRoute
+  '/dashboard/materials': typeof DashboardMaterialsRoute
   '/dashboard/members': typeof DashboardMembersRoute
   '/dashboard/my-children': typeof DashboardMyChildrenRoute
   '/dashboard/my-notes': typeof DashboardMyNotesRoute
@@ -391,6 +398,7 @@ export interface FileRoutesByTo {
   '/dashboard/lecturers': typeof DashboardLecturersRoute
   '/dashboard/lessons': typeof DashboardLessonsRoute
   '/dashboard/locations': typeof DashboardLocationsRoute
+  '/dashboard/materials': typeof DashboardMaterialsRoute
   '/dashboard/members': typeof DashboardMembersRoute
   '/dashboard/my-children': typeof DashboardMyChildrenRoute
   '/dashboard/my-notes': typeof DashboardMyNotesRoute
@@ -444,6 +452,7 @@ export interface FileRoutesById {
   '/dashboard/lecturers': typeof DashboardLecturersRoute
   '/dashboard/lessons': typeof DashboardLessonsRoute
   '/dashboard/locations': typeof DashboardLocationsRoute
+  '/dashboard/materials': typeof DashboardMaterialsRoute
   '/dashboard/members': typeof DashboardMembersRoute
   '/dashboard/my-children': typeof DashboardMyChildrenRoute
   '/dashboard/my-notes': typeof DashboardMyNotesRoute
@@ -496,6 +505,7 @@ export interface FileRouteTypes {
     | '/dashboard/lecturers'
     | '/dashboard/lessons'
     | '/dashboard/locations'
+    | '/dashboard/materials'
     | '/dashboard/members'
     | '/dashboard/my-children'
     | '/dashboard/my-notes'
@@ -545,6 +555,7 @@ export interface FileRouteTypes {
     | '/dashboard/lecturers'
     | '/dashboard/lessons'
     | '/dashboard/locations'
+    | '/dashboard/materials'
     | '/dashboard/members'
     | '/dashboard/my-children'
     | '/dashboard/my-notes'
@@ -597,6 +608,7 @@ export interface FileRouteTypes {
     | '/dashboard/lecturers'
     | '/dashboard/lessons'
     | '/dashboard/locations'
+    | '/dashboard/materials'
     | '/dashboard/members'
     | '/dashboard/my-children'
     | '/dashboard/my-notes'
@@ -824,6 +836,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardLocationsRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
+    '/dashboard/materials': {
+      id: '/dashboard/materials'
+      path: '/materials'
+      fullPath: '/dashboard/materials'
+      preLoaderRoute: typeof DashboardMaterialsRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
     '/dashboard/members': {
       id: '/dashboard/members'
       path: '/members'
@@ -1044,6 +1063,7 @@ interface DashboardRouteRouteChildren {
   DashboardLecturersRoute: typeof DashboardLecturersRoute
   DashboardLessonsRoute: typeof DashboardLessonsRoute
   DashboardLocationsRoute: typeof DashboardLocationsRoute
+  DashboardMaterialsRoute: typeof DashboardMaterialsRoute
   DashboardMembersRoute: typeof DashboardMembersRoute
   DashboardMyChildrenRoute: typeof DashboardMyChildrenRoute
   DashboardMyNotesRoute: typeof DashboardMyNotesRoute
@@ -1078,6 +1098,7 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardLecturersRoute: DashboardLecturersRoute,
   DashboardLessonsRoute: DashboardLessonsRoute,
   DashboardLocationsRoute: DashboardLocationsRoute,
+  DashboardMaterialsRoute: DashboardMaterialsRoute,
   DashboardMembersRoute: DashboardMembersRoute,
   DashboardMyChildrenRoute: DashboardMyChildrenRoute,
   DashboardMyNotesRoute: DashboardMyNotesRoute,

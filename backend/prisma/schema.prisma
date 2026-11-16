@@ -233,6 +233,19 @@ enum DiscussionRemovedBy {
   MODERATOR
 }
 
+/// Where a learning material is shared: with one group or with one course (the people of its active groups)
+enum MaterialSpaceKind {
+  GROUP
+  COURSE
+}
+
+/// What a learning material holds: an uploaded file, a link or a text note
+enum MaterialKind {
+  FILE
+  LINK
+  NOTE
+}
+
 enum WeekStart {
   MONDAY
   SUNDAY
@@ -369,6 +382,7 @@ model Organization {
   announcements        Announcement[]
   discussion_topics    DiscussionTopic[]
   discussion_replies   DiscussionReply[]
+  materials            Material[]
 }
 
 /// How one organization runs. An organization without a row reads the defaults; the row is written on its first save.
@@ -701,6 +715,7 @@ model Course {
   groups            Group[]
   announcements     Announcement[]
   discussion_topics DiscussionTopic[]
+  materials         Material[]
 
   @@unique([organization_id, name])
   @@unique([organization_id, code])
@@ -741,6 +756,7 @@ model Group {
   lesson_plans         LessonPlan[]
   announcements        Announcement[]
   discussion_topics    DiscussionTopic[]
+  materials            Material[]
 
   @@unique([course_id, academic_year_id, name])
   @@index([organization_id, status])
@@ -938,6 +954,7 @@ model Membership {
   discussion_topics  DiscussionTopic[]
   discussion_replies DiscussionReply[]
   discussion_reads   DiscussionRead[]
+  materials          Material[]
 
   @@unique([user_id, organization_id])
   @@index([organization_id, role])
@@ -1183,4 +1200,47 @@ model DiscussionRead {
 
   @@id([topic_id, membership_id])
   @@index([membership_id])
+}
+
+/// A file, link or note shared with a group or a course. Who may read and share is worked out from the group's and course's current people, like discussions.
+/// Removing one deletes the row and its stored file.
+model Material {
+  id                   String            @id @default(uuid()) @db.Uuid
+  organization_id      String            @db.Uuid
+  space_kind           MaterialSpaceKind
+  /// Set for a GROUP space
+  group_id             String?           @db.Uuid
+  /// Set for a COURSE space
+  course_id            String?           @db.Uuid
+  author_membership_id String            @db.Uuid
+  kind                 MaterialKind
+  title                String
+  description          String?
+  /// Free text like "Week 3"; the page groups by it, and one without goes under General
+  section              String?
+  /// Set for a LINK
+  url                  String?
+  /// Set for a NOTE
+  body                 String?
+  /// Set for a FILE: the generated name it is stored under, outside the public uploads
+  file_key             String?
+  /// Set for a FILE: the name it was uploaded with, given back on download
+  file_name            String?
+  /// Set for a FILE
+  file_type            String?
+  /// Set for a FILE, in bytes
+  file_size            Int?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  author       Membership   @relation(fields: [author_membership_id], references: [id], onDelete: Cascade)
+  group        Group?       @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  course       Course?      @relation(fields: [course_id], references: [id], onDelete: Cascade)
+
+  @@index([organization_id, created_at])
+  @@index([group_id])
+  @@index([course_id])
+  @@index([author_membership_id])
 }
