@@ -32,6 +32,8 @@ type TargetIds = {
   topicId: string
   replyId: string
   materialId: string
+  assignmentId: string
+  submissionId: string
 }
 
 type ScopedEndpoint = {
@@ -102,6 +104,12 @@ const ANNOUNCEMENT = { title: 'Taken over', body: 'Taken over', audience_kind: '
 const MATERIAL_DETAILS = { title: 'Taken over', description: '', section: '' } as const
 // A well-formed course id, so the sweep passes validation and reaches the organization checks
 const MATERIAL_LINK = { kind: 'LINK', title: 'Taken over', description: '', section: '', url: 'https://example.com', space_kind: 'COURSE', space_id: '00000000-0000-4000-8000-000000000005' } as const
+
+const ASSIGNMENT_DETAILS = { title: 'Taken over', instructions: 'Taken over', due_at: '2027-11-20T16:00:00.000Z', max_points: '' } as const
+// A well-formed group id, so the sweep passes validation and reaches the organization checks
+const ASSIGNMENT = { ...ASSIGNMENT_DETAILS, group_id: '00000000-0000-4000-8000-000000000006' } as const
+
+const HAND_IN = { text: 'Taken over' } as const
 
 const GROUP = { course_id: '00000000-0000-4000-8000-000000000001', name: 'Taken over', academic_year_id: '00000000-0000-4000-8000-000000000002', academic_term_id: null, room_id: null, capacity: null, lecturer_id: null, lecturer_effective_from: null, schedule: SCHEDULE } as const
 
@@ -258,6 +266,17 @@ const SCOPED_ENDPOINTS: ScopedEndpoint[] = [
   { method: 'get', route: '/:organizationId/materials/:materialId/download' },
   { method: 'put', route: '/:organizationId/materials/:materialId', body: MATERIAL_DETAILS },
   { method: 'delete', route: '/:organizationId/materials/:materialId' },
+  { method: 'get', route: '/:organizationId/assignments/groups' },
+  { method: 'get', route: '/:organizationId/assignments/mine' },
+  { method: 'get', route: '/:organizationId/assignments' },
+  { method: 'post', route: '/:organizationId/assignments', body: ASSIGNMENT },
+  { method: 'get', route: '/:organizationId/assignments/:assignmentId' },
+  { method: 'put', route: '/:organizationId/assignments/:assignmentId', body: ASSIGNMENT_DETAILS },
+  { method: 'delete', route: '/:organizationId/assignments/:assignmentId' },
+  { method: 'get', route: '/:organizationId/assignments/:assignmentId/download' },
+  { method: 'put', route: '/:organizationId/assignments/:assignmentId/submission', body: HAND_IN },
+  { method: 'get', route: '/:organizationId/assignments/:assignmentId/submissions/:submissionId/download' },
+  { method: 'put', route: '/:organizationId/assignments/:assignmentId/submissions/:submissionId/mark', body: { points: null, feedback: 'Taken over' } },
 ]
 
 type ToPathParams = {
@@ -290,6 +309,8 @@ const toPath = ({ route, ids }: ToPathParams) =>
     .replace(':topicId', ids.topicId)
     .replace(':replyId', ids.replyId)
     .replace(':materialId', ids.materialId)
+    .replace(':assignmentId', ids.assignmentId)
+    .replace(':submissionId', ids.submissionId)
     .replace(':date', LESSON_DATE)
     .replace(':startTime', LESSON_START)}`
 
@@ -405,7 +426,13 @@ const seedOrganization = async ({ name, slug }: SeedOrganizationParams) => {
   const material = await prisma.material.create({
     data: { organization_id: organization.id, author_membership_id: ownerMembership.id, space_kind: 'GROUP', group_id: group.id, kind: 'LINK', title: `${name} reading`, url: 'https://example.com/reading' },
   })
-  return { organizationId: organization.id, membershipId: adminMembership.id, locationId: location.id, roomId: room.id, departmentId: department.id, yearId: year.id, termId: term.id, holidayId: holiday.id, studentId: student.id, lecturerId: lecturer.id, courseId: course.id, groupId: group.id, substitutionId: substitution.id, enrolmentId: enrolment.id, rescheduleId: reschedule.id, invitationId: invitation.id, guardianId: guardian.id, conversationId: conversation.id, messageId: conversation.messages[0].id, announcementId: announcement.id, topicId: topic.id, replyId: reply.id, materialId: material.id }
+  const assignment = await prisma.assignment.create({
+    data: { organization_id: organization.id, author_membership_id: ownerMembership.id, group_id: group.id, title: `${name} homework`, instructions: `${name} homework`, due_at: new Date('2027-11-20T16:00:00.000Z') },
+  })
+  const submission = await prisma.assignmentSubmission.create({
+    data: { organization_id: organization.id, assignment_id: assignment.id, student_id: student.id, text: `${name} answers`, file_key: `${slug}-answers`, file_name: 'answers.txt', file_type: 'text/plain', file_size: 7, submitted_at: new Date('2027-11-19T16:00:00.000Z') },
+  })
+  return { organizationId: organization.id, membershipId: adminMembership.id, locationId: location.id, roomId: room.id, departmentId: department.id, yearId: year.id, termId: term.id, holidayId: holiday.id, studentId: student.id, lecturerId: lecturer.id, courseId: course.id, groupId: group.id, substitutionId: substitution.id, enrolmentId: enrolment.id, rescheduleId: reschedule.id, invitationId: invitation.id, guardianId: guardian.id, conversationId: conversation.id, messageId: conversation.messages[0].id, announcementId: announcement.id, topicId: topic.id, replyId: reply.id, materialId: material.id, assignmentId: assignment.id, submissionId: submission.id }
 }
 
 let oxford: TargetIds
@@ -463,6 +490,9 @@ const yllkaAsItsOwnerSeesIt = async () => {
     discussionSpaces: await read('/:organizationId/discussions/spaces'),
     materialSpaces: await read('/:organizationId/materials/spaces'),
     groupMaterials: await read(`/:organizationId/materials?space_kind=GROUP&space_id=${yllka.groupId}`),
+    assignmentGroups: await read('/:organizationId/assignments/groups'),
+    groupAssignments: await read(`/:organizationId/assignments?group_id=${yllka.groupId}`),
+    assignment: await read('/:organizationId/assignments/:assignmentId'),
   }
 }
 
@@ -495,8 +525,8 @@ describe('organization isolation', () => {
     // Oxford's own organization id with Yllka's member, location, department, academic period, student, lecturer, course, group, substitution, enrolment, reschedule, invitation and material ids
     const mixed: TargetIds = { ...yllka, organizationId: oxford.organizationId }
 
-    // The guardian-only and lecturer-only routes refuse the owner outright; the next tests sweep them as a guardian and as a lecturer
-    for (const endpoint of SCOPED_ENDPOINTS.filter((item) => !item.route.includes('/me/children/') && !item.route.includes('/parent-notes/') && /:(membership|location|room|department|year|term|holiday|student|lecturer|course|group|substitution|enrolment|reschedule|invitation|guardian|conversation|message|announcement|topic|reply|material)Id/.test(item.route))) {
+    // The guardian-only, lecturer-only and student-only routes refuse the owner outright; the next tests sweep them as a guardian, a lecturer and a student
+    for (const endpoint of SCOPED_ENDPOINTS.filter((item) => !item.route.includes('/me/children/') && !item.route.includes('/parent-notes/') && !item.route.endsWith('/submission') && /:(membership|location|room|department|year|term|holiday|student|lecturer|course|group|substitution|enrolment|reschedule|invitation|guardian|conversation|message|announcement|topic|reply|material|assignment|submission)Id/.test(item.route))) {
       const response = await send({ ...endpoint, ids: mixed, auth: oxfordOwnerAuth })
       expect(response.status, `${endpoint.method.toUpperCase()} ${endpoint.route} answered ${response.status}`).toBe(404)
     }
@@ -563,6 +593,8 @@ describe('organization isolation', () => {
       .field('space_kind', 'GROUP')
       .field('space_id', yllka.groupId)
       .attach('file', Buffer.from('Taken over'), { filename: 'taken.txt', contentType: 'text/plain' })
+    const assignmentInYllkaGroup = await send({ method: 'post', route: '/:organizationId/assignments', body: { ...ASSIGNMENT, group_id: yllka.groupId }, ids: oxford, auth: oxfordOwnerAuth })
+    const readYllkaGroupAssignments = await send({ method: 'get', route: `/:organizationId/assignments?group_id=${yllka.groupId}`, ids: oxford, auth: oxfordOwnerAuth })
     const readYllkaGroupMaterials = await send({ method: 'get', route: `/:organizationId/materials?space_kind=GROUP&space_id=${yllka.groupId}`, ids: oxford, auth: oxfordOwnerAuth })
     const yllkaMessageInOxfordConversation: TargetIds = { ...oxford, messageId: yllka.messageId }
     const editedYllkaMessage = await send({ method: 'put', route: '/:organizationId/inbox/conversations/:conversationId/messages/:messageId', body: MESSAGE, ids: yllkaMessageInOxfordConversation, auth: oxfordOwnerAuth })
@@ -622,6 +654,10 @@ describe('organization isolation', () => {
     expect(linkInYllkaCourse.status).toBe(404)
     expect(fileInYllkaGroup.status).toBe(404)
     expect(readYllkaGroupMaterials.status).toBe(404)
+    expect(assignmentInYllkaGroup.status).toBe(404)
+    expect(readYllkaGroupAssignments.status).toBe(404)
+    expect(await prisma.assignment.count({ where: { organization_id: oxford.organizationId } })).toBe(1)
+    expect(await prisma.assignment.count({ where: { group_id: yllka.groupId } })).toBe(1)
     expect(await prisma.material.count({ where: { organization_id: oxford.organizationId } })).toBe(1)
     expect(await prisma.material.findUniqueOrThrow({ where: { id: yllka.materialId }, select: { title: true } })).toEqual({ title: 'Yllka Kindergarten reading' })
     expect(editedYllkaMessage.status).toBe(404)
@@ -727,6 +763,39 @@ describe('organization isolation', () => {
     }
     expect((await send({ method: 'get', route: '/:organizationId/parent-notes/groups', ids: oxford, auth: lecturerAuth })).body.data).toEqual([])
     expect((await send({ method: 'get', route: '/:organizationId/parent-notes/conversations', ids: oxford, auth: lecturerAuth })).body.data).toEqual([])
+
+    expect(await yllkaAsItsOwnerSeesIt()).toEqual(before)
+  })
+
+  it('refuses students on another organization’s assignments and hand-ins, even with their own organization in the path', async () => {
+    const studentUser = await createUser({ email: 'student@yllka.test' })
+    await prisma.membership.createMany({
+      data: [
+        { user_id: studentUser.id, organization_id: yllka.organizationId, role: 'STUDENT' },
+        { user_id: studentUser.id, organization_id: oxford.organizationId, role: 'STUDENT' },
+      ],
+    })
+    await prisma.student.update({ where: { id: yllka.studentId }, data: { user_id: studentUser.id } })
+    const yllkaOnly = await createUser({ email: 'only@yllka.test' })
+    await prisma.membership.create({ data: { user_id: yllkaOnly.id, organization_id: yllka.organizationId, role: 'STUDENT' } })
+    const before = await yllkaAsItsOwnerSeesIt()
+    const studentAuth = await loginAs('student@yllka.test')
+    const yllkaOnlyAuth = await loginAs('only@yllka.test')
+    const assignmentEndpoints = SCOPED_ENDPOINTS.filter((endpoint) => endpoint.route.includes('/assignments'))
+
+    expect((await send({ method: 'get', route: '/:organizationId/assignments/mine', ids: yllka, auth: studentAuth })).body.data).toEqual([expect.objectContaining({ id: yllka.assignmentId })])
+    for (const endpoint of assignmentEndpoints) {
+      const label = `${endpoint.method.toUpperCase()} ${endpoint.route}`
+      expect((await send({ ...endpoint, ids: oxford, auth: yllkaOnlyAuth })).status, label).toBe(403)
+      // A member of both, whose student record is Yllka's, reaches none of Yllka's assignments through Oxford
+      if (endpoint.route.includes(':assignmentId')) {
+        expect([403, 404], label).toContain((await send({ ...endpoint, ids: { ...yllka, organizationId: oxford.organizationId }, auth: studentAuth })).status)
+      }
+    }
+    // Oxford's student record has no login for them, so through Oxford they have nothing and hand in nothing
+    expect((await send({ method: 'get', route: '/:organizationId/assignments/mine', ids: oxford, auth: studentAuth })).status).toBe(403)
+    expect((await send({ method: 'put', route: '/:organizationId/assignments/:assignmentId/submission', body: HAND_IN, ids: { ...yllka, organizationId: oxford.organizationId }, auth: studentAuth })).status).toBe(404)
+    expect(await prisma.assignmentSubmission.count({ where: { organization_id: oxford.organizationId } })).toBe(1)
 
     expect(await yllkaAsItsOwnerSeesIt()).toEqual(before)
   })

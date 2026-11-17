@@ -6,25 +6,15 @@ import { ChatBubbleMenu } from '#/components/ChatBubbleMenu'
 import { ConfirmGroup } from '#/components/ConfirmGroup'
 import { FormAlert } from '#/components/FormAlert'
 import { getErrorMessage } from '#/lib/error-message'
+import { formatFileSize } from '#/lib/file-size'
 import { fullName } from '#/lib/full-name'
+import { saveFile } from '#/lib/save-file'
 import { useFormatDate } from '#/lib/use-format-date'
 import { useDownloadMaterial } from '../hooks/use-download-material'
 import { useRemoveMaterial } from '../hooks/use-remove-material'
-import { saveFile } from '../utils/save-file'
 import { MaterialEditDialog } from './material-edit-dialog'
 
 const KIND_ICONS: Record<MaterialKind, LucideIcon> = { FILE: FileText, LINK: Link2, NOTE: StickyNote }
-
-const BYTES_PER_KILOBYTE = 1024
-
-const BYTES_PER_MEGABYTE = BYTES_PER_KILOBYTE * BYTES_PER_KILOBYTE
-
-const kilobytes = new Intl.NumberFormat(undefined, { style: 'unit', unit: 'kilobyte', maximumFractionDigits: 1 })
-
-const megabytes = new Intl.NumberFormat(undefined, { style: 'unit', unit: 'megabyte', maximumFractionDigits: 1 })
-
-/** "1.2 kB" or "2.4 MB", counted in 1024s like the 20 MB limit */
-const formatFileSize = (bytes: number) => (bytes < BYTES_PER_MEGABYTE ? kilobytes.format(bytes / BYTES_PER_KILOBYTE) : megabytes.format(bytes / BYTES_PER_MEGABYTE))
 
 interface MaterialContentProps {
   organizationId: string

@@ -4,6 +4,7 @@ import express from 'express'
 import cors from 'cors'
 import academicPeriodsRoutes from '@modules/academic-periods/academic-periods.routes.ts'
 import activityRoutes from '@modules/activity/activity.routes.ts'
+import assignmentRoutes from '@modules/assignments/assignments.routes.ts'
 import attendanceRoutes from '@modules/attendance/attendance.routes.ts'
 import authRoutes from '@modules/auth/auth.routes.ts'
 import courseRoutes from '@modules/courses/courses.routes.ts'
@@ -72,6 +73,7 @@ app.use('/api/organizations', inboxRoutes)
 app.use('/api/organizations', announcementRoutes)
 app.use('/api/organizations', discussionRoutes)
 app.use('/api/organizations', materialRoutes)
+app.use('/api/organizations', assignmentRoutes)
 app.use('/api/users', userRoutes)
 
 app.get('/api/health', (_req, res) => {

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { ANNOUNCEMENT_AUDIENCE_KINDS, ANNOUNCEMENT_AUDIENCE_ROLES, ANNOUNCEMENT_PUBLISH_MODES, announcementTextSchema } from '@shigjetademy/shared/announcements'
 import type { AnnouncementAudienceOptions, AnnouncementDetail, AnnouncementAudienceKind, AnnouncementPublishMode, CreateAnnouncementInput, UpdateAnnouncementInput } from '@shigjetademy/shared/announcements'
-import { isInFuture, toUtcIso, toWallClock } from './schedule-time'
+import { isInFuture, toUtcIso, toWallClock } from '#/lib/schedule-time'
 
 /** The form's fields: the audience's target and the schedule are plain text until they are checked and turned into an input */
 export const createAnnouncementFormSchema = (timeZone: string) =>

@@ -28,6 +28,7 @@ import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as DashboardModuleRouteImport } from './routes/dashboard/$module'
 import { Route as DashboardAcademicPeriodsRouteImport } from './routes/dashboard/academic-periods'
 import { Route as DashboardAnnouncementsRouteImport } from './routes/dashboard/announcements'
+import { Route as DashboardAssignmentsRouteImport } from './routes/dashboard/assignments'
 import { Route as DashboardAttendanceRouteImport } from './routes/dashboard/attendance'
 import { Route as DashboardCoursesRouteImport } from './routes/dashboard/courses'
 import { Route as DashboardDiscussionsRouteImport } from './routes/dashboard/discussions'
@@ -54,6 +55,7 @@ import { Route as InviteTokenRouteImport } from './routes/invite/$token'
 import { Route as OrganizationsNewRouteImport } from './routes/organizations/new'
 import { Route as appPlatformIndexRouteImport } from './routes/(app)/platform/index'
 import { Route as appPlatformSlugRouteImport } from './routes/(app)/platform/$slug'
+import { Route as DashboardAssignmentsAssignmentIdRouteImport } from './routes/dashboard/assignments_.$assignmentId'
 import { Route as DashboardClientsOrganizationIdRouteImport } from './routes/dashboard/clients/$organizationId'
 import { Route as DashboardCoursesCourseIdRouteImport } from './routes/dashboard/courses_.$courseId'
 import { Route as DashboardGroupsGroupIdRouteImport } from './routes/dashboard/groups_.$groupId'
@@ -153,6 +155,11 @@ const DashboardAcademicPeriodsRoute =
 const DashboardAnnouncementsRoute = DashboardAnnouncementsRouteImport.update({
   id: '/announcements',
   path: '/announcements',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+const DashboardAssignmentsRoute = DashboardAssignmentsRouteImport.update({
+  id: '/assignments',
+  path: '/assignments',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
 const DashboardAttendanceRoute = DashboardAttendanceRouteImport.update({
@@ -287,6 +294,12 @@ const appPlatformSlugRoute = appPlatformSlugRouteImport.update({
   path: '/platform/$slug',
   getParentRoute: () => appRouteRoute,
 } as any)
+const DashboardAssignmentsAssignmentIdRoute =
+  DashboardAssignmentsAssignmentIdRouteImport.update({
+    id: '/assignments_/$assignmentId',
+    path: '/assignments/$assignmentId',
+    getParentRoute: () => DashboardRouteRoute,
+  } as any)
 const DashboardClientsOrganizationIdRoute =
   DashboardClientsOrganizationIdRouteImport.update({
     id: '/clients/$organizationId',
@@ -340,6 +353,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/$module': typeof DashboardModuleRoute
   '/dashboard/academic-periods': typeof DashboardAcademicPeriodsRoute
   '/dashboard/announcements': typeof DashboardAnnouncementsRoute
+  '/dashboard/assignments': typeof DashboardAssignmentsRoute
   '/dashboard/attendance': typeof DashboardAttendanceRoute
   '/dashboard/courses': typeof DashboardCoursesRoute
   '/dashboard/discussions': typeof DashboardDiscussionsRoute
@@ -366,6 +380,7 @@ export interface FileRoutesByFullPath {
   '/organizations/new': typeof OrganizationsNewRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/platform/$slug': typeof appPlatformSlugRoute
+  '/dashboard/assignments/$assignmentId': typeof DashboardAssignmentsAssignmentIdRoute
   '/dashboard/clients/$organizationId': typeof DashboardClientsOrganizationIdRoute
   '/dashboard/courses/$courseId': typeof DashboardCoursesCourseIdRoute
   '/dashboard/groups/$groupId': typeof DashboardGroupsGroupIdRoute
@@ -390,6 +405,7 @@ export interface FileRoutesByTo {
   '/dashboard/$module': typeof DashboardModuleRoute
   '/dashboard/academic-periods': typeof DashboardAcademicPeriodsRoute
   '/dashboard/announcements': typeof DashboardAnnouncementsRoute
+  '/dashboard/assignments': typeof DashboardAssignmentsRoute
   '/dashboard/attendance': typeof DashboardAttendanceRoute
   '/dashboard/courses': typeof DashboardCoursesRoute
   '/dashboard/discussions': typeof DashboardDiscussionsRoute
@@ -416,6 +432,7 @@ export interface FileRoutesByTo {
   '/organizations/new': typeof OrganizationsNewRoute
   '/dashboard': typeof DashboardIndexRoute
   '/platform/$slug': typeof appPlatformSlugRoute
+  '/dashboard/assignments/$assignmentId': typeof DashboardAssignmentsAssignmentIdRoute
   '/dashboard/clients/$organizationId': typeof DashboardClientsOrganizationIdRoute
   '/dashboard/courses/$courseId': typeof DashboardCoursesCourseIdRoute
   '/dashboard/groups/$groupId': typeof DashboardGroupsGroupIdRoute
@@ -444,6 +461,7 @@ export interface FileRoutesById {
   '/dashboard/$module': typeof DashboardModuleRoute
   '/dashboard/academic-periods': typeof DashboardAcademicPeriodsRoute
   '/dashboard/announcements': typeof DashboardAnnouncementsRoute
+  '/dashboard/assignments': typeof DashboardAssignmentsRoute
   '/dashboard/attendance': typeof DashboardAttendanceRoute
   '/dashboard/courses': typeof DashboardCoursesRoute
   '/dashboard/discussions': typeof DashboardDiscussionsRoute
@@ -470,6 +488,7 @@ export interface FileRoutesById {
   '/organizations/new': typeof OrganizationsNewRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/(app)/platform/$slug': typeof appPlatformSlugRoute
+  '/dashboard/assignments_/$assignmentId': typeof DashboardAssignmentsAssignmentIdRoute
   '/dashboard/clients/$organizationId': typeof DashboardClientsOrganizationIdRoute
   '/dashboard/courses_/$courseId': typeof DashboardCoursesCourseIdRoute
   '/dashboard/groups_/$groupId': typeof DashboardGroupsGroupIdRoute
@@ -497,6 +516,7 @@ export interface FileRouteTypes {
     | '/dashboard/$module'
     | '/dashboard/academic-periods'
     | '/dashboard/announcements'
+    | '/dashboard/assignments'
     | '/dashboard/attendance'
     | '/dashboard/courses'
     | '/dashboard/discussions'
@@ -523,6 +543,7 @@ export interface FileRouteTypes {
     | '/organizations/new'
     | '/dashboard/'
     | '/platform/$slug'
+    | '/dashboard/assignments/$assignmentId'
     | '/dashboard/clients/$organizationId'
     | '/dashboard/courses/$courseId'
     | '/dashboard/groups/$groupId'
@@ -547,6 +568,7 @@ export interface FileRouteTypes {
     | '/dashboard/$module'
     | '/dashboard/academic-periods'
     | '/dashboard/announcements'
+    | '/dashboard/assignments'
     | '/dashboard/attendance'
     | '/dashboard/courses'
     | '/dashboard/discussions'
@@ -573,6 +595,7 @@ export interface FileRouteTypes {
     | '/organizations/new'
     | '/dashboard'
     | '/platform/$slug'
+    | '/dashboard/assignments/$assignmentId'
     | '/dashboard/clients/$organizationId'
     | '/dashboard/courses/$courseId'
     | '/dashboard/groups/$groupId'
@@ -600,6 +623,7 @@ export interface FileRouteTypes {
     | '/dashboard/$module'
     | '/dashboard/academic-periods'
     | '/dashboard/announcements'
+    | '/dashboard/assignments'
     | '/dashboard/attendance'
     | '/dashboard/courses'
     | '/dashboard/discussions'
@@ -626,6 +650,7 @@ export interface FileRouteTypes {
     | '/organizations/new'
     | '/dashboard/'
     | '/(app)/platform/$slug'
+    | '/dashboard/assignments_/$assignmentId'
     | '/dashboard/clients/$organizationId'
     | '/dashboard/courses_/$courseId'
     | '/dashboard/groups_/$groupId'
@@ -778,6 +803,13 @@ declare module '@tanstack/react-router' {
       path: '/announcements'
       fullPath: '/dashboard/announcements'
       preLoaderRoute: typeof DashboardAnnouncementsRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
+    '/dashboard/assignments': {
+      id: '/dashboard/assignments'
+      path: '/assignments'
+      fullPath: '/dashboard/assignments'
+      preLoaderRoute: typeof DashboardAssignmentsRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
     '/dashboard/attendance': {
@@ -962,6 +994,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appPlatformSlugRouteImport
       parentRoute: typeof appRouteRoute
     }
+    '/dashboard/assignments_/$assignmentId': {
+      id: '/dashboard/assignments_/$assignmentId'
+      path: '/assignments/$assignmentId'
+      fullPath: '/dashboard/assignments/$assignmentId'
+      preLoaderRoute: typeof DashboardAssignmentsAssignmentIdRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
     '/dashboard/clients/$organizationId': {
       id: '/dashboard/clients/$organizationId'
       path: '/clients/$organizationId'
@@ -1055,6 +1094,7 @@ interface DashboardRouteRouteChildren {
   DashboardModuleRoute: typeof DashboardModuleRoute
   DashboardAcademicPeriodsRoute: typeof DashboardAcademicPeriodsRoute
   DashboardAnnouncementsRoute: typeof DashboardAnnouncementsRoute
+  DashboardAssignmentsRoute: typeof DashboardAssignmentsRoute
   DashboardAttendanceRoute: typeof DashboardAttendanceRoute
   DashboardCoursesRoute: typeof DashboardCoursesRoute
   DashboardDiscussionsRoute: typeof DashboardDiscussionsRoute
@@ -1078,6 +1118,7 @@ interface DashboardRouteRouteChildren {
   DashboardStudentNotesRoute: typeof DashboardStudentNotesRoute
   DashboardStudentsRoute: typeof DashboardStudentsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardAssignmentsAssignmentIdRoute: typeof DashboardAssignmentsAssignmentIdRoute
   DashboardClientsOrganizationIdRoute: typeof DashboardClientsOrganizationIdRoute
   DashboardCoursesCourseIdRoute: typeof DashboardCoursesCourseIdRoute
   DashboardGroupsGroupIdRoute: typeof DashboardGroupsGroupIdRoute
@@ -1090,6 +1131,7 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardModuleRoute: DashboardModuleRoute,
   DashboardAcademicPeriodsRoute: DashboardAcademicPeriodsRoute,
   DashboardAnnouncementsRoute: DashboardAnnouncementsRoute,
+  DashboardAssignmentsRoute: DashboardAssignmentsRoute,
   DashboardAttendanceRoute: DashboardAttendanceRoute,
   DashboardCoursesRoute: DashboardCoursesRoute,
   DashboardDiscussionsRoute: DashboardDiscussionsRoute,
@@ -1113,6 +1155,7 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardStudentNotesRoute: DashboardStudentNotesRoute,
   DashboardStudentsRoute: DashboardStudentsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
+  DashboardAssignmentsAssignmentIdRoute: DashboardAssignmentsAssignmentIdRoute,
   DashboardClientsOrganizationIdRoute: DashboardClientsOrganizationIdRoute,
   DashboardCoursesCourseIdRoute: DashboardCoursesCourseIdRoute,
   DashboardGroupsGroupIdRoute: DashboardGroupsGroupIdRoute,

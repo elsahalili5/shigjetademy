@@ -4,12 +4,14 @@ import { useWatch } from 'react-hook-form'
 import type { UseFormReturn } from 'react-hook-form'
 import { MATERIAL_FILE_ACCEPT, MATERIAL_NOTE_MAX_LENGTH, MATERIAL_URL_MAX_LENGTH } from '@shigjetademy/shared/materials'
 import { FormAlert } from '#/components/FormAlert'
+import { FormDialogFooter } from '#/components/FormDialogFooter'
+import { FormField } from '#/components/FormField'
 import { getErrorMessage, getFieldError } from '#/lib/error-message'
+import { fieldProps } from '#/lib/field-props'
 import { INPUT_CLASS } from '#/modules/auth/components/auth-field'
 import { MATERIAL_FORM_KINDS, MATERIAL_KIND_LABELS } from '../utils/material-form'
 import type { MaterialFormValues } from '../utils/material-form'
-import { fieldProps } from '../utils/field-props'
-import { MaterialDetailsFields, MaterialField, MaterialFormFooter } from './material-form-parts'
+import { MaterialDetailsFields } from './material-form-parts'
 
 interface MaterialFormFieldsProps {
   form: UseFormReturn<MaterialFormValues>
@@ -46,7 +48,7 @@ export function MaterialFormFields({ form, sectionNames, isPending, error, onSub
         </fieldset>
 
         {kind === 'FILE' ? (
-          <MaterialField id={ids.file} label="File" hint="PDF, Word, PowerPoint, Excel, image or text, up to 20 MB" error={fieldError('file')}>
+          <FormField id={ids.file} label="File" hint="PDF, Word, PowerPoint, Excel, image or text, up to 20 MB" error={fieldError('file')}>
             <input
               id={ids.file}
               type="file"
@@ -55,19 +57,19 @@ export function MaterialFormFields({ form, sectionNames, isPending, error, onSub
               {...fieldProps({ id: ids.file, error: fieldError('file'), isPending })}
               onChange={handleFileChange}
             />
-          </MaterialField>
+          </FormField>
         ) : null}
 
         {kind === 'LINK' ? (
-          <MaterialField id={ids.url} label="Web address" error={fieldError('url')}>
+          <FormField id={ids.url} label="Web address" error={fieldError('url')}>
             <input id={ids.url} type="url" inputMode="url" placeholder="https://" className={INPUT_CLASS} maxLength={MATERIAL_URL_MAX_LENGTH} {...fieldProps({ id: ids.url, error: fieldError('url'), isPending })} {...form.register('url')} />
-          </MaterialField>
+          </FormField>
         ) : null}
 
         {kind === 'NOTE' ? (
-          <MaterialField id={ids.body} label="Note" error={fieldError('body')}>
+          <FormField id={ids.body} label="Note" error={fieldError('body')}>
             <textarea id={ids.body} className={`${INPUT_CLASS} min-h-[160px] resize-y py-3`} maxLength={MATERIAL_NOTE_MAX_LENGTH} {...fieldProps({ id: ids.body, error: fieldError('body'), isPending })} {...form.register('body')} />
-          </MaterialField>
+          </FormField>
         ) : null}
 
         <MaterialDetailsFields
@@ -80,7 +82,7 @@ export function MaterialFormFields({ form, sectionNames, isPending, error, onSub
         {error ? <FormAlert>{getErrorMessage(error)}</FormAlert> : null}
       </div>
 
-      <MaterialFormFooter submitLabel="Share" isPending={isPending} onCancel={onCancel} />
+      <FormDialogFooter submitLabel="Share" isPending={isPending} onCancel={onCancel} />
     </form>
   )
 }

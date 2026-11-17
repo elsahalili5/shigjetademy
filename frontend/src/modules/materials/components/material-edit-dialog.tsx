@@ -2,10 +2,11 @@ import type { FormEvent, RefObject } from 'react'
 import type { Material, MaterialDetailsInput } from '@shigjetademy/shared/materials'
 import { FormAlert } from '#/components/FormAlert'
 import { FormDialog } from '#/components/FormDialog'
+import { FormDialogFooter } from '#/components/FormDialogFooter'
 import { getErrorMessage, getFieldError } from '#/lib/error-message'
 import { useMaterialDetailsForm } from '../hooks/use-material-details-form'
 import { useUpdateMaterial } from '../hooks/use-update-material'
-import { MaterialDetailsFields, MaterialFormFooter } from './material-form-parts'
+import { MaterialDetailsFields } from './material-form-parts'
 
 interface MaterialEditDialogProps {
   dialogRef: RefObject<HTMLDialogElement | null>
@@ -43,7 +44,7 @@ export function MaterialEditDialog({ dialogRef, organizationId, material, sectio
           />
           {updateMaterial.error ? <FormAlert>{getErrorMessage(updateMaterial.error)}</FormAlert> : null}
         </div>
-        <MaterialFormFooter submitLabel="Save changes" isPending={updateMaterial.isPending} onCancel={handleClose} />
+        <FormDialogFooter submitLabel="Save changes" isPending={updateMaterial.isPending} onCancel={handleClose} />
       </form>
     </FormDialog>
   )

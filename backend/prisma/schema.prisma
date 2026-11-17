@@ -383,6 +383,8 @@ model Organization {
   discussion_topics    DiscussionTopic[]
   discussion_replies   DiscussionReply[]
   materials            Material[]
+  assignments          Assignment[]
+  assignment_hand_ins  AssignmentSubmission[]
 }
 
 /// How one organization runs. An organization without a row reads the defaults; the row is written on its first save.
@@ -554,13 +556,14 @@ model Student {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  organization         Organization        @relation(fields: [organization_id], references: [id], onDelete: Cascade)
-  user                 User?               @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  organization         Organization           @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  user                 User?                  @relation(fields: [user_id], references: [id], onDelete: SetNull)
   invitations          Invitation[]
   group_enrolments     GroupEnrolment[]
   attendance           AttendanceRecord[]
   guardians            StudentGuardian[]
   student_parent_notes StudentParentNote[]
+  assignment_hand_ins  AssignmentSubmission[]
 
   @@unique([organization_id, student_number])
   @@unique([organization_id, user_id])
@@ -757,6 +760,7 @@ model Group {
   announcements        Announcement[]
   discussion_topics    DiscussionTopic[]
   materials            Material[]
+  assignments          Assignment[]
 
   @@unique([course_id, academic_year_id, name])
   @@index([organization_id, status])
@@ -955,6 +959,8 @@ model Membership {
   discussion_replies DiscussionReply[]
   discussion_reads   DiscussionRead[]
   materials          Material[]
+  assignments        Assignment[]
+  marked_hand_ins    AssignmentSubmission[]
 
   @@unique([user_id, organization_id])
   @@index([organization_id, role])
@@ -1243,4 +1249,77 @@ model Material {
   @@index([group_id])
   @@index([course_id])
   @@index([author_membership_id])
+}
+
+// ─────────────────────────────────────────
+// ASSIGNMENTS
+// ─────────────────────────────────────────
+
+/// Homework set for one group. Its lecturers, the owner and admins with MANAGE_GRADES set, change and remove it; the group's students hand it in.
+/// An archived group's assignments stay readable and take no changes, hand-ins or marks (kept by the assignments service).
+model Assignment {
+  id                    String   @id @default(uuid()) @db.Uuid
+  organization_id       String   @db.Uuid
+  group_id              String   @db.Uuid
+  author_membership_id  String   @db.Uuid
+  title                 String
+  instructions          String
+  due_at                DateTime
+  /// Null when hand-ins get feedback without points
+  max_points            Int?
+  /// When false, hand-ins close at the due date; when true, later ones are taken and flagged late
+  accepts_late_hand_ins Boolean  @default(true)
+  /// An optional attached file: the generated name it is stored under, outside the public uploads
+  file_key              String?
+  /// The name it was uploaded with, given back on download
+  file_name             String?
+  file_type             String?
+  /// In bytes
+  file_size             Int?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  organization Organization           @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  group        Group                  @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  author       Membership             @relation(fields: [author_membership_id], references: [id], onDelete: Cascade)
+  hand_ins     AssignmentSubmission[]
+
+  @@index([organization_id, group_id, due_at])
+  @@index([group_id])
+  @@index([author_membership_id])
+}
+
+/// One student's hand-in for an assignment: text, a file or both. Replaced until it is marked; late when submitted after the due date.
+model AssignmentSubmission {
+  id                      String    @id @default(uuid()) @db.Uuid
+  organization_id         String    @db.Uuid
+  assignment_id           String    @db.Uuid
+  student_id              String    @db.Uuid
+  text                    String?
+  file_key                String?
+  file_name               String?
+  file_type               String?
+  file_size               Int?
+  submitted_at            DateTime
+  /// Set when marked; null while the assignment has no max points
+  points                  Int?
+  feedback                String?
+  /// Set once marked; a marked hand-in can't be replaced
+  marked_at               DateTime?
+  /// Removing the marker keeps the mark
+  marked_by_membership_id String?   @db.Uuid
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  assignment   Assignment   @relation(fields: [assignment_id], references: [id], onDelete: Cascade)
+  student      Student      @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  marked_by    Membership?  @relation(fields: [marked_by_membership_id], references: [id], onDelete: SetNull)
+
+  @@unique([assignment_id, student_id])
+  @@index([organization_id])
+  @@index([student_id])
+  @@index([marked_by_membership_id])
 }

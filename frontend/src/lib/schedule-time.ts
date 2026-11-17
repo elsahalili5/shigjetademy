@@ -1,4 +1,4 @@
-// The organization's wall clock and the UTC instant it means, for scheduling an announcement in the school's time zone.
+// The organization's wall clock and the UTC instant it means, for scheduling announcements and due dates in the school's time zone.
 
 type WallClock = {
   /** 'YYYY-MM-DD' */
