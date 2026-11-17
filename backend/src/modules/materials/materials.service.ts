@@ -4,9 +4,10 @@ import type { Material, MaterialSpace } from '@shigjetademy/shared/materials'
 import type { Prisma } from '@generated/prisma/client.ts'
 import { HttpError } from '@lib/httpError.ts'
 import { prisma } from '@lib/prisma.ts'
+import type { StoredUpload } from '@lib/private-files.ts'
 import { findViewerSpace, loadViewerSpaces, spaceSelect, toSpaceRef } from '@modules/groups/space-access.ts'
 import type { SpaceViewer } from '@modules/groups/space-access.ts'
-import { deleteMaterialFile, getMaterialFilePath } from './material-files.ts'
+import { materialFiles } from './material-files.ts'
 import type { CreateMaterialInput, MaterialFileFieldsInput, MaterialSpaceInput, UpdateMaterialInput } from './materials.types.ts'
 
 /** A space lists this many materials at most, newest first; older ones stay stored */
@@ -39,14 +40,6 @@ type ViewerScope = {
 
 type MaterialScope = ViewerScope & {
   materialId: string
-}
-
-/** A file multer already stored, under its generated key */
-export type StoredUpload = {
-  key: string
-  name: string
-  type: string
-  size: number
 }
 
 const NOT_FOUND = 'Material not found'
@@ -205,7 +198,7 @@ export const MaterialService = {
   getFile: async (scope: MaterialScope) => {
     const { material } = await findReachableMaterial(scope)
     if (material.kind !== 'FILE' || !material.file_key || !material.file_name || !material.file_type) throw new HttpError(404, 'This material has no file.')
-    return { path: getMaterialFilePath(material.file_key), name: material.file_name, type: material.file_type }
+    return { path: materialFiles.getPath(material.file_key), name: material.file_name, type: material.file_type }
   },
 
   update: async ({ data, ...scope }: MaterialScope & { data: UpdateMaterialInput }): Promise<Material> => {
@@ -218,13 +211,7 @@ export const MaterialService = {
   remove: async (scope: MaterialScope): Promise<{ id: string }> => {
     const { material } = await findManagedMaterial(scope)
     await prisma.material.delete({ where: { id: material.id } })
-    if (material.file_key) {
-      try {
-        await deleteMaterialFile(material.file_key)
-      } catch (error) {
-        console.error(`Failed to delete the file of removed material ${material.id}`, error)
-      }
-    }
+    if (material.file_key) await materialFiles.removeOrphans([material.file_key])
     return { id: material.id }
   },
 }

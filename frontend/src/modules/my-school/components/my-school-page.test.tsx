@@ -67,13 +67,13 @@ describe('My school', () => {
     expect(within(welcome).getByText('Oxford Academy · Student')).toBeInTheDocument()
   })
 
-  it('shows a student My school and Learning materials in the sidebar', async () => {
+  it('shows a student My school, Learning materials and Assignments in the sidebar', async () => {
     signInAs(STUDENT)
     serveMySchool()
     renderRoute('/dashboard/my-school')
 
     const modules = await screen.findByRole('navigation', { name: 'Modules' })
-    expect(within(modules).getAllByRole('link').map((link) => link.textContent)).toEqual(['My school', 'Learning materials'])
+    expect(within(modules).getAllByRole('link').map((link) => link.textContent)).toEqual(['My school', 'Learning materials', 'Assignments'])
   })
 
   it('says when no record is linked yet, or no term is running', async () => {

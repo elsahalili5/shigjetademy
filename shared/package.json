@@ -29,7 +29,8 @@
     "./announcements": "./src/announcements.ts",
     "./discussions": "./src/discussions.ts",
     "./spaces": "./src/spaces.ts",
-    "./materials": "./src/materials.ts"
+    "./materials": "./src/materials.ts",
+    "./assignments": "./src/assignments.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

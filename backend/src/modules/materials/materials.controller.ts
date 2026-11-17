@@ -4,10 +4,10 @@ import { HttpError, sendError } from '@lib/httpError.ts'
 import type { AuthRequest, TypedRequest } from '@lib/types.ts'
 import type { SpaceViewer } from '@modules/groups/space-access.ts'
 import type { OrganizationIdParam } from '@modules/organization/organization.types.ts'
-import { deleteMaterialFile, runMaterialUpload } from './material-files.ts'
+import { sendStoredFile, toStoredUpload } from '@lib/private-files.ts'
+import { materialFiles, runMaterialUpload } from './material-files.ts'
 import { materialFileFieldsSchema } from './materials.schema.ts'
 import { MaterialService } from './materials.service.ts'
-import type { StoredUpload } from './materials.service.ts'
 import type { CreateMaterialInput, MaterialParam, MaterialSpaceInput, UpdateMaterialInput } from './materials.types.ts'
 
 type OrganizationRequest = AuthRequest & TypedRequest<unknown, OrganizationIdParam>
@@ -29,8 +29,6 @@ const parseFileFields = (body: unknown) => {
   return result.data
 }
 
-const toStoredUpload = (file: UploadedFile): StoredUpload => ({ key: file.filename, name: file.originalname, type: file.mimetype, size: file.size })
-
 type ShareUploadParams = {
   req: OrganizationRequest
   viewer: SpaceViewer
@@ -43,17 +41,8 @@ const shareUpload = async ({ req, viewer, file }: ShareUploadParams) => {
     if (!file) throw new HttpError(400, 'Choose a file to upload.')
     return await MaterialService.upload({ organizationId: req.params.organizationId, viewer, data: parseFileFields(req.body), file: toStoredUpload(file) })
   } catch (error) {
-    if (file) await deleteRefusedFile(file.filename)
+    if (file) await materialFiles.removeRefused(file.filename)
     throw error
-  }
-}
-
-/** Takes a refused upload's file away; a failure is logged, so the caller still answers with why the upload was refused */
-const deleteRefusedFile = async (fileKey: string) => {
-  try {
-    await deleteMaterialFile(fileKey)
-  } catch (cleanupError) {
-    console.error('Failed to delete a refused material upload', cleanupError)
   }
 }
 
@@ -112,21 +101,12 @@ export const MaterialController = {
     }
   },
 
-  // Sent as an attachment under its uploaded name; nosniff keeps a browser from reading it as anything but its stored type
   download: async (req: MaterialRequest, res: Response) => {
     try {
       const viewer = findViewer(req)
       if (!viewer) return res.status(401).json({ error: 'Unauthorized' })
       const file = await MaterialService.getFile({ ...req.params, viewer })
-      res.attachment(file.name)
-      res.type(file.type)
-      res.setHeader('X-Content-Type-Options', 'nosniff')
-      res.setHeader('Cache-Control', 'private, no-store')
-      return res.sendFile(file.path, (error) => {
-        if (!error || res.headersSent) return
-        if ('code' in error && error.code === 'ENOENT') return res.status(404).json({ error: 'This file is no longer stored.' })
-        return sendError({ res, error, fallback: 'Failed to download the file' })
-      })
+      return sendStoredFile({ res, file, fallback: 'Failed to download the file' })
     } catch (error) {
       return sendError({ res, error, fallback: 'Failed to download the file' })
     }

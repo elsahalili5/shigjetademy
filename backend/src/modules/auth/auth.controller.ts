@@ -1,40 +1,20 @@
 import type { Response } from 'express'
-import multer, { MulterError } from 'multer'
+import multer from 'multer'
 import { ALLOWED_AVATAR_MIME_TYPES, AVATAR_MAX_BYTES } from '@lib/avatar-storage.ts'
+import { createFileUpload } from '@lib/file-upload.ts'
 import { HttpError, sendError } from '@lib/httpError.ts'
 import type { AuthRequest, TypedRequest } from '@lib/types.ts'
 import { AuthService } from './auth.service.ts'
 import type { ChangePasswordInput, LoginUserInput, LogoutInput, RefreshTokenInput, RegisterUserInput, UpdateProfileInput } from './auth.types.ts'
 
-const AVATAR_FIELD_NAME = 'avatar'
-
-const avatarUpload = multer({
+const runAvatarUpload = createFileUpload({
+  fieldName: 'avatar',
   storage: multer.memoryStorage(),
-  limits: { fileSize: AVATAR_MAX_BYTES },
-  fileFilter: (_req, file, callback) => {
-    if (!(ALLOWED_AVATAR_MIME_TYPES as readonly string[]).includes(file.mimetype)) {
-      return callback(new HttpError(400, 'Upload a JPEG, PNG or WEBP image.'))
-    }
-    callback(null, true)
-  },
-}).single(AVATAR_FIELD_NAME)
-
-// multer calls back instead of throwing; this turns that callback into a promise the controller can await and catch
-const runAvatarUpload = (req: AuthRequest, res: Response) =>
-  new Promise<void>((resolve, reject) => {
-    avatarUpload(req, res, (error: unknown) => {
-      if (!error) {
-        return resolve()
-      }
-      if (error instanceof HttpError) {
-        return reject(error)
-      }
-      if (error instanceof MulterError && error.code === 'LIMIT_FILE_SIZE') {
-        return reject(new HttpError(400, 'Images must be 2MB or smaller.'))
-      }
-      return reject(new HttpError(400, 'Could not process the uploaded file.'))
-    })
-  })
+  maxBytes: AVATAR_MAX_BYTES,
+  isAllowed: ({ type }) => ALLOWED_AVATAR_MIME_TYPES.some((allowed) => allowed === type),
+  typeMessage: 'Upload a JPEG, PNG or WEBP image.',
+  sizeMessage: 'Images must be 2MB or smaller.',
+})
 
 export const AuthController = {
   registerUser: async (req: TypedRequest<RegisterUserInput>, res: Response) => {
