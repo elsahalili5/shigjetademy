@@ -179,6 +179,7 @@ const SCOPED_ENDPOINTS: ScopedEndpoint[] = [
   { method: 'get', route: '/:organizationId/me/children' },
   { method: 'get', route: '/:organizationId/me/children/:studentId' },
   { method: 'get', route: '/:organizationId/me/children/:studentId/notes' },
+  { method: 'get', route: '/:organizationId/me/children/:studentId/grades' },
   { method: 'get', route: '/:organizationId/me/notes' },
   { method: 'get', route: '/:organizationId/lecturers' },
   { method: 'post', route: '/:organizationId/lecturers', body: LECTURER },
@@ -277,6 +278,9 @@ const SCOPED_ENDPOINTS: ScopedEndpoint[] = [
   { method: 'put', route: '/:organizationId/assignments/:assignmentId/submission', body: HAND_IN },
   { method: 'get', route: '/:organizationId/assignments/:assignmentId/submissions/:submissionId/download' },
   { method: 'put', route: '/:organizationId/assignments/:assignmentId/submissions/:submissionId/mark', body: { points: null, feedback: 'Taken over' } },
+  { method: 'get', route: '/:organizationId/grades/groups' },
+  { method: 'get', route: '/:organizationId/grades/mine' },
+  { method: 'get', route: '/:organizationId/grades' },
 ]
 
 type ToPathParams = {
@@ -595,6 +599,7 @@ describe('organization isolation', () => {
       .attach('file', Buffer.from('Taken over'), { filename: 'taken.txt', contentType: 'text/plain' })
     const assignmentInYllkaGroup = await send({ method: 'post', route: '/:organizationId/assignments', body: { ...ASSIGNMENT, group_id: yllka.groupId }, ids: oxford, auth: oxfordOwnerAuth })
     const readYllkaGroupAssignments = await send({ method: 'get', route: `/:organizationId/assignments?group_id=${yllka.groupId}`, ids: oxford, auth: oxfordOwnerAuth })
+    const readYllkaGradebook = await send({ method: 'get', route: `/:organizationId/grades?group_id=${yllka.groupId}`, ids: oxford, auth: oxfordOwnerAuth })
     const readYllkaGroupMaterials = await send({ method: 'get', route: `/:organizationId/materials?space_kind=GROUP&space_id=${yllka.groupId}`, ids: oxford, auth: oxfordOwnerAuth })
     const yllkaMessageInOxfordConversation: TargetIds = { ...oxford, messageId: yllka.messageId }
     const editedYllkaMessage = await send({ method: 'put', route: '/:organizationId/inbox/conversations/:conversationId/messages/:messageId', body: MESSAGE, ids: yllkaMessageInOxfordConversation, auth: oxfordOwnerAuth })
@@ -656,6 +661,7 @@ describe('organization isolation', () => {
     expect(readYllkaGroupMaterials.status).toBe(404)
     expect(assignmentInYllkaGroup.status).toBe(404)
     expect(readYllkaGroupAssignments.status).toBe(404)
+    expect(readYllkaGradebook.status).toBe(404)
     expect(await prisma.assignment.count({ where: { organization_id: oxford.organizationId } })).toBe(1)
     expect(await prisma.assignment.count({ where: { group_id: yllka.groupId } })).toBe(1)
     expect(await prisma.material.count({ where: { organization_id: oxford.organizationId } })).toBe(1)

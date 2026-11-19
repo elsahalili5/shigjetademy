@@ -2,6 +2,7 @@ import { screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import type { AuthUser } from '@shigjetademy/shared/auth'
+import type { StudentGroupGrades } from '@shigjetademy/shared/grades'
 import type { MyChild, MyChildDetail } from '@shigjetademy/shared/guardians'
 import type { MyChildNote } from '@shigjetademy/shared/parent-notes'
 import { buildUser, DEFAULT_SETTINGS, signInAs } from '#/test/fixtures'
@@ -33,9 +34,31 @@ const NOTES: MyChildNote[] = [
   { id: 'note-1', body: 'Please bring the workbook on Monday.', created_at: '2026-11-02T08:00:00.000Z', author: { first_name: 'Arben', last_name: 'Hoxha' } },
 ]
 
-const serve = ({ detail = DETAIL, children = [ARTA, BESA], notes = [] }: { detail?: MyChildDetail; children?: MyChild[]; notes?: MyChildNote[] } = {}) =>
+const LIMITS = { id: 'a-1', title: 'Limits worksheet', due_at: '2026-10-20T16:00:00.000Z', max_points: 20 }
+const QUIZ = { id: 'a-2', title: 'Derivatives quiz', due_at: '2026-11-10T16:00:00.000Z', max_points: 10 }
+
+const GRADES: StudentGroupGrades[] = [
+  {
+    group: { id: 'group-a', name: 'Group A', course_name: 'Mathematics', is_archived: false },
+    grades: [
+      { assignment: LIMITS, cell: { assignment_id: LIMITS.id, status: 'MARKED', points: 15, feedback: 'Check question 4.' } },
+      { assignment: QUIZ, cell: { assignment_id: QUIZ.id, status: 'MISSING', points: null, feedback: null } },
+    ],
+    average: { points: 15, max_points: 20, percent: 75 },
+  },
+]
+
+type ServeParams = {
+  detail?: MyChildDetail
+  children?: MyChild[]
+  notes?: MyChildNote[]
+  grades?: StudentGroupGrades[]
+}
+
+const serve = ({ detail = DETAIL, children = [ARTA, BESA], notes = [], grades = [] }: ServeParams = {}) =>
   server.use(
     http.get(`*/api/organizations/org-1/me/children/${ARTA.id}/notes`, () => HttpResponse.json({ data: notes })),
+    http.get(`*/api/organizations/org-1/me/children/${ARTA.id}/grades`, () => HttpResponse.json({ data: grades })),
     http.get('*/api/organizations/org-1/me/children', () => HttpResponse.json({ data: children })),
     http.get(`*/api/organizations/org-1/me/children/${ARTA.id}`, () => HttpResponse.json({ data: detail })),
   )
@@ -156,5 +179,27 @@ describe('MyChildPage', () => {
     const alert = await screen.findByText('We couldn’t load the notes.')
     expect(alert).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+  })
+
+  it('shows the child’s marks with feedback and average in each group', async () => {
+    signInAs(buildUser({ memberships: GUARDIAN_MEMBERSHIPS }))
+    serve({ grades: GRADES })
+    renderRoute(PATH)
+
+    const grades = within(await screen.findByRole('region', { name: 'Grades' }))
+    const groupA = within(await grades.findByRole('region', { name: 'Group A · Mathematics' }))
+    expect(groupA.getByText('Average 75%')).toBeInTheDocument()
+    const items = groupA.getAllByRole('listitem')
+    expect(within(items[0]).getByText('15 / 20')).toBeInTheDocument()
+    expect(within(items[0]).getByText('Check question 4.')).toBeInTheDocument()
+    expect(within(items[1]).getByText('Missing')).toBeInTheDocument()
+  })
+
+  it('says when the child has no grades yet', async () => {
+    signInAs(buildUser({ memberships: GUARDIAN_MEMBERSHIPS }))
+    serve()
+    renderRoute(PATH)
+
+    expect(await screen.findByText('No grades yet')).toBeInTheDocument()
   })
 })

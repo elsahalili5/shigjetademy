@@ -8,6 +8,7 @@ import { StudentDetailView } from '#/modules/student-roster/components/student-d
 import { useMyChild } from '../hooks/use-my-child'
 import { useMyChildNotes } from '../hooks/use-my-child-notes'
 import { useMyChildren } from '../hooks/use-my-children'
+import { MyChildGrades } from './my-child-grades'
 import { MyChildNotes } from './my-child-notes'
 
 interface MyChildPageProps {
@@ -15,7 +16,7 @@ interface MyChildPageProps {
   studentId: string
 }
 
-/** One linked child as their guardian reads it: groups, weekly schedule, moved lessons and attendance, read-only */
+/** One linked child as their guardian reads it: groups, weekly schedule, grades, notes, moved lessons and attendance, read-only */
 export function MyChildPage({ organizationId, studentId }: MyChildPageProps) {
   const child = useMyChild({ organizationId, studentId })
   const notes = useMyChildNotes({ organizationId, studentId })
@@ -26,6 +27,7 @@ export function MyChildPage({ organizationId, studentId }: MyChildPageProps) {
       <SectionCard title="Weekly schedule">
         <WeeklySchedule groups={detail.groups} />
       </SectionCard>
+      <MyChildGrades organizationId={organizationId} studentId={studentId} />
       <MyChildNotes notes={notes} />
       <SectionCard title="Rescheduled lessons">
         <RescheduledLessons lessons={detail.rescheduled_lessons} />

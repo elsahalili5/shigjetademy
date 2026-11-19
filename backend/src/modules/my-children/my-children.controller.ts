@@ -57,4 +57,17 @@ export const MyChildrenController = {
       return sendError({ res, error, fallback: 'Failed to fetch the notes about your child' })
     }
   },
+
+  listMyChildGrades: async (req: AuthRequest & TypedRequest<unknown, StudentParam>, res: Response) => {
+    try {
+      const userId = req.user?.id
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' })
+      }
+      const grades = await MyChildrenService.listMyChildGrades({ ...req.params, userId })
+      return res.status(200).json({ data: grades })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to fetch your child’s grades' })
+    }
+  },
 }

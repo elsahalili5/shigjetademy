@@ -24,4 +24,7 @@ router.get(NOTES, authMiddleware, validateRequestMiddleware(organizationIdParamS
 
 router.get(`${CHILD}/notes`, authMiddleware, validateRequestMiddleware(studentParamSchema, 'params'), isGuardian, MyChildrenController.listMyChildNotes)
 
+// The child's own marks from the grades module
+router.get(`${CHILD}/grades`, authMiddleware, validateRequestMiddleware(studentParamSchema, 'params'), isGuardian, MyChildrenController.listMyChildGrades)
+
 export default router
