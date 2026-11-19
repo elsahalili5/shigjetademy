@@ -129,6 +129,13 @@ export const loadViewerSpaces = async (params: LoadViewerSpacesParams): Promise<
   return { spaces, isStaff, isModerator: isStaff || params.viewer.role === 'LECTURER' }
 }
 
+/** The groups the viewer reaches, by name */
+export const loadViewerGroups = async (params: LoadViewerSpacesParams): Promise<Space[]> => (await loadViewerSpaces(params)).spaces.filter((space) => space.kind === 'GROUP')
+
+/** The viewer's active student record in the organization, or null for a login without one */
+export const findViewerStudent = ({ organizationId, viewer }: LoadViewerSpacesParams) =>
+  prisma.student.findFirst({ where: { organization_id: organizationId, user_id: viewer.userId, status: 'ACTIVE' }, select: { id: true } })
+
 type SpaceKey = Pick<Space, 'kind' | 'id'>
 
 export const findViewerSpace = ({ viewerSpaces, kind, id }: { viewerSpaces: ViewerSpaces } & SpaceKey) => viewerSpaces.spaces.find((space) => space.kind === kind && space.id === id) ?? null

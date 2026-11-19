@@ -30,7 +30,8 @@
     "./discussions": "./src/discussions.ts",
     "./spaces": "./src/spaces.ts",
     "./materials": "./src/materials.ts",
-    "./assignments": "./src/assignments.ts"
+    "./assignments": "./src/assignments.ts",
+    "./grades": "./src/grades.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

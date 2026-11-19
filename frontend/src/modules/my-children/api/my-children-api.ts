@@ -1,4 +1,5 @@
 import { apiClient } from '#/api/client'
+import type { StudentGroupGrades } from '@shigjetademy/shared/grades'
 import type { MyChild, MyChildDetail } from '@shigjetademy/shared/guardians'
 import type { MyChildNote, MyNote } from '@shigjetademy/shared/parent-notes'
 
@@ -9,4 +10,6 @@ export const myChildrenApi = {
   allNotes: (organizationId: string) => apiClient.get<MyNote[]>(`/organizations/${organizationId}/me/notes`),
   notes: ({ organizationId, studentId }: { organizationId: string; studentId: string }) =>
     apiClient.get<MyChildNote[]>(`/organizations/${organizationId}/me/children/${studentId}/notes`),
+  grades: ({ organizationId, studentId }: { organizationId: string; studentId: string }) =>
+    apiClient.get<StudentGroupGrades[]>(`/organizations/${organizationId}/me/children/${studentId}/grades`),
 }

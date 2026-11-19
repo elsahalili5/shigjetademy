@@ -1,4 +1,4 @@
-import { BookOpen, Building2, CalendarClock, CalendarRange, ClipboardCheck, GraduationCap, Layers, LayoutDashboard, MapPin, NotebookPen, Presentation, Settings, UserCog, Users, UsersRound } from 'lucide-react'
+import { Award, BookOpen,Building2, CalendarClock, CalendarRange, ClipboardCheck, GraduationCap, Layers, LayoutDashboard, MapPin, NotebookPen, Presentation, Settings, UserCog, Users, UsersRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ModuleSlug } from './modules'
 
@@ -24,6 +24,7 @@ export type OwnerNavItem =
         | '/dashboard/schedule'
         | '/dashboard/materials'
         | '/dashboard/assignments'
+        | '/dashboard/grades'
       label: string
       icon: LucideIcon
     }
@@ -67,7 +68,7 @@ export const OWNER_NAV_SECTIONS: OwnerNavSection[] = [
       { kind: 'page', to: '/dashboard/assignments', label: 'Assignments', icon: NotebookPen },
       { kind: 'module', slug: 'tests', label: 'Tests and assessments' },
       { kind: 'page', to: '/dashboard/attendance', label: 'Attendance', icon: ClipboardCheck },
-      { kind: 'module', slug: 'grades' },
+      { kind: 'page', to: '/dashboard/grades', label: 'Grades', icon: Award },
     ],
   },
   {

@@ -8,7 +8,7 @@ import { HttpError, refuseField } from '@lib/httpError.ts'
 import { prisma } from '@lib/prisma.ts'
 import type { StoredUpload } from '@lib/private-files.ts'
 import { activeEnrolments } from '@modules/groups/group-selects.ts'
-import { loadViewerSpaces } from '@modules/groups/space-access.ts'
+import { findViewerStudent, loadViewerGroups } from '@modules/groups/space-access.ts'
 import type { SpaceViewer } from '@modules/groups/space-access.ts'
 import { assignmentFiles } from './assignment-files.ts'
 import type { CreateAssignmentInput, HandInInput, MarkHandInInput, UpdateAssignmentInput } from './assignments.types.ts'
@@ -76,8 +76,6 @@ const isSetter = (viewer: SpaceViewer) => viewer.role === 'OWNER' || viewer.role
 
 const isArchived = (assignment: StoredAssignment) => assignment.group.status === 'ARCHIVED'
 
-/** The groups the viewer reaches, by name */
-const loadViewerGroups = async (scope: ViewerScope): Promise<Space[]> => (await loadViewerSpaces(scope)).spaces.filter((space) => space.kind === 'GROUP')
 
 const findGroup = ({ groups, groupId }: { groups: Space[]; groupId: string }) => groups.find((group) => group.id === groupId) ?? null
 
@@ -192,8 +190,8 @@ const requireStudent = (viewer: SpaceViewer) => {
 }
 
 /** The viewer's active student record in the organization; a student login without one hands in nothing */
-const findViewerStudent = async ({ organizationId, viewer }: ViewerScope) => {
-  const student = await prisma.student.findFirst({ where: { organization_id: organizationId, user_id: viewer.userId, status: 'ACTIVE' }, select: { id: true } })
+const requireViewerStudent = async (scope: ViewerScope) => {
+  const student = await findViewerStudent(scope)
   if (!student) throw new HttpError(403, NOT_STUDENT)
   return student
 }
@@ -308,7 +306,7 @@ export const AssignmentService = {
   // Across all the student's groups, soonest due first, each with their own hand-in only
   listMine: async ({ organizationId, viewer }: ViewerScope): Promise<StudentAssignment[]> => {
     requireStudent(viewer)
-    const student = await findViewerStudent({ organizationId, viewer })
+    const student = await requireViewerStudent({ organizationId, viewer })
     const groupIds = (await loadViewerGroups({ organizationId, viewer })).map((group) => group.id)
     const assignments = await prisma.assignment.findMany({
       where: { organization_id: organizationId, group_id: { in: groupIds } },
@@ -326,7 +324,7 @@ export const AssignmentService = {
     if (isArchived(assignment)) throw new HttpError(403, 'This group is archived, so it takes no hand-ins.')
     const submittedAt = new Date()
     if (isClosed({ assignment, now: submittedAt })) throw new HttpError(403, 'Hand-ins for this assignment closed at the due date.')
-    const student = await findViewerStudent(scope)
+    const student = await requireViewerStudent(scope)
     const current = await prisma.assignmentSubmission.findUnique({ where: { assignment_id_student_id: { assignment_id: assignment.id, student_id: student.id } }, select: handInSelect })
     if (current?.marked_at) throw new HttpError(403, MARKED_MESSAGE)
     const fileColumnsToSave = chooseHandInFile({ file, keepFile: data.keep_file, current })
@@ -378,7 +376,7 @@ export const AssignmentService = {
     const assignment = await findReachableAssignment(scope)
     const handIn = await prisma.assignmentSubmission.findFirst({ where: { id: submissionId, assignment_id: assignment.id, organization_id: scope.organizationId }, select: { student_id: true, ...handInSelect } })
     if (!handIn) throw new HttpError(404, 'Hand-in not found')
-    if (!isSetter(scope.viewer) && (await findViewerStudent(scope)).id !== handIn.student_id) throw new HttpError(404, 'Hand-in not found')
+    if (!isSetter(scope.viewer) && (await requireViewerStudent(scope)).id !== handIn.student_id) throw new HttpError(404, 'Hand-in not found')
     if (!handIn.file_key || !handIn.file_name || !handIn.file_type) throw new HttpError(404, 'This hand-in has no file.')
     return { path: assignmentFiles.getPath(handIn.file_key), name: handIn.file_name, type: handIn.file_type }
   },

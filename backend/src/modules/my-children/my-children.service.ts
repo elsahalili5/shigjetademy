@@ -1,9 +1,12 @@
 import { todayIn } from '@shigjetademy/shared/calendar-day'
 import { resolveOrganizationSettings } from '@shigjetademy/shared/organization-settings'
+import type { StudentGroupGrades } from '@shigjetademy/shared/grades'
 import type { MyChildDetail } from '@shigjetademy/shared/guardians'
 import type { MyChildNote, MyNote } from '@shigjetademy/shared/parent-notes'
 import { toDate } from '@lib/calendar-day.ts'
 import { prisma } from '@lib/prisma.ts'
+import { listStudentGrades } from '@modules/grades/grades.service.ts'
+import { activeEnrolments } from '@modules/groups/group-selects.ts'
 import { getStudentGroups } from '@modules/student-home/student-groups.ts'
 import { getStudentAttendance } from '@modules/student-roster/student-attendance.ts'
 import { findLinkedChild, linkedChildSelect, linkedChildWhere } from './find-linked-child.ts'
@@ -50,6 +53,21 @@ export const MyChildrenService = {
       select: { id: true, body: true, created_at: true, lecturer: { select: { first_name: true, last_name: true } } },
     })
     return notes.map(({ id, body, created_at, lecturer }) => ({ id, body, created_at: created_at.toISOString(), author: lecturer }))
+  },
+
+  /** The child's own marks in each group they are actively enrolled in, by group name; never another student's */
+  listMyChildGrades: async ({ organizationId, userId, studentId }: GetMyChildParams): Promise<StudentGroupGrades[]> => {
+    const child = await findLinkedChild({ organizationId, userId, studentId })
+    const groups = await prisma.group.findMany({
+      where: { organization_id: organizationId, enrolments: { some: { student_id: child.id, ...activeEnrolments } } },
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+      select: { id: true, name: true, status: true, course: { select: { name: true } } },
+    })
+    return listStudentGrades({
+      organizationId,
+      studentId: child.id,
+      groups: groups.map((group) => ({ id: group.id, name: group.name, course_name: group.course.name, is_archived: group.status === 'ARCHIVED' })),
+    })
   },
   /** Every note about any of this guardian's linked children, newest first, with the child and the lecturer's name */
   listMyNotes: async ({ organizationId, userId }: ListMyChildrenParams): Promise<MyNote[]> => {

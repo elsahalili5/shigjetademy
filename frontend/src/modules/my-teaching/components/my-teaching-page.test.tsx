@@ -91,13 +91,13 @@ describe('My teaching', () => {
     expect(movedAway).toHaveTextContent('Another lecturer takes it on the new date.')
   })
 
-  it('shows a lecturer My teaching, Students, Attendance, Lessons, Learning materials and Assignments in the sidebar', async () => {
+  it('shows a lecturer My teaching, Students, Attendance, Lessons, Learning materials, Assignments and Grades in the sidebar', async () => {
     signInAs(LECTURER)
     serveMyTeaching()
     renderRoute('/dashboard/my-teaching')
 
     const modules = await screen.findByRole('navigation', { name: 'Modules' })
-    expect(within(modules).getAllByRole('link').map((link) => link.textContent)).toEqual(['My teaching', 'Attendance', 'Lessons', 'Learning materials', 'Assignments'])
+    expect(within(modules).getAllByRole('link').map((link) => link.textContent)).toEqual(['My teaching', 'Attendance', 'Lessons', 'Learning materials', 'Assignments', 'Grades'])
     // Students is a menu that opens to Students List and Student Notes
     expect(within(modules).getByRole('button', { name: 'Students' })).toHaveAttribute('aria-expanded', 'false')
   })
@@ -123,7 +123,7 @@ describe('My teaching', () => {
     signInAs(LECTURER)
     serveMyTeaching()
 
-    for (const path of ['/dashboard', '/dashboard/overview', '/dashboard/members', '/dashboard/students', '/dashboard/lecturers', '/dashboard/locations', '/dashboard/my-school', '/dashboard/grades']) {
+    for (const path of ['/dashboard', '/dashboard/overview', '/dashboard/members', '/dashboard/students', '/dashboard/lecturers', '/dashboard/locations', '/dashboard/my-school', '/dashboard/payments']) {
       const { router } = renderRoute(path)
       await waitFor(() => expect(router.state.location.pathname, path).toBe('/dashboard/my-teaching'))
       cleanup()
