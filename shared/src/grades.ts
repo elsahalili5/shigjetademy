@@ -1,4 +1,4 @@
-// Grades: a read-only gradebook filled in from marked assignment hand-ins. Nothing is stored for it; each cell and average is worked out when it is read.
+// Grades: a read-only gradebook filled in from marked assignment hand-ins and recorded test results. Nothing is stored for it; each cell and average is worked out when it is read.
 import { z } from 'zod'
 
 export const gradeGroupQuerySchema = z.object({
@@ -15,26 +15,33 @@ export type GradeGroup = {
   is_archived: boolean
 }
 
-/** An assignment with points, as a gradebook column. Its due date is an ISO timestamp in UTC. */
-export type GradeAssignment = {
+/** What a gradebook column is: an assignment with points, or a test */
+export type GradeColumnKind = 'ASSIGNMENT' | 'TEST'
+
+/** A gradebook column. date is an assignment's due date or a test's day and time, an ISO timestamp in UTC. */
+export type GradeColumn = {
+  kind: GradeColumnKind
   id: string
   title: string
-  due_at: string
+  date: string
   max_points: number
 }
 
-/** Where one student stands on one assignment: marked with points, handed in and waiting, missing past the due date, or not due yet */
-export type GradeCellStatus = 'MARKED' | 'HANDED_IN' | 'MISSING' | 'NOT_DUE'
+/**
+ * Where one student stands on one column. Both: marked with points, or not due (held) yet. An assignment: handed in and waiting, or missing past the due date.
+ * A test: absent, or not recorded yet once it was held.
+ */
+export type GradeCellStatus = 'MARKED' | 'HANDED_IN' | 'MISSING' | 'NOT_DUE' | 'ABSENT' | 'NOT_RECORDED'
 
-/** One student's result on one assignment; points and feedback only once it is marked */
+/** One student's result on one column; points once marked, and feedback once marked or noted beside an absence */
 export type GradeCell = {
-  assignment_id: string
+  column_id: string
   status: GradeCellStatus
   points: number | null
   feedback: string | null
 }
 
-/** Points over max points of marked work only; missing work doesn't count. percent is rounded to a whole number. */
+/** Points over max points of marked work only; missing work and absences don't count. percent is rounded to a whole number. */
 export type GradeAverage = {
   points: number
   max_points: number
@@ -54,20 +61,20 @@ export type GradebookRow = {
   average: GradeAverage | null
 }
 
-/** A group's gradebook: its assignments with points by due date, and its actively enrolled students by name */
+/** A group's gradebook: its assignments with points and its tests by date, and its actively enrolled students by name */
 export type Gradebook = {
   group: GradeGroup
-  assignments: GradeAssignment[]
+  columns: GradeColumn[]
   rows: GradebookRow[]
 }
 
-/** One assignment and the student's own result on it */
+/** One column and the student's own result on it */
 export type StudentGrade = {
-  assignment: GradeAssignment
+  column: GradeColumn
   cell: GradeCell
 }
 
-/** One of a student's groups, with their own results by due date and their average there */
+/** One of a student's groups, with their own results by date and their average there */
 export type StudentGroupGrades = {
   group: GradeGroup
   grades: StudentGrade[]

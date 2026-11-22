@@ -11,7 +11,7 @@ interface MyChildGradesProps {
   studentId: string
 }
 
-/** The child's marks from their assignments, one card per group, read-only */
+/** The child's marks from their assignments and tests, one card per group, read-only */
 export function MyChildGrades({ organizationId, studentId }: MyChildGradesProps) {
   return (
     <SectionCard title="Grades">
@@ -25,7 +25,7 @@ function MyChildGradesContent({ organizationId, studentId }: MyChildGradesProps)
 
   if (grades.status === 'error') return <LoadError what="grades" onRetry={() => void grades.refetch()} />
   if (!grades.data) return <SkeletonRows />
-  if (grades.data.length === 0) return <EmptyMessage icon={Award} title="No grades yet" text="When your child’s assignments are marked, the marks show up here." />
+  if (grades.data.length === 0) return <EmptyMessage icon={Award} title="No grades yet" text="When your child’s assignments are marked or test results are recorded, the marks show up here." />
   return (
     <div className="grid gap-4 p-5">
       {grades.data.map((groupGrades) => (

@@ -34,6 +34,7 @@ type TargetIds = {
   materialId: string
   assignmentId: string
   submissionId: string
+  testId: string
 }
 
 type ScopedEndpoint = {
@@ -110,6 +111,10 @@ const ASSIGNMENT_DETAILS = { title: 'Taken over', instructions: 'Taken over', du
 const ASSIGNMENT = { ...ASSIGNMENT_DETAILS, group_id: '00000000-0000-4000-8000-000000000006' } as const
 
 const HAND_IN = { text: 'Taken over' } as const
+
+const TEST_DETAILS = { title: 'Taken over', description: '', held_at: '2027-11-20T09:00:00.000Z', max_points: 10 } as const
+// A well-formed group id, so the sweep passes validation and reaches the organization checks
+const TEST = { ...TEST_DETAILS, group_id: '00000000-0000-4000-8000-000000000006' } as const
 
 const GROUP = { course_id: '00000000-0000-4000-8000-000000000001', name: 'Taken over', academic_year_id: '00000000-0000-4000-8000-000000000002', academic_term_id: null, room_id: null, capacity: null, lecturer_id: null, lecturer_effective_from: null, schedule: SCHEDULE } as const
 
@@ -281,6 +286,14 @@ const SCOPED_ENDPOINTS: ScopedEndpoint[] = [
   { method: 'get', route: '/:organizationId/grades/groups' },
   { method: 'get', route: '/:organizationId/grades/mine' },
   { method: 'get', route: '/:organizationId/grades' },
+  { method: 'get', route: '/:organizationId/tests/groups' },
+  { method: 'get', route: '/:organizationId/tests/mine' },
+  { method: 'get', route: '/:organizationId/tests' },
+  { method: 'post', route: '/:organizationId/tests', body: TEST },
+  { method: 'get', route: '/:organizationId/tests/:testId' },
+  { method: 'put', route: '/:organizationId/tests/:testId', body: TEST_DETAILS },
+  { method: 'put', route: '/:organizationId/tests/:testId/results', body: { results: [] } },
+  { method: 'delete', route: '/:organizationId/tests/:testId' },
 ]
 
 type ToPathParams = {
@@ -315,6 +328,7 @@ const toPath = ({ route, ids }: ToPathParams) =>
     .replace(':materialId', ids.materialId)
     .replace(':assignmentId', ids.assignmentId)
     .replace(':submissionId', ids.submissionId)
+    .replace(':testId', ids.testId)
     .replace(':date', LESSON_DATE)
     .replace(':startTime', LESSON_START)}`
 
@@ -436,7 +450,11 @@ const seedOrganization = async ({ name, slug }: SeedOrganizationParams) => {
   const submission = await prisma.assignmentSubmission.create({
     data: { organization_id: organization.id, assignment_id: assignment.id, student_id: student.id, text: `${name} answers`, file_key: `${slug}-answers`, file_name: 'answers.txt', file_type: 'text/plain', file_size: 7, submitted_at: new Date('2027-11-19T16:00:00.000Z') },
   })
-  return { organizationId: organization.id, membershipId: adminMembership.id, locationId: location.id, roomId: room.id, departmentId: department.id, yearId: year.id, termId: term.id, holidayId: holiday.id, studentId: student.id, lecturerId: lecturer.id, courseId: course.id, groupId: group.id, substitutionId: substitution.id, enrolmentId: enrolment.id, rescheduleId: reschedule.id, invitationId: invitation.id, guardianId: guardian.id, conversationId: conversation.id, messageId: conversation.messages[0].id, announcementId: announcement.id, topicId: topic.id, replyId: reply.id, materialId: material.id, assignmentId: assignment.id, submissionId: submission.id }
+  const test = await prisma.test.create({
+    data: { organization_id: organization.id, author_membership_id: ownerMembership.id, group_id: group.id, title: `${name} unit test`, held_at: new Date('2027-11-20T09:00:00.000Z'), max_points: 20 },
+  })
+  await prisma.testResult.create({ data: { organization_id: organization.id, test_id: test.id, student_id: student.id, points: 15, recorded_at: new Date('2027-11-21T09:00:00.000Z') } })
+  return { organizationId: organization.id, membershipId: adminMembership.id, locationId: location.id, roomId: room.id, departmentId: department.id, yearId: year.id, termId: term.id, holidayId: holiday.id, studentId: student.id, lecturerId: lecturer.id, courseId: course.id, groupId: group.id, substitutionId: substitution.id, enrolmentId: enrolment.id, rescheduleId: reschedule.id, invitationId: invitation.id, guardianId: guardian.id, conversationId: conversation.id, messageId: conversation.messages[0].id, announcementId: announcement.id, topicId: topic.id, replyId: reply.id, materialId: material.id, assignmentId: assignment.id, submissionId: submission.id, testId: test.id }
 }
 
 let oxford: TargetIds
@@ -497,6 +515,9 @@ const yllkaAsItsOwnerSeesIt = async () => {
     assignmentGroups: await read('/:organizationId/assignments/groups'),
     groupAssignments: await read(`/:organizationId/assignments?group_id=${yllka.groupId}`),
     assignment: await read('/:organizationId/assignments/:assignmentId'),
+    testGroups: await read('/:organizationId/tests/groups'),
+    groupTests: await read(`/:organizationId/tests?group_id=${yllka.groupId}`),
+    testSheet: await read('/:organizationId/tests/:testId'),
   }
 }
 
@@ -530,7 +551,7 @@ describe('organization isolation', () => {
     const mixed: TargetIds = { ...yllka, organizationId: oxford.organizationId }
 
     // The guardian-only, lecturer-only and student-only routes refuse the owner outright; the next tests sweep them as a guardian, a lecturer and a student
-    for (const endpoint of SCOPED_ENDPOINTS.filter((item) => !item.route.includes('/me/children/') && !item.route.includes('/parent-notes/') && !item.route.endsWith('/submission') && /:(membership|location|room|department|year|term|holiday|student|lecturer|course|group|substitution|enrolment|reschedule|invitation|guardian|conversation|message|announcement|topic|reply|material|assignment|submission)Id/.test(item.route))) {
+    for (const endpoint of SCOPED_ENDPOINTS.filter((item) => !item.route.includes('/me/children/') && !item.route.includes('/parent-notes/') && !item.route.endsWith('/submission') && /:(membership|location|room|department|year|term|holiday|student|lecturer|course|group|substitution|enrolment|reschedule|invitation|guardian|conversation|message|announcement|topic|reply|material|assignment|submission|test)Id/.test(item.route))) {
       const response = await send({ ...endpoint, ids: mixed, auth: oxfordOwnerAuth })
       expect(response.status, `${endpoint.method.toUpperCase()} ${endpoint.route} answered ${response.status}`).toBe(404)
     }
@@ -599,6 +620,8 @@ describe('organization isolation', () => {
       .attach('file', Buffer.from('Taken over'), { filename: 'taken.txt', contentType: 'text/plain' })
     const assignmentInYllkaGroup = await send({ method: 'post', route: '/:organizationId/assignments', body: { ...ASSIGNMENT, group_id: yllka.groupId }, ids: oxford, auth: oxfordOwnerAuth })
     const readYllkaGroupAssignments = await send({ method: 'get', route: `/:organizationId/assignments?group_id=${yllka.groupId}`, ids: oxford, auth: oxfordOwnerAuth })
+    const testInYllkaGroup = await send({ method: 'post', route: '/:organizationId/tests', body: { ...TEST, group_id: yllka.groupId }, ids: oxford, auth: oxfordOwnerAuth })
+    const readYllkaGroupTests = await send({ method: 'get', route: `/:organizationId/tests?group_id=${yllka.groupId}`, ids: oxford, auth: oxfordOwnerAuth })
     const readYllkaGradebook = await send({ method: 'get', route: `/:organizationId/grades?group_id=${yllka.groupId}`, ids: oxford, auth: oxfordOwnerAuth })
     const readYllkaGroupMaterials = await send({ method: 'get', route: `/:organizationId/materials?space_kind=GROUP&space_id=${yllka.groupId}`, ids: oxford, auth: oxfordOwnerAuth })
     const yllkaMessageInOxfordConversation: TargetIds = { ...oxford, messageId: yllka.messageId }
@@ -662,6 +685,10 @@ describe('organization isolation', () => {
     expect(assignmentInYllkaGroup.status).toBe(404)
     expect(readYllkaGroupAssignments.status).toBe(404)
     expect(readYllkaGradebook.status).toBe(404)
+    expect(testInYllkaGroup.status).toBe(404)
+    expect(readYllkaGroupTests.status).toBe(404)
+    expect(await prisma.test.count({ where: { organization_id: oxford.organizationId } })).toBe(1)
+    expect(await prisma.test.count({ where: { group_id: yllka.groupId } })).toBe(1)
     expect(await prisma.assignment.count({ where: { organization_id: oxford.organizationId } })).toBe(1)
     expect(await prisma.assignment.count({ where: { group_id: yllka.groupId } })).toBe(1)
     expect(await prisma.material.count({ where: { organization_id: oxford.organizationId } })).toBe(1)
@@ -773,7 +800,7 @@ describe('organization isolation', () => {
     expect(await yllkaAsItsOwnerSeesIt()).toEqual(before)
   })
 
-  it('refuses students on another organization’s assignments and hand-ins, even with their own organization in the path', async () => {
+  it('refuses students on another organization’s assignments, hand-ins and tests, even with their own organization in the path', async () => {
     const studentUser = await createUser({ email: 'student@yllka.test' })
     await prisma.membership.createMany({
       data: [
@@ -802,6 +829,14 @@ describe('organization isolation', () => {
     expect((await send({ method: 'get', route: '/:organizationId/assignments/mine', ids: oxford, auth: studentAuth })).status).toBe(403)
     expect((await send({ method: 'put', route: '/:organizationId/assignments/:assignmentId/submission', body: HAND_IN, ids: { ...yllka, organizationId: oxford.organizationId }, auth: studentAuth })).status).toBe(404)
     expect(await prisma.assignmentSubmission.count({ where: { organization_id: oxford.organizationId } })).toBe(1)
+    // Tests the same way: their own through Yllka, nothing of Yllka's through Oxford
+    expect((await send({ method: 'get', route: '/:organizationId/tests/mine', ids: yllka, auth: studentAuth })).body.data).toEqual([expect.objectContaining({ id: yllka.testId, result: expect.objectContaining({ points: 15 }) })])
+    expect((await send({ method: 'get', route: '/:organizationId/tests/mine', ids: oxford, auth: studentAuth })).status).toBe(403)
+    for (const endpoint of SCOPED_ENDPOINTS.filter((item) => item.route.includes('/tests'))) {
+      const label = `${endpoint.method.toUpperCase()} ${endpoint.route}`
+      expect((await send({ ...endpoint, ids: oxford, auth: yllkaOnlyAuth })).status, label).toBe(403)
+      if (endpoint.route.includes(':testId')) expect([403, 404], label).toContain((await send({ ...endpoint, ids: { ...yllka, organizationId: oxford.organizationId }, auth: studentAuth })).status)
+    }
 
     expect(await yllkaAsItsOwnerSeesIt()).toEqual(before)
   })

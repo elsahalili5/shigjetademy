@@ -7,7 +7,7 @@ type UseGradebookParams = {
   groupId: string
 }
 
-/** One group's students by its assignments with points */
+/** One group's students by its assignments with points and its tests */
 export function useGradebook({ organizationId, groupId }: UseGradebookParams) {
   return useQuery({
     queryKey: gradeQueryKeys.gradebook({ organizationId, groupId }),

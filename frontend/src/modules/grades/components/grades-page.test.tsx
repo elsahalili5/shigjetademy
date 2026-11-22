@@ -2,7 +2,7 @@ import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import type { AuthUser, MemberRole, Permission } from '@shigjetademy/shared/auth'
-import type { GradeAssignment, Gradebook, GradeCell, GradeGroup, StudentGroupGrades } from '@shigjetademy/shared/grades'
+import type { Gradebook, GradeCell, GradeColumn, GradeGroup, StudentGroupGrades } from '@shigjetademy/shared/grades'
 import { buildUser, DEFAULT_SETTINGS, signInAs } from '#/test/fixtures'
 import { renderRoute } from '#/test/render-route'
 import { server } from '#/test/server'
@@ -27,31 +27,32 @@ const GROUP_B_ID = '5b1f2c4e-8f7a-4d2b-9c3e-1a2b3c4d5e22'
 const GROUP_A: GradeGroup = { id: GROUP_A_ID, name: 'Group A', course_name: 'Mathematics', is_archived: false }
 const GROUP_B: GradeGroup = { id: GROUP_B_ID, name: 'Group B', course_name: 'Physics', is_archived: false }
 
-const LIMITS: GradeAssignment = { id: 'a-1', title: 'Limits worksheet', due_at: '2026-10-20T16:00:00.000Z', max_points: 20 }
-const SERIES: GradeAssignment = { id: 'a-2', title: 'Series worksheet', due_at: '2026-11-10T16:00:00.000Z', max_points: 10 }
-const QUIZ: GradeAssignment = { id: 'a-3', title: 'Derivatives quiz', due_at: '2026-12-01T16:00:00.000Z', max_points: 10 }
+const LIMITS: GradeColumn = { kind: 'ASSIGNMENT', id: 'a-1', title: 'Limits worksheet', date: '2026-10-20T16:00:00.000Z', max_points: 20 }
+const UNIT_TEST: GradeColumn = { kind: 'TEST', id: 't-1', title: 'Unit 3 test', date: '2026-11-01T08:00:00.000Z', max_points: 40 }
+const SERIES: GradeColumn = { kind: 'ASSIGNMENT', id: 'a-2', title: 'Series worksheet', date: '2026-11-10T16:00:00.000Z', max_points: 10 }
+const QUIZ: GradeColumn = { kind: 'ASSIGNMENT', id: 'a-3', title: 'Derivatives quiz', date: '2026-12-01T16:00:00.000Z', max_points: 10 }
 
-const cell = (assignment: GradeAssignment, overrides: Partial<GradeCell> = {}): GradeCell => ({ assignment_id: assignment.id, status: 'NOT_DUE', points: null, feedback: null, ...overrides })
+const cell = (column: GradeColumn, overrides: Partial<GradeCell> = {}): GradeCell => ({ column_id: column.id, status: 'NOT_DUE', points: null, feedback: null, ...overrides })
 
 const ALBA = { id: 's-1', first_name: 'Alba', last_name: 'Krasniqi' }
 const DREN = { id: 's-2', first_name: 'Dren', last_name: 'Morina' }
 
 const GROUP_A_GRADEBOOK: Gradebook = {
   group: GROUP_A,
-  assignments: [LIMITS, SERIES, QUIZ],
+  columns: [LIMITS, UNIT_TEST, SERIES, QUIZ],
   rows: [
     {
       student: ALBA,
-      cells: [cell(LIMITS, { status: 'MARKED', points: 15, feedback: 'Check question 4.' }), cell(SERIES, { status: 'HANDED_IN' }), cell(QUIZ)],
-      average: { points: 15, max_points: 20, percent: 75 },
+      cells: [cell(LIMITS, { status: 'MARKED', points: 15, feedback: 'Check question 4.' }), cell(UNIT_TEST, { status: 'MARKED', points: 30 }), cell(SERIES, { status: 'HANDED_IN' }), cell(QUIZ)],
+      average: { points: 45, max_points: 60, percent: 75 },
     },
-    { student: DREN, cells: [cell(LIMITS, { status: 'MISSING' }), cell(SERIES, { status: 'MISSING' }), cell(QUIZ)], average: null },
+    { student: DREN, cells: [cell(LIMITS, { status: 'MISSING' }), cell(UNIT_TEST, { status: 'ABSENT' }), cell(SERIES, { status: 'MISSING' }), cell(QUIZ)], average: null },
   ],
 }
 
-const FORCES: GradeAssignment = { id: 'b-1', title: 'Forces lab report', due_at: '2026-10-20T16:00:00.000Z', max_points: 30 }
+const FORCES: GradeColumn = { kind: 'ASSIGNMENT', id: 'b-1', title: 'Forces lab report', date: '2026-10-20T16:00:00.000Z', max_points: 30 }
 
-const GROUP_B_GRADEBOOK: Gradebook = { group: GROUP_B, assignments: [FORCES], rows: [{ student: DREN, cells: [cell(FORCES, { status: 'MISSING' })], average: null }] }
+const GROUP_B_GRADEBOOK: Gradebook = { group: GROUP_B, columns: [FORCES], rows: [{ student: DREN, cells: [cell(FORCES, { status: 'MISSING' })], average: null }] }
 
 const serveGroups = (groups: GradeGroup[]) => server.use(http.get(`${ORG}/groups`, () => HttpResponse.json({ data: groups })))
 
@@ -65,7 +66,7 @@ const serveGradebooks = (byGroup: Record<string, Gradebook>) =>
   )
 
 describe('grades: gradebook', () => {
-  it('shows a lecturer the first group’s students by assignments, and switches group with the picker', async () => {
+  it('shows a lecturer the first group’s students by assignments and tests, and switches group with the picker', async () => {
     signInWithRole('LECTURER')
     serveGroups([GROUP_A, GROUP_B])
     serveGradebooks({ [GROUP_A_ID]: GROUP_A_GRADEBOOK, [GROUP_B_ID]: GROUP_B_GRADEBOOK })
@@ -73,20 +74,78 @@ describe('grades: gradebook', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Grades' })).toBeInTheDocument()
     const table = within(await screen.findByRole('table', { name: 'Gradebook for Group A' }))
-    expect(table.getAllByRole('columnheader').map((header) => header.textContent)).toEqual(['Student', expect.stringMatching(/^Limits worksheet/), expect.stringMatching(/^Series worksheet/), expect.stringMatching(/^Derivatives quiz/), 'Average'])
+    expect(table.getAllByRole('columnheader').map((header) => header.textContent)).toEqual([
+      'Student',
+      expect.stringMatching(/^AssignmentLimits worksheetDue /),
+      expect.stringMatching(/^TestUnit 3 testOn /),
+      expect.stringMatching(/^AssignmentSeries worksheetDue /),
+      expect.stringMatching(/^AssignmentDerivatives quizDue /),
+      'Average',
+    ])
     expect(table.getByRole('link', { name: 'Limits worksheet' })).toHaveAttribute('href', '/dashboard/assignments/a-1')
+    expect(table.getByRole('link', { name: 'Unit 3 test' })).toHaveAttribute('href', '/dashboard/tests/t-1')
 
     const [, albaRow, drenRow] = table.getAllByRole('row')
     expect(within(albaRow).getByRole('rowheader')).toHaveTextContent('Alba Krasniqi')
     const albaCells = within(albaRow).getAllByRole('cell')
     expect(within(albaCells[0]).getByText('15 / 20')).toBeInTheDocument()
-    expect(albaCells.slice(1).map((item) => item.textContent)).toEqual(['Handed in', '', '75%'])
-    expect(within(drenRow).getAllByRole('cell').map((item) => item.textContent)).toEqual(['Missing', 'Missing', '', '—'])
+    expect(albaCells.slice(1).map((item) => item.textContent)).toEqual(['30 / 40', 'Handed in', '', '75%'])
+    expect(within(drenRow).getAllByRole('cell').map((item) => item.textContent)).toEqual(['Missing', 'Absent', 'Missing', '', '—'])
 
     await user.selectOptions(screen.getByLabelText('Group'), 'Group B · Physics')
 
     expect(await screen.findByRole('table', { name: 'Gradebook for Group B' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Forces lab report' })).toBeInTheDocument()
+  })
+
+  it('shows only the tests or only the assignments from the tabs, each with its own average', async () => {
+    signInWithRole('LECTURER')
+    serveGroups([GROUP_A, GROUP_B])
+    serveGradebooks({ [GROUP_A_ID]: GROUP_A_GRADEBOOK, [GROUP_B_ID]: GROUP_B_GRADEBOOK })
+    const { user } = renderRoute('/dashboard/grades')
+
+    const headerTexts = async () =>
+      within(await screen.findByRole('table', { name: /^Gradebook for/ }))
+        .getAllByRole('columnheader')
+        .map((header) => header.textContent)
+    expect(await screen.findByRole('tab', { name: 'All 4' })).toHaveAttribute('aria-selected', 'true')
+
+    await user.click(screen.getByRole('tab', { name: 'Tests 1' }))
+    expect(await headerTexts()).toEqual(['Student', expect.stringMatching(/^TestUnit 3 test/), 'Test average'])
+    const rowCells = () =>
+      within(screen.getByRole('table'))
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => within(row).getAllByRole('cell').map((item) => item.textContent))
+    // Alba's test average is her test alone; Dren was absent, so has none
+    expect(rowCells()).toEqual([
+      ['30 / 40', '75%'],
+      ['Absent', '—'],
+    ])
+
+    await user.click(screen.getByRole('tab', { name: 'Assignments 3' }))
+    expect(await headerTexts()).toEqual(['Student', expect.stringMatching(/^AssignmentLimits/), expect.stringMatching(/^AssignmentSeries/), expect.stringMatching(/^AssignmentDerivatives/), 'Assignment average'])
+    expect(rowCells()).toEqual([
+      ['15 / 20Check question 4.', 'Handed in', '', '75%'],
+      ['Missing', 'Missing', '', '—'],
+    ])
+
+    // Group B has only assignments, so it has no tabs and shows them all
+    await user.selectOptions(screen.getByLabelText('Group'), 'Group B · Physics')
+    expect(await screen.findByRole('table', { name: 'Gradebook for Group B' })).toBeInTheDocument()
+    expect(screen.queryByRole('tablist', { name: 'Show columns' })).not.toBeInTheDocument()
+  })
+
+  it('shows a test’s title as plain text to an admin with Grades but not Tests', async () => {
+    signInWithRole('ADMIN', ['MANAGE_GRADES'])
+    serveGroups([GROUP_A])
+    serveGradebooks({ [GROUP_A_ID]: GROUP_A_GRADEBOOK })
+    renderRoute('/dashboard/grades')
+
+    const table = within(await screen.findByRole('table', { name: 'Gradebook for Group A' }))
+    expect(table.getByText('Unit 3 test')).toBeInTheDocument()
+    expect(table.queryByRole('link', { name: 'Unit 3 test' })).not.toBeInTheDocument()
+    expect(table.getByRole('link', { name: 'Limits worksheet' })).toBeInTheDocument()
   })
 
   it('shows a mark’s feedback to keyboard and pointer users', async () => {
@@ -110,10 +169,10 @@ describe('grades: gradebook', () => {
     expect(await screen.findByText('No groups yet.')).toBeInTheDocument()
   })
 
-  it('says when a group has no assignments with points yet', async () => {
+  it('says when a group has no assignments with points or tests yet', async () => {
     signInWithRole('ADMIN', ['MANAGE_GRADES'])
     serveGroups([GROUP_A])
-    serveGradebooks({ [GROUP_A_ID]: { group: GROUP_A, assignments: [], rows: [{ student: ALBA, cells: [], average: null }] } })
+    serveGradebooks({ [GROUP_A_ID]: { group: GROUP_A, columns: [], rows: [{ student: ALBA, cells: [], average: null }] } })
     renderRoute('/dashboard/grades')
 
     expect(await screen.findByText('No marks here yet.')).toBeInTheDocument()
@@ -137,9 +196,10 @@ describe('grades: a student’s own', () => {
       {
         group: GROUP_A,
         grades: [
-          { assignment: LIMITS, cell: cell(LIMITS, { status: 'MARKED', points: 15, feedback: 'Check question 4.' }) },
-          { assignment: SERIES, cell: cell(SERIES, { status: 'MISSING' }) },
-          { assignment: QUIZ, cell: cell(QUIZ) },
+          { column: LIMITS, cell: cell(LIMITS, { status: 'MARKED', points: 15, feedback: 'Check question 4.' }) },
+          { column: UNIT_TEST, cell: cell(UNIT_TEST, { status: 'ABSENT', feedback: 'Ill that day.' }) },
+          { column: SERIES, cell: cell(SERIES, { status: 'MISSING' }) },
+          { column: QUIZ, cell: cell(QUIZ) },
         ],
         average: { points: 15, max_points: 20, percent: 75 },
       },
@@ -153,8 +213,14 @@ describe('grades: a student’s own', () => {
     expect(within(items[0]).getByText('Limits worksheet')).toBeInTheDocument()
     expect(within(items[0]).getByText('15 / 20')).toBeInTheDocument()
     expect(within(items[0]).getByText('Check question 4.')).toBeInTheDocument()
-    expect(within(items[1]).getByText('Missing')).toBeInTheDocument()
-    expect(within(items[2]).getByText('Not due yet')).toBeInTheDocument()
+    expect(within(items[1]).getByText('Unit 3 test')).toBeInTheDocument()
+    expect(within(items[1]).getByText('Absent')).toBeInTheDocument()
+    expect(within(items[1]).getByText('Ill that day.')).toBeInTheDocument()
+    expect(within(items[0]).getByText('Assignment')).toBeInTheDocument()
+    expect(within(items[1]).getByText('Test')).toBeInTheDocument()
+    expect(within(items[1]).getByText(/^On /)).toBeInTheDocument()
+    expect(within(items[2]).getByText('Missing')).toBeInTheDocument()
+    expect(within(items[3]).getByText('Not due yet')).toBeInTheDocument()
     const groupB = within(screen.getByRole('region', { name: 'Group B · Physics' }))
     expect(groupB.getByText('No marks yet.')).toBeInTheDocument()
     expect(screen.queryByLabelText('Group')).not.toBeInTheDocument()
