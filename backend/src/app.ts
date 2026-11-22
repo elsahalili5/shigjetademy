@@ -9,6 +9,7 @@ import attendanceRoutes from '@modules/attendance/attendance.routes.ts'
 import authRoutes from '@modules/auth/auth.routes.ts'
 import courseRoutes from '@modules/courses/courses.routes.ts'
 import gradeRoutes from '@modules/grades/grades.routes.ts'
+import testRoutes from '@modules/tests/tests.routes.ts'
 import groupRoutes from '@modules/groups/groups.routes.ts'
 import guardianRoutes from '@modules/guardians/guardians.routes.ts'
 import inboxRoutes from '@modules/inbox/inbox.routes.ts'
@@ -76,6 +77,7 @@ app.use('/api/organizations', discussionRoutes)
 app.use('/api/organizations', materialRoutes)
 app.use('/api/organizations', assignmentRoutes)
 app.use('/api/organizations', gradeRoutes)
+app.use('/api/organizations', testRoutes)
 app.use('/api/users', userRoutes)
 
 app.get('/api/health', (_req, res) => {

@@ -2,7 +2,7 @@ import { screen, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
 import type { AuthUser } from '@shigjetademy/shared/auth'
-import type { StudentGroupGrades } from '@shigjetademy/shared/grades'
+import type { GradeColumn, StudentGroupGrades } from '@shigjetademy/shared/grades'
 import type { MyChild, MyChildDetail } from '@shigjetademy/shared/guardians'
 import type { MyChildNote } from '@shigjetademy/shared/parent-notes'
 import { buildUser, DEFAULT_SETTINGS, signInAs } from '#/test/fixtures'
@@ -34,17 +34,21 @@ const NOTES: MyChildNote[] = [
   { id: 'note-1', body: 'Please bring the workbook on Monday.', created_at: '2026-11-02T08:00:00.000Z', author: { first_name: 'Arben', last_name: 'Hoxha' } },
 ]
 
-const LIMITS = { id: 'a-1', title: 'Limits worksheet', due_at: '2026-10-20T16:00:00.000Z', max_points: 20 }
-const QUIZ = { id: 'a-2', title: 'Derivatives quiz', due_at: '2026-11-10T16:00:00.000Z', max_points: 10 }
+const LIMITS: GradeColumn = { kind: 'ASSIGNMENT', id: 'a-1', title: 'Limits worksheet', date: '2026-10-20T16:00:00.000Z', max_points: 20 }
+const UNIT_TEST: GradeColumn = { kind: 'TEST', id: 't-1', title: 'Unit 3 test', date: '2026-11-01T08:00:00.000Z', max_points: 40 }
+const QUIZ: GradeColumn = { kind: 'ASSIGNMENT', id: 'a-2', title: 'Derivatives quiz', date: '2026-11-10T16:00:00.000Z', max_points: 10 }
+const FINAL: GradeColumn = { kind: 'TEST', id: 't-2', title: 'Final', date: '2026-11-15T08:00:00.000Z', max_points: 100 }
 
 const GRADES: StudentGroupGrades[] = [
   {
     group: { id: 'group-a', name: 'Group A', course_name: 'Mathematics', is_archived: false },
     grades: [
-      { assignment: LIMITS, cell: { assignment_id: LIMITS.id, status: 'MARKED', points: 15, feedback: 'Check question 4.' } },
-      { assignment: QUIZ, cell: { assignment_id: QUIZ.id, status: 'MISSING', points: null, feedback: null } },
+      { column: LIMITS, cell: { column_id: LIMITS.id, status: 'MARKED', points: 15, feedback: 'Check question 4.' } },
+      { column: UNIT_TEST, cell: { column_id: UNIT_TEST.id, status: 'MARKED', points: 30, feedback: null } },
+      { column: QUIZ, cell: { column_id: QUIZ.id, status: 'MISSING', points: null, feedback: null } },
+      { column: FINAL, cell: { column_id: FINAL.id, status: 'ABSENT', points: null, feedback: null } },
     ],
-    average: { points: 15, max_points: 20, percent: 75 },
+    average: { points: 45, max_points: 60, percent: 75 },
   },
 ]
 
@@ -181,7 +185,7 @@ describe('MyChildPage', () => {
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
   })
 
-  it('shows the child’s marks with feedback and average in each group', async () => {
+  it('shows the child’s marks and test results with feedback and average in each group', async () => {
     signInAs(buildUser({ memberships: GUARDIAN_MEMBERSHIPS }))
     serve({ grades: GRADES })
     renderRoute(PATH)
@@ -192,7 +196,9 @@ describe('MyChildPage', () => {
     const items = groupA.getAllByRole('listitem')
     expect(within(items[0]).getByText('15 / 20')).toBeInTheDocument()
     expect(within(items[0]).getByText('Check question 4.')).toBeInTheDocument()
-    expect(within(items[1]).getByText('Missing')).toBeInTheDocument()
+    expect(within(items[1]).getByText('30 / 40')).toBeInTheDocument()
+    expect(within(items[2]).getByText('Missing')).toBeInTheDocument()
+    expect(within(items[3]).getByText('Absent')).toBeInTheDocument()
   })
 
   it('says when the child has no grades yet', async () => {

@@ -15,7 +15,7 @@ export function StudentGrades({ organizationId }: StudentGradesProps) {
 
   if (grades.status === 'error') return <LoadError what="grades" onRetry={() => void grades.refetch()} />
   if (!grades.data) return <SkeletonRows />
-  if (grades.data.length === 0) return <EmptyMessage icon={Award} title="No grades yet." text="Marks for your groups’ assignments show here." />
+  if (grades.data.length === 0) return <EmptyMessage icon={Award} title="No grades yet." text="Marks for your groups’ assignments and tests show here." />
   return (
     <div className="grid gap-5 px-[clamp(20px,3.4vw,44px)] pb-10">
       {grades.data.map((groupGrades) => (

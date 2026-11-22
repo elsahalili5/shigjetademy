@@ -52,6 +52,7 @@ import { Route as DashboardProfileRouteImport } from './routes/dashboard/profile
 import { Route as DashboardScheduleRouteImport } from './routes/dashboard/schedule'
 import { Route as DashboardStudentNotesRouteImport } from './routes/dashboard/student-notes'
 import { Route as DashboardStudentsRouteImport } from './routes/dashboard/students'
+import { Route as DashboardTestsRouteImport } from './routes/dashboard/tests'
 import { Route as InviteTokenRouteImport } from './routes/invite/$token'
 import { Route as OrganizationsNewRouteImport } from './routes/organizations/new'
 import { Route as appPlatformIndexRouteImport } from './routes/(app)/platform/index'
@@ -63,6 +64,7 @@ import { Route as DashboardGroupsGroupIdRouteImport } from './routes/dashboard/g
 import { Route as DashboardMyChildrenStudentIdRouteImport } from './routes/dashboard/my-children_.$studentId'
 import { Route as DashboardMyStudentsStudentIdRouteImport } from './routes/dashboard/my-students_.$studentId'
 import { Route as DashboardStudentsStudentIdRouteImport } from './routes/dashboard/students_.$studentId'
+import { Route as DashboardTestsTestIdRouteImport } from './routes/dashboard/tests_.$testId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -280,6 +282,11 @@ const DashboardStudentsRoute = DashboardStudentsRouteImport.update({
   path: '/students',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
+const DashboardTestsRoute = DashboardTestsRouteImport.update({
+  id: '/tests',
+  path: '/tests',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
 const InviteTokenRoute = InviteTokenRouteImport.update({
   id: '/invite/$token',
   path: '/invite/$token',
@@ -341,6 +348,11 @@ const DashboardStudentsStudentIdRoute =
     path: '/students/$studentId',
     getParentRoute: () => DashboardRouteRoute,
   } as any)
+const DashboardTestsTestIdRoute = DashboardTestsTestIdRouteImport.update({
+  id: '/tests_/$testId',
+  path: '/tests/$testId',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -383,6 +395,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/schedule': typeof DashboardScheduleRoute
   '/dashboard/student-notes': typeof DashboardStudentNotesRoute
   '/dashboard/students': typeof DashboardStudentsRoute
+  '/dashboard/tests': typeof DashboardTestsRoute
   '/invite/$token': typeof InviteTokenRoute
   '/organizations/new': typeof OrganizationsNewRoute
   '/dashboard/': typeof DashboardIndexRoute
@@ -394,6 +407,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/my-children/$studentId': typeof DashboardMyChildrenStudentIdRoute
   '/dashboard/my-students/$studentId': typeof DashboardMyStudentsStudentIdRoute
   '/dashboard/students/$studentId': typeof DashboardStudentsStudentIdRoute
+  '/dashboard/tests/$testId': typeof DashboardTestsTestIdRoute
   '/platform/': typeof appPlatformIndexRoute
 }
 export interface FileRoutesByTo {
@@ -436,6 +450,7 @@ export interface FileRoutesByTo {
   '/dashboard/schedule': typeof DashboardScheduleRoute
   '/dashboard/student-notes': typeof DashboardStudentNotesRoute
   '/dashboard/students': typeof DashboardStudentsRoute
+  '/dashboard/tests': typeof DashboardTestsRoute
   '/invite/$token': typeof InviteTokenRoute
   '/organizations/new': typeof OrganizationsNewRoute
   '/dashboard': typeof DashboardIndexRoute
@@ -447,6 +462,7 @@ export interface FileRoutesByTo {
   '/dashboard/my-children/$studentId': typeof DashboardMyChildrenStudentIdRoute
   '/dashboard/my-students/$studentId': typeof DashboardMyStudentsStudentIdRoute
   '/dashboard/students/$studentId': typeof DashboardStudentsStudentIdRoute
+  '/dashboard/tests/$testId': typeof DashboardTestsTestIdRoute
   '/platform': typeof appPlatformIndexRoute
 }
 export interface FileRoutesById {
@@ -493,6 +509,7 @@ export interface FileRoutesById {
   '/dashboard/schedule': typeof DashboardScheduleRoute
   '/dashboard/student-notes': typeof DashboardStudentNotesRoute
   '/dashboard/students': typeof DashboardStudentsRoute
+  '/dashboard/tests': typeof DashboardTestsRoute
   '/invite/$token': typeof InviteTokenRoute
   '/organizations/new': typeof OrganizationsNewRoute
   '/dashboard/': typeof DashboardIndexRoute
@@ -504,6 +521,7 @@ export interface FileRoutesById {
   '/dashboard/my-children_/$studentId': typeof DashboardMyChildrenStudentIdRoute
   '/dashboard/my-students_/$studentId': typeof DashboardMyStudentsStudentIdRoute
   '/dashboard/students_/$studentId': typeof DashboardStudentsStudentIdRoute
+  '/dashboard/tests_/$testId': typeof DashboardTestsTestIdRoute
   '/(app)/platform/': typeof appPlatformIndexRoute
 }
 export interface FileRouteTypes {
@@ -549,6 +567,7 @@ export interface FileRouteTypes {
     | '/dashboard/schedule'
     | '/dashboard/student-notes'
     | '/dashboard/students'
+    | '/dashboard/tests'
     | '/invite/$token'
     | '/organizations/new'
     | '/dashboard/'
@@ -560,6 +579,7 @@ export interface FileRouteTypes {
     | '/dashboard/my-children/$studentId'
     | '/dashboard/my-students/$studentId'
     | '/dashboard/students/$studentId'
+    | '/dashboard/tests/$testId'
     | '/platform/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -602,6 +622,7 @@ export interface FileRouteTypes {
     | '/dashboard/schedule'
     | '/dashboard/student-notes'
     | '/dashboard/students'
+    | '/dashboard/tests'
     | '/invite/$token'
     | '/organizations/new'
     | '/dashboard'
@@ -613,6 +634,7 @@ export interface FileRouteTypes {
     | '/dashboard/my-children/$studentId'
     | '/dashboard/my-students/$studentId'
     | '/dashboard/students/$studentId'
+    | '/dashboard/tests/$testId'
     | '/platform'
   id:
     | '__root__'
@@ -658,6 +680,7 @@ export interface FileRouteTypes {
     | '/dashboard/schedule'
     | '/dashboard/student-notes'
     | '/dashboard/students'
+    | '/dashboard/tests'
     | '/invite/$token'
     | '/organizations/new'
     | '/dashboard/'
@@ -669,6 +692,7 @@ export interface FileRouteTypes {
     | '/dashboard/my-children_/$studentId'
     | '/dashboard/my-students_/$studentId'
     | '/dashboard/students_/$studentId'
+    | '/dashboard/tests_/$testId'
     | '/(app)/platform/'
   fileRoutesById: FileRoutesById
 }
@@ -985,6 +1009,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardStudentsRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
+    '/dashboard/tests': {
+      id: '/dashboard/tests'
+      path: '/tests'
+      fullPath: '/dashboard/tests'
+      preLoaderRoute: typeof DashboardTestsRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
     '/invite/$token': {
       id: '/invite/$token'
       path: '/invite/$token'
@@ -1062,6 +1093,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardStudentsStudentIdRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
+    '/dashboard/tests_/$testId': {
+      id: '/dashboard/tests_/$testId'
+      path: '/tests/$testId'
+      fullPath: '/dashboard/tests/$testId'
+      preLoaderRoute: typeof DashboardTestsTestIdRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
   }
 }
 
@@ -1137,6 +1175,7 @@ interface DashboardRouteRouteChildren {
   DashboardScheduleRoute: typeof DashboardScheduleRoute
   DashboardStudentNotesRoute: typeof DashboardStudentNotesRoute
   DashboardStudentsRoute: typeof DashboardStudentsRoute
+  DashboardTestsRoute: typeof DashboardTestsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardAssignmentsAssignmentIdRoute: typeof DashboardAssignmentsAssignmentIdRoute
   DashboardClientsOrganizationIdRoute: typeof DashboardClientsOrganizationIdRoute
@@ -1145,6 +1184,7 @@ interface DashboardRouteRouteChildren {
   DashboardMyChildrenStudentIdRoute: typeof DashboardMyChildrenStudentIdRoute
   DashboardMyStudentsStudentIdRoute: typeof DashboardMyStudentsStudentIdRoute
   DashboardStudentsStudentIdRoute: typeof DashboardStudentsStudentIdRoute
+  DashboardTestsTestIdRoute: typeof DashboardTestsTestIdRoute
 }
 
 const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
@@ -1175,6 +1215,7 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardScheduleRoute: DashboardScheduleRoute,
   DashboardStudentNotesRoute: DashboardStudentNotesRoute,
   DashboardStudentsRoute: DashboardStudentsRoute,
+  DashboardTestsRoute: DashboardTestsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardAssignmentsAssignmentIdRoute: DashboardAssignmentsAssignmentIdRoute,
   DashboardClientsOrganizationIdRoute: DashboardClientsOrganizationIdRoute,
@@ -1183,6 +1224,7 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardMyChildrenStudentIdRoute: DashboardMyChildrenStudentIdRoute,
   DashboardMyStudentsStudentIdRoute: DashboardMyStudentsStudentIdRoute,
   DashboardStudentsStudentIdRoute: DashboardStudentsStudentIdRoute,
+  DashboardTestsTestIdRoute: DashboardTestsTestIdRoute,
 }
 
 const DashboardRouteRouteWithChildren = DashboardRouteRoute._addFileChildren(

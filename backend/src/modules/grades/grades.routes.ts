@@ -23,7 +23,7 @@ router.get(`${GRADES}/groups`, authMiddleware, organizationParam, usesGrades, Gr
 // A student's own results across all their groups
 router.get(`${GRADES}/mine`, authMiddleware, organizationParam, usesGrades, GradeController.listMine)
 
-// One group's students by assignments with points
+// One group's students by assignments with points and tests
 router.get(GRADES, authMiddleware, organizationParam, usesGrades, validateRequestMiddleware(gradeGroupQuerySchema, 'query'), GradeController.getGradebook)
 
 export default router

@@ -9,7 +9,7 @@ interface GradesPageProps {
   isStudent: boolean
 }
 
-/** A read-only gradebook filled in from marked assignments: lecturers and staff read a group's, students their own */
+/** A read-only gradebook filled in from marked assignments and recorded tests: lecturers and staff read a group's, students their own */
 export function GradesPage({ organizationId, organizationName, isStudent }: GradesPageProps) {
   return (
     <div className="flex h-full min-w-0 flex-col overflow-y-auto">

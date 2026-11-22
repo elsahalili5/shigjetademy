@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import type { MouseEvent, ReactNode } from 'react'
-import { Award, BookOpen, ChevronDown, ClipboardCheck, GraduationCap, List, LogOut, Menu, MessageSquareText, NotebookPen, PanelLeftClose, PanelLeftOpen, Presentation, School, Users, UsersRound, X } from 'lucide-react'
+import { Award, BookOpen, ChevronDown, ClipboardCheck, FileQuestion, GraduationCap, List, LogOut, Menu, MessageSquareText, NotebookPen, PanelLeftClose, PanelLeftOpen, Presentation, School, Users, UsersRound, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { hasOrganizationPermission } from '@shigjetademy/shared/auth'
 import type { Permission } from '@shigjetademy/shared/auth'
@@ -45,6 +45,7 @@ const BUILT_MODULE_PAGES = {
   materials: '/dashboard/materials',
   assignments: '/dashboard/assignments',
   grades: '/dashboard/grades',
+  tests: '/dashboard/tests',
 } as const
 
 const isBuiltModule = (slug: string): slug is keyof typeof BUILT_MODULE_PAGES => slug in BUILT_MODULE_PAGES
@@ -62,6 +63,7 @@ const MODULE_PERMISSIONS = {
   materials: ['MANAGE_MATERIALS'],
   assignments: ['MANAGE_GRADES'],
   grades: ['MANAGE_GRADES'],
+  tests: ['MANAGE_TESTS'],
 } as const satisfies Partial<Record<ModuleSlug, readonly Permission[]>>
 
 const isGatedModule = (slug: ModuleSlug): slug is keyof typeof MODULE_PERMISSIONS => slug in MODULE_PERMISSIONS
@@ -340,7 +342,7 @@ function SidebarNavigation({ membership, isAdmin }: SidebarNavigationProps) {
   return <ModuleNavigation isAdmin={isAdmin} hiddenSlugs={getHiddenModuleSlugs(membership)} />
 }
 
-/** Students have My school, Learning materials, Assignments, Grades and Communication; their profile is at the bottom of the sidebar like everyone's */
+/** Students have My school, Learning materials, Assignments, Tests, Grades and Communication; their profile is at the bottom of the sidebar like everyone's */
 function StudentNavigation() {
   const sidebar = useSidebarRail()
   return (
@@ -355,6 +357,7 @@ function StudentNavigation() {
         <SidebarLinkContent icon={BookOpen} label="Learning materials" />
       </Link>
       <AssignmentsLink />
+      <TestsLink />
       <GradesLink />
       <CommunicationNavGroup linkClassName={SIDEBAR_LINK_CLASS} />
     </>
@@ -366,6 +369,15 @@ function AssignmentsLink() {
   return (
     <Link to="/dashboard/assignments" className={SIDEBAR_LINK_CLASS} title={sidebar.isRail ? 'Assignments' : undefined}>
       <SidebarLinkContent icon={NotebookPen} label="Assignments" />
+    </Link>
+  )
+}
+
+function TestsLink() {
+  const sidebar = useSidebarRail()
+  return (
+    <Link to="/dashboard/tests" className={SIDEBAR_LINK_CLASS} title={sidebar.isRail ? 'Tests' : undefined}>
+      <SidebarLinkContent icon={FileQuestion} label="Tests" />
     </Link>
   )
 }
@@ -398,7 +410,7 @@ function GuardianNavigation() {
   )
 }
 
-/** Lecturers have My teaching, Students, Attendance, Lessons, Learning materials, Assignments, Grades and Communication; their profile is at the bottom of the sidebar like everyone's */
+/** Lecturers have My teaching, Students, Attendance, Lessons, Learning materials, Assignments, Tests, Grades and Communication; their profile is at the bottom of the sidebar like everyone's */
 function LecturerNavigation() {
   const sidebar = useSidebarRail()
   return (
@@ -420,6 +432,7 @@ function LecturerNavigation() {
         <SidebarLinkContent icon={BookOpen} label="Learning materials" />
       </Link>
       <AssignmentsLink />
+      <TestsLink />
       <GradesLink />
       <CommunicationNavGroup linkClassName={SIDEBAR_LINK_CLASS} />
     </>

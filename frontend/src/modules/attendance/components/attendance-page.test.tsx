@@ -433,7 +433,7 @@ describe('AttendancePage: access', () => {
     renderRoute('/dashboard/attendance')
 
     const modules = await screen.findByRole('navigation', { name: 'Modules' })
-    expect(within(modules).getAllByRole('link').map((link) => link.textContent)).toEqual(['My teaching', 'Attendance', 'Lessons', 'Learning materials', 'Assignments', 'Grades'])
+    expect(within(modules).getAllByRole('link').map((link) => link.textContent)).toEqual(['My teaching', 'Attendance', 'Lessons', 'Learning materials', 'Assignments', 'Tests', 'Grades'])
     // Students is a menu that opens to Students List and Student Notes
     expect(within(modules).getByRole('button', { name: 'Students' })).toHaveAttribute('aria-expanded', 'false')
     expect(within(modules).getByRole('link', { name: 'Attendance' })).toHaveAttribute('href', '/dashboard/attendance')

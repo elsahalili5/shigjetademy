@@ -31,7 +31,8 @@
     "./spaces": "./src/spaces.ts",
     "./materials": "./src/materials.ts",
     "./assignments": "./src/assignments.ts",
-    "./grades": "./src/grades.ts"
+    "./grades": "./src/grades.ts",
+    "./tests": "./src/tests.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

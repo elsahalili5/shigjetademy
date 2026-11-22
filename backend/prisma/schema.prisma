@@ -385,6 +385,8 @@ model Organization {
   materials            Material[]
   assignments          Assignment[]
   assignment_hand_ins  AssignmentSubmission[]
+  tests                Test[]
+  test_results         TestResult[]
 }
 
 /// How one organization runs. An organization without a row reads the defaults; the row is written on its first save.
@@ -564,6 +566,7 @@ model Student {
   guardians            StudentGuardian[]
   student_parent_notes StudentParentNote[]
   assignment_hand_ins  AssignmentSubmission[]
+  test_results         TestResult[]
 
   @@unique([organization_id, student_number])
   @@unique([organization_id, user_id])
@@ -761,6 +764,7 @@ model Group {
   discussion_topics    DiscussionTopic[]
   materials            Material[]
   assignments          Assignment[]
+  tests                Test[]
 
   @@unique([course_id, academic_year_id, name])
   @@index([organization_id, status])
@@ -961,6 +965,8 @@ model Membership {
   materials          Material[]
   assignments        Assignment[]
   marked_hand_ins    AssignmentSubmission[]
+  tests              Test[]
+  recorded_results   TestResult[]
 
   @@unique([user_id, organization_id])
   @@index([organization_id, role])
@@ -1322,4 +1328,61 @@ model AssignmentSubmission {
   @@index([organization_id])
   @@index([student_id])
   @@index([marked_by_membership_id])
+}
+
+// ─────────────────────────────────────────
+// TESTS
+// ─────────────────────────────────────────
+
+/// A paper or in-class test set for one group. Its lecturers, the owner and admins with MANAGE_TESTS set, change and remove it, and record each student's result.
+/// An archived group's tests stay readable and take no changes or results (kept by the tests service).
+model Test {
+  id                   String   @id @default(uuid()) @db.Uuid
+  organization_id      String   @db.Uuid
+  group_id             String   @db.Uuid
+  author_membership_id String   @db.Uuid
+  title                String
+  description          String?
+  held_at              DateTime
+  max_points           Int
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  group        Group        @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  author       Membership   @relation(fields: [author_membership_id], references: [id], onDelete: Cascade)
+  results      TestResult[]
+
+  @@index([organization_id, group_id, held_at])
+  @@index([group_id])
+  @@index([author_membership_id])
+}
+
+/// One student's result on a test: points out of its max, or absent with no points, and an optional note. Changed whenever the group's setters save the sheet again.
+model TestResult {
+  id                        String   @id @default(uuid()) @db.Uuid
+  organization_id           String   @db.Uuid
+  test_id                   String   @db.Uuid
+  student_id                String   @db.Uuid
+  /// Null when the student was absent
+  points                    Int?
+  is_absent                 Boolean  @default(false)
+  feedback                  String?
+  recorded_at               DateTime
+  /// Removing the recorder keeps the result
+  recorded_by_membership_id String?  @db.Uuid
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  test         Test         @relation(fields: [test_id], references: [id], onDelete: Cascade)
+  student      Student      @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  recorded_by  Membership?  @relation(fields: [recorded_by_membership_id], references: [id], onDelete: SetNull)
+
+  @@unique([test_id, student_id])
+  @@index([organization_id])
+  @@index([student_id])
+  @@index([recorded_by_membership_id])
 }

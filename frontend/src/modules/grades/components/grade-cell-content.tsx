@@ -6,7 +6,7 @@ interface GradeCellContentProps {
   maxPoints: number
 }
 
-/** One result: points out of the max once marked, Handed in, Missing past the due date, or nothing before it */
+/** One result: points out of the max once marked, Handed in or Missing for an assignment, Absent or Not recorded for a test, or nothing before its date */
 export function GradeCellContent({ cell, maxPoints }: GradeCellContentProps) {
   switch (cell.status) {
     case 'MARKED':
@@ -15,6 +15,10 @@ export function GradeCellContent({ cell, maxPoints }: GradeCellContentProps) {
       return <span className="text-ink-2">Handed in</span>
     case 'MISSING':
       return <span className="font-semibold text-coral-deep">Missing</span>
+    case 'ABSENT':
+      return <span className="text-ink-2">Absent</span>
+    case 'NOT_RECORDED':
+      return <span className="text-ink-3">Not recorded</span>
     case 'NOT_DUE':
       return null
     default: {

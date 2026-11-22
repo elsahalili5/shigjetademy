@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { Archive, Award } from 'lucide-react'
-import type { GradeGroup } from '@shigjetademy/shared/grades'
+import type { Gradebook, GradeGroup } from '@shigjetademy/shared/grades'
 import { EmptyMessage } from '#/components/EmptyMessage'
 import { LoadError } from '#/components/LoadError'
 import { SelectField } from '#/components/SelectField'
 import { SkeletonRows } from '#/components/SkeletonRows'
+import { StatusTabs } from '#/components/StatusTabs'
 import { useGradebook } from '../hooks/use-gradebook'
 import { useGradeGroups } from '../hooks/use-grade-groups'
+import { filterGradebook, getGradebookFilterCounts, GRADEBOOK_AVERAGE_LABELS, GRADEBOOK_FILTER_LABELS, GRADEBOOK_FILTERS } from '../utils/gradebook-filter'
+import type { GradebookFilter } from '../utils/gradebook-filter'
 import { GradebookTable } from './gradebook-table'
 
 interface GroupGradesProps {
@@ -70,7 +73,29 @@ function GroupGradebook({ organizationId, groupId }: GroupGradebookProps) {
 
   if (gradebook.status === 'error') return <LoadError what="gradebook" onRetry={() => void gradebook.refetch()} />
   if (!gradebook.data) return <SkeletonRows />
-  if (gradebook.data.assignments.length === 0) return <EmptyMessage icon={Award} title="No marks here yet." text="Assignments with points show here, and fill in as you mark them." />
+  if (gradebook.data.columns.length === 0) return <EmptyMessage icon={Award} title="No marks here yet." text="Assignments with points and tests show here, and fill in as you mark them." />
   if (gradebook.data.rows.length === 0) return <EmptyMessage icon={Award} title="No students in this group." text="Students enrolled in the group show here." />
-  return <GradebookTable gradebook={gradebook.data} />
+  return <FilteredGradebook gradebook={gradebook.data} />
+}
+
+interface FilteredGradebookProps {
+  gradebook: Gradebook
+}
+
+/** The gradebook, with tabs to show only its assignments or only its tests when it has both */
+function FilteredGradebook({ gradebook }: FilteredGradebookProps) {
+  const [filter, setFilter] = useState<GradebookFilter>('ALL')
+  const counts = getGradebookFilterCounts(gradebook)
+  const hasBothKinds = counts.ASSIGNMENT > 0 && counts.TEST > 0
+  // Another group may lack the kind picked before, so it shows everything
+  const shownFilter = hasBothKinds ? filter : 'ALL'
+
+  return (
+    <>
+      {hasBothKinds ? (
+        <StatusTabs label="Show columns" statuses={GRADEBOOK_FILTERS} labels={GRADEBOOK_FILTER_LABELS} counts={counts} current={shownFilter} onChange={setFilter} />
+      ) : null}
+      <GradebookTable gradebook={filterGradebook({ gradebook, filter: shownFilter })} averageLabel={GRADEBOOK_AVERAGE_LABELS[shownFilter]} />
+    </>
+  )
 }
