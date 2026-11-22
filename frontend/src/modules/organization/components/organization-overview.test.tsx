@@ -205,10 +205,10 @@ describe('dashboard sidebar', () => {
     // Communication is an expandable group between Members and Organization settings
     expect(within(organization).getByRole('button', { name: 'Communication' })).toHaveAttribute('aria-expanded', 'false')
     expect(within(organization).getByRole('link', { name: 'Members and permissions' })).toHaveAttribute('href', '/dashboard/members')
-    expect(within(sidebar).getByRole('group', { name: 'Finance' })).toHaveTextContent('PaymentsFinancial recordsReports')
+    expect(within(sidebar).getByRole('group', { name: 'Finance' })).toHaveTextContent('PaymentsFinancial records')
   })
 
-  it('keeps the flat module list for a school admin, without members, or students, lecturers, courses, attendance, grades and tests unless they may keep them', async () => {
+  it('keeps the flat module list for a school admin, without members, or students, lecturers, courses, attendance, grades, reports and tests unless they may keep them', async () => {
     signInAsSchoolAdmin()
     renderRoute('/dashboard/academic-periods')
 
@@ -216,6 +216,7 @@ describe('dashboard sidebar', () => {
     expect(within(sidebar).getByRole('link', { name: 'Payments & invoicing' })).toBeInTheDocument()
     expect(within(sidebar).queryByRole('link', { name: 'Tests' })).not.toBeInTheDocument()
     expect(within(sidebar).queryByRole('link', { name: 'Grades' })).not.toBeInTheDocument()
+    expect(within(sidebar).queryByRole('link', { name: 'Performance & reports' })).not.toBeInTheDocument()
     expect(within(sidebar).queryByRole('link', { name: 'Attendance' })).not.toBeInTheDocument()
     expect(within(sidebar).queryByRole('link', { name: 'Courses' })).not.toBeInTheDocument()
     expect(within(sidebar).queryByRole('link', { name: 'Lecturers' })).not.toBeInTheDocument()

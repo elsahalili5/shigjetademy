@@ -91,13 +91,13 @@ describe('My teaching', () => {
     expect(movedAway).toHaveTextContent('Another lecturer takes it on the new date.')
   })
 
-  it('shows a lecturer My teaching, Students, Attendance, Lessons, Learning materials, Assignments, Tests and Grades in the sidebar', async () => {
+  it('shows a lecturer My teaching, Students, Attendance, Lessons, Learning materials, Assignments, Tests, Grades and Reports in the sidebar', async () => {
     signInAs(LECTURER)
     serveMyTeaching()
     renderRoute('/dashboard/my-teaching')
 
     const modules = await screen.findByRole('navigation', { name: 'Modules' })
-    expect(within(modules).getAllByRole('link').map((link) => link.textContent)).toEqual(['My teaching', 'Attendance', 'Lessons', 'Learning materials', 'Assignments', 'Tests', 'Grades'])
+    expect(within(modules).getAllByRole('link').map((link) => link.textContent)).toEqual(['My teaching', 'Attendance', 'Lessons', 'Learning materials', 'Assignments', 'Tests', 'Grades', 'Reports'])
     // Students is a menu that opens to Students List and Student Notes
     expect(within(modules).getByRole('button', { name: 'Students' })).toHaveAttribute('aria-expanded', 'false')
   })

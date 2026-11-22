@@ -1,3 +1,4 @@
+import { PERCENT } from '@shigjetademy/shared/grades'
 import type { GradeAverage, Gradebook, GradeCell, GradeColumn, GradeColumnKind } from '@shigjetademy/shared/grades'
 
 export const GRADEBOOK_FILTERS = ['ALL', 'ASSIGNMENT', 'TEST'] as const
@@ -16,8 +17,6 @@ type FilterGradebookParams = {
   gradebook: Gradebook
   filter: GradebookFilter
 }
-
-const PERCENT = 100
 
 type GetKindAverageParams = {
   columns: GradeColumn[]

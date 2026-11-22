@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import type { MouseEvent, ReactNode } from 'react'
-import { Award, BookOpen, ChevronDown, ClipboardCheck, FileQuestion, GraduationCap, List, LogOut, Menu, MessageSquareText, NotebookPen, PanelLeftClose, PanelLeftOpen, Presentation, School, Users, UsersRound, X } from 'lucide-react'
+import { Award, BookOpen, ChevronDown, ClipboardCheck, FileQuestion, GraduationCap, List, LogOut, Menu, MessageSquareText, NotebookPen, PanelLeftClose, PanelLeftOpen, Presentation, School, TrendingUp, Users, UsersRound, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { hasOrganizationPermission } from '@shigjetademy/shared/auth'
 import type { Permission } from '@shigjetademy/shared/auth'
@@ -47,6 +47,7 @@ const BUILT_MODULE_PAGES = {
   assignments: '/dashboard/assignments',
   grades: '/dashboard/grades',
   tests: '/dashboard/tests',
+  performance: '/dashboard/performance',
 } as const
 
 const isBuiltModule = (slug: string): slug is keyof typeof BUILT_MODULE_PAGES => slug in BUILT_MODULE_PAGES
@@ -65,6 +66,7 @@ const MODULE_PERMISSIONS = {
   assignments: ['MANAGE_GRADES'],
   grades: ['MANAGE_GRADES'],
   tests: ['MANAGE_TESTS'],
+  performance: ['MANAGE_GRADES'],
 } as const satisfies Partial<Record<ModuleSlug, readonly Permission[]>>
 
 const isGatedModule = (slug: ModuleSlug): slug is keyof typeof MODULE_PERMISSIONS => slug in MODULE_PERMISSIONS
@@ -108,26 +110,26 @@ function DashboardLayout() {
 
   const panel = (
     // data-flush-end opts out of the marketing pages' bottom padding on main's last child
-    <div className="h-full" data-flush-end>
+    <div className="h-full print:h-auto" data-flush-end>
       <DashboardPanel organizationStatus={organizationStatus} organizationName={organizationName} isOwner={isOwner} />
     </div>
   )
 
   if (isNarrow) {
     return (
-      <div className="flex min-h-svh flex-col bg-navy">
+      <div className="flex min-h-svh flex-col bg-navy print:block print:min-h-0 print:bg-white">
         <MobileSidebar />
-        <main className="relative min-h-[70svh] flex-1 overflow-hidden rounded-t-[24px] bg-white">{panel}</main>
+        <main className="relative min-h-[70svh] flex-1 overflow-hidden rounded-t-[24px] bg-white print:min-h-0 print:overflow-visible print:rounded-none">{panel}</main>
       </div>
     )
   }
 
   return (
-    <div className="h-svh bg-navy">
+    <div className="h-svh bg-navy print:h-auto print:bg-white">
       <div
-        className={`grid h-full transition-[grid-template-columns] duration-200 ease-out motion-reduce:transition-none ${isRail ? 'grid-cols-[76px_minmax(0,1fr)]' : 'grid-cols-[minmax(248px,288px)_minmax(0,1fr)]'}`}
+        className={`grid h-full transition-[grid-template-columns] print:block print:h-auto duration-200 ease-out motion-reduce:transition-none ${isRail ? 'grid-cols-[76px_minmax(0,1fr)]' : 'grid-cols-[minmax(248px,288px)_minmax(0,1fr)]'}`}
       >
-        <aside data-sidebar={isRail ? 'rail' : 'full'} className="flex min-h-0 min-w-0 flex-col gap-5 px-3 py-4">
+        <aside data-sidebar={isRail ? 'rail' : 'full'} className="flex min-h-0 min-w-0 flex-col gap-5 px-3 py-4 print:hidden">
           <SidebarRailContext value={{ isRail, expand: () => handleCollapsedChange(false) }}>
             <SidebarBody
               headerAction={
@@ -145,7 +147,7 @@ function DashboardLayout() {
           </SidebarRailContext>
         </aside>
 
-        <main className="relative min-h-0 overflow-hidden rounded-l-[24px] bg-white">{panel}</main>
+        <main className="relative min-h-0 overflow-hidden rounded-l-[24px] bg-white print:overflow-visible print:rounded-none">{panel}</main>
       </div>
     </div>
   )
@@ -177,7 +179,7 @@ function MobileSidebar() {
 
   return (
     <>
-      <header className="flex items-center justify-between gap-3 px-4 py-3">
+      <header className="flex items-center justify-between gap-3 px-4 py-3 print:hidden">
         <SidebarWordmark />
         <button type="button" onClick={handleOpen} className={`${SIDEBAR_ICON_BUTTON_CLASS} size-11`} aria-label="Open menu" aria-expanded={isOpen} aria-haspopup="dialog">
           <Menu size={22} strokeWidth={1.9} aria-hidden="true" />
@@ -412,7 +414,7 @@ function GuardianNavigation() {
   )
 }
 
-/** Lecturers have My teaching, Students, Attendance, Lessons, Learning materials, Assignments, Tests, Grades and Communication; their profile is at the bottom of the sidebar like everyone's */
+/** Lecturers have My teaching, Students, Attendance, Lessons, Learning materials, Assignments, Tests, Grades, Reports and Communication; their profile is at the bottom of the sidebar like everyone's */
 function LecturerNavigation() {
   const sidebar = useSidebarRail()
   return (
@@ -436,6 +438,9 @@ function LecturerNavigation() {
       <AssignmentsLink />
       <TestsLink />
       <GradesLink />
+      <Link to="/dashboard/performance" className={SIDEBAR_LINK_CLASS} title={sidebar.isRail ? 'Reports' : undefined}>
+        <SidebarLinkContent icon={TrendingUp} label="Reports" />
+      </Link>
       <CommunicationNavGroup linkClassName={SIDEBAR_LINK_CLASS} />
     </>
   )

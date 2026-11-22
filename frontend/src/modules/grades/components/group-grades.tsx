@@ -10,6 +10,7 @@ import { useGradebook } from '../hooks/use-gradebook'
 import { useGradeGroups } from '../hooks/use-grade-groups'
 import { filterGradebook, getGradebookFilterCounts, GRADEBOOK_AVERAGE_LABELS, GRADEBOOK_FILTER_LABELS, GRADEBOOK_FILTERS } from '../utils/gradebook-filter'
 import type { GradebookFilter } from '../utils/gradebook-filter'
+import { getGroupLabel } from '../utils/group-label'
 import { GradebookTable } from './gradebook-table'
 
 interface GroupGradesProps {
@@ -30,8 +31,6 @@ interface PickedGroupGradesProps extends GroupGradesProps {
   groups: GradeGroup[]
 }
 
-const groupLabel = (group: GradeGroup) => `${group.name} · ${group.course_name}${group.is_archived ? ' (archived)' : ''}`
-
 /** The group picker, and the chosen group's gradebook under it */
 function PickedGroupGrades({ organizationId, groups }: PickedGroupGradesProps) {
   const [pickedId, setPickedId] = useState<string | null>(null)
@@ -44,7 +43,7 @@ function PickedGroupGrades({ organizationId, groups }: PickedGroupGradesProps) {
           <SelectField id="grade-group-picker" label="Group" value={group.id} onChange={(event) => setPickedId(event.target.value)}>
             {groups.map((item) => (
               <option key={item.id} value={item.id}>
-                {groupLabel(item)}
+                {getGroupLabel(item)}
               </option>
             ))}
           </SelectField>

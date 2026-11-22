@@ -1,4 +1,5 @@
 import { useId } from 'react'
+import type { ReactNode } from 'react'
 import type { StudentGrade, StudentGroupGrades as StudentGroupGradesValue } from '@shigjetademy/shared/grades'
 import { useFormatDate } from '#/lib/use-format-date'
 import { getColumnDateLabel } from '../utils/column-date-label'
@@ -9,10 +10,12 @@ interface StudentGroupGradesProps {
   groupGrades: StudentGroupGradesValue
   /** h3 when the card sits inside a titled section, like on a child's page */
   headingLevel?: 'h2' | 'h3'
+  /** Shown across the bottom of the card's header, like a meter of the average */
+  headerExtra?: ReactNode
 }
 
 /** One group's card: one student's results there by date, with their average */
-export function StudentGroupGrades({ groupGrades, headingLevel: Heading = 'h2' }: StudentGroupGradesProps) {
+export function StudentGroupGrades({ groupGrades, headingLevel: Heading = 'h2', headerExtra }: StudentGroupGradesProps) {
   const headingId = useId()
   const { group, grades, average } = groupGrades
   return (
@@ -22,6 +25,7 @@ export function StudentGroupGrades({ groupGrades, headingLevel: Heading = 'h2' }
           {group.name} · {group.course_name}
         </Heading>
         <p className="font-semibold text-ink-2 tabular-nums">{average ? `Average ${formatGradeAverage(average)}` : 'No average yet'}</p>
+        {headerExtra ? <div className="mt-1.5 basis-full">{headerExtra}</div> : null}
       </header>
       {grades.length === 0 ? (
         <p className="px-5 py-4 text-ink-2">No marks yet.</p>
