@@ -32,6 +32,7 @@ import { Route as DashboardAssignmentsRouteImport } from './routes/dashboard/ass
 import { Route as DashboardAttendanceRouteImport } from './routes/dashboard/attendance'
 import { Route as DashboardCoursesRouteImport } from './routes/dashboard/courses'
 import { Route as DashboardDiscussionsRouteImport } from './routes/dashboard/discussions'
+import { Route as DashboardFocusRouteImport } from './routes/dashboard/focus'
 import { Route as DashboardGradesRouteImport } from './routes/dashboard/grades'
 import { Route as DashboardGroupsRouteImport } from './routes/dashboard/groups'
 import { Route as DashboardInboxRouteImport } from './routes/dashboard/inbox'
@@ -178,6 +179,11 @@ const DashboardCoursesRoute = DashboardCoursesRouteImport.update({
 const DashboardDiscussionsRoute = DashboardDiscussionsRouteImport.update({
   id: '/discussions',
   path: '/discussions',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+const DashboardFocusRoute = DashboardFocusRouteImport.update({
+  id: '/focus',
+  path: '/focus',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
 const DashboardGradesRoute = DashboardGradesRouteImport.update({
@@ -375,6 +381,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/attendance': typeof DashboardAttendanceRoute
   '/dashboard/courses': typeof DashboardCoursesRoute
   '/dashboard/discussions': typeof DashboardDiscussionsRoute
+  '/dashboard/focus': typeof DashboardFocusRoute
   '/dashboard/grades': typeof DashboardGradesRoute
   '/dashboard/groups': typeof DashboardGroupsRoute
   '/dashboard/inbox': typeof DashboardInboxRoute
@@ -430,6 +437,7 @@ export interface FileRoutesByTo {
   '/dashboard/attendance': typeof DashboardAttendanceRoute
   '/dashboard/courses': typeof DashboardCoursesRoute
   '/dashboard/discussions': typeof DashboardDiscussionsRoute
+  '/dashboard/focus': typeof DashboardFocusRoute
   '/dashboard/grades': typeof DashboardGradesRoute
   '/dashboard/groups': typeof DashboardGroupsRoute
   '/dashboard/inbox': typeof DashboardInboxRoute
@@ -489,6 +497,7 @@ export interface FileRoutesById {
   '/dashboard/attendance': typeof DashboardAttendanceRoute
   '/dashboard/courses': typeof DashboardCoursesRoute
   '/dashboard/discussions': typeof DashboardDiscussionsRoute
+  '/dashboard/focus': typeof DashboardFocusRoute
   '/dashboard/grades': typeof DashboardGradesRoute
   '/dashboard/groups': typeof DashboardGroupsRoute
   '/dashboard/inbox': typeof DashboardInboxRoute
@@ -547,6 +556,7 @@ export interface FileRouteTypes {
     | '/dashboard/attendance'
     | '/dashboard/courses'
     | '/dashboard/discussions'
+    | '/dashboard/focus'
     | '/dashboard/grades'
     | '/dashboard/groups'
     | '/dashboard/inbox'
@@ -602,6 +612,7 @@ export interface FileRouteTypes {
     | '/dashboard/attendance'
     | '/dashboard/courses'
     | '/dashboard/discussions'
+    | '/dashboard/focus'
     | '/dashboard/grades'
     | '/dashboard/groups'
     | '/dashboard/inbox'
@@ -660,6 +671,7 @@ export interface FileRouteTypes {
     | '/dashboard/attendance'
     | '/dashboard/courses'
     | '/dashboard/discussions'
+    | '/dashboard/focus'
     | '/dashboard/grades'
     | '/dashboard/groups'
     | '/dashboard/inbox'
@@ -867,6 +879,13 @@ declare module '@tanstack/react-router' {
       path: '/discussions'
       fullPath: '/dashboard/discussions'
       preLoaderRoute: typeof DashboardDiscussionsRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
+    '/dashboard/focus': {
+      id: '/dashboard/focus'
+      path: '/focus'
+      fullPath: '/dashboard/focus'
+      preLoaderRoute: typeof DashboardFocusRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
     '/dashboard/grades': {
@@ -1155,6 +1174,7 @@ interface DashboardRouteRouteChildren {
   DashboardAttendanceRoute: typeof DashboardAttendanceRoute
   DashboardCoursesRoute: typeof DashboardCoursesRoute
   DashboardDiscussionsRoute: typeof DashboardDiscussionsRoute
+  DashboardFocusRoute: typeof DashboardFocusRoute
   DashboardGradesRoute: typeof DashboardGradesRoute
   DashboardGroupsRoute: typeof DashboardGroupsRoute
   DashboardInboxRoute: typeof DashboardInboxRoute
@@ -1195,6 +1215,7 @@ const DashboardRouteRouteChildren: DashboardRouteRouteChildren = {
   DashboardAttendanceRoute: DashboardAttendanceRoute,
   DashboardCoursesRoute: DashboardCoursesRoute,
   DashboardDiscussionsRoute: DashboardDiscussionsRoute,
+  DashboardFocusRoute: DashboardFocusRoute,
   DashboardGradesRoute: DashboardGradesRoute,
   DashboardGroupsRoute: DashboardGroupsRoute,
   DashboardInboxRoute: DashboardInboxRoute,
