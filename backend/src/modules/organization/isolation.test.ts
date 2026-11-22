@@ -286,6 +286,9 @@ const SCOPED_ENDPOINTS: ScopedEndpoint[] = [
   { method: 'get', route: '/:organizationId/grades/groups' },
   { method: 'get', route: '/:organizationId/grades/mine' },
   { method: 'get', route: '/:organizationId/grades' },
+  { method: 'get', route: '/:organizationId/grades/overview' },
+  { method: 'get', route: '/:organizationId/grades/overview/groups/:groupId' },
+  { method: 'get', route: '/:organizationId/grades/students/:studentId/report' },
   { method: 'get', route: '/:organizationId/tests/groups' },
   { method: 'get', route: '/:organizationId/tests/mine' },
   { method: 'get', route: '/:organizationId/tests' },
@@ -623,6 +626,7 @@ describe('organization isolation', () => {
     const testInYllkaGroup = await send({ method: 'post', route: '/:organizationId/tests', body: { ...TEST, group_id: yllka.groupId }, ids: oxford, auth: oxfordOwnerAuth })
     const readYllkaGroupTests = await send({ method: 'get', route: `/:organizationId/tests?group_id=${yllka.groupId}`, ids: oxford, auth: oxfordOwnerAuth })
     const readYllkaGradebook = await send({ method: 'get', route: `/:organizationId/grades?group_id=${yllka.groupId}`, ids: oxford, auth: oxfordOwnerAuth })
+    const readYllkaTermOverview = await send({ method: 'get', route: `/:organizationId/grades/overview?term_id=${yllka.termId}`, ids: oxford, auth: oxfordOwnerAuth })
     const readYllkaGroupMaterials = await send({ method: 'get', route: `/:organizationId/materials?space_kind=GROUP&space_id=${yllka.groupId}`, ids: oxford, auth: oxfordOwnerAuth })
     const yllkaMessageInOxfordConversation: TargetIds = { ...oxford, messageId: yllka.messageId }
     const editedYllkaMessage = await send({ method: 'put', route: '/:organizationId/inbox/conversations/:conversationId/messages/:messageId', body: MESSAGE, ids: yllkaMessageInOxfordConversation, auth: oxfordOwnerAuth })
@@ -685,6 +689,7 @@ describe('organization isolation', () => {
     expect(assignmentInYllkaGroup.status).toBe(404)
     expect(readYllkaGroupAssignments.status).toBe(404)
     expect(readYllkaGradebook.status).toBe(404)
+    expect(readYllkaTermOverview.status).toBe(404)
     expect(testInYllkaGroup.status).toBe(404)
     expect(readYllkaGroupTests.status).toBe(404)
     expect(await prisma.test.count({ where: { organization_id: oxford.organizationId } })).toBe(1)

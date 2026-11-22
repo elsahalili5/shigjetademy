@@ -6,6 +6,8 @@ import { NotificationBell } from './NotificationBell'
 export interface DashboardPageHeaderBackTo {
   to: string
   label: string
+  /** Search params to return with, like the filters picked on that page */
+  search?: Record<string, string>
 }
 
 interface DashboardPageHeaderProps {
@@ -34,13 +36,13 @@ export function DashboardPageHeader({ icon: Icon, title, subtitle, backTo, child
             <p className="mt-1.5 text-ink-2">{subtitle}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3 self-center">
+        <div className="flex items-center gap-3 self-center print:hidden">
           {children}
           <NotificationBell />
         </div>
       </div>
       {backTo ? (
-        <Link className="button button--ghost mt-4 min-h-11 px-4 text-base" to={backTo.to}>
+        <Link className="button button--ghost mt-4 min-h-11 px-4 text-base print:hidden" to={backTo.to} search={backTo.search}>
           <ArrowLeft size={17} strokeWidth={2.2} aria-hidden="true" />
           {backTo.label}
         </Link>

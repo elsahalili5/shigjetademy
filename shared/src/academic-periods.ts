@@ -18,6 +18,14 @@ export type DayRange = {
   end_date: string
 }
 
+type IsDayWithinParams = {
+  range: DayRange
+  day: string
+}
+
+/** Whether a 'YYYY-MM-DD' calendar day falls inside the range, both days included */
+export const isDayWithin = ({ range, day }: IsDayWithinParams) => range.start_date <= day && day <= range.end_date
+
 const endsAfterStart = ({ start_date, end_date }: DayRange) => end_date > start_date
 
 export const academicYearSchema = z

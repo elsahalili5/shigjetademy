@@ -29,6 +29,9 @@ export const getOrganizationCalendar = async (params: GetOrganizationTodayParams
   return { today: todayIn(settings.time_zone), weekStart: settings.week_start }
 }
 
+/** The organization's time zone, to read a moment's calendar day there */
+export const getOrganizationTimeZone = async (params: GetOrganizationTodayParams) => (await readSettings(params)).time_zone
+
 /** The organization's calendar day as 'YYYY-MM-DD' and its wall-clock time as 'HH:MM' right now */
 export const getOrganizationNow = async (params: GetOrganizationTodayParams) => nowIn((await readSettings(params)).time_zone)
 

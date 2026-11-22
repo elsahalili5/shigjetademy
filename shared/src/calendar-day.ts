@@ -16,6 +16,12 @@ export const nowIn = (timeZone: string) => {
   return { day: `${part('year')}-${part('month')}-${part('day')}`, clock: `${part('hour')}:${part('minute')}` }
 }
 
+/** Reads the calendar day a moment falls on in the time zone, as 'YYYY-MM-DD'. Make one per time zone and reuse it: it builds its formatter once. */
+export const createDayReader = (timeZone: string) => {
+  const format = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' })
+  return (moment: Date) => format.format(moment)
+}
+
 /** Today as a 'YYYY-MM-DD' calendar day in the time zone */
 export const todayIn = (timeZone: string) => nowIn(timeZone).day
 

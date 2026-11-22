@@ -1,16 +1,13 @@
 // Which lesson sessions a group has on a day, their edit windows and who takes their registers, worked out from data that already exists:
 // the schedule, the term or school year, holidays, reschedules, registers on record, lecturer assignments and substitutions. This is the one place that answers it.
 // A session is a group on a day at a start time. Days are 'YYYY-MM-DD' and times 'HH:MM', so they compare as strings.
+import { isDayWithin } from '@shigjetademy/shared/academic-periods'
+import type { DayRange } from '@shigjetademy/shared/academic-periods'
 import type { AttendanceWindow } from '@shigjetademy/shared/attendance'
 import { getWeekday } from '@shigjetademy/shared/calendar-day'
 import type { Weekday } from '@shigjetademy/shared/groups'
 import { getLecturerIdOn } from '@modules/groups/lecturer-timeline.ts'
 import type { TimelineRow } from '@modules/groups/lecturer-timeline.ts'
-
-type DayRange = {
-  start_date: string
-  end_date: string
-}
 
 type Meeting = {
   weekday: Weekday
@@ -49,13 +46,6 @@ export type Reschedule = {
   new_end_time: string
 }
 
-type IsWithinParams = {
-  range: DayRange
-  day: string
-}
-
-const isWithin = ({ range, day }: IsWithinParams) => range.start_date <= day && day <= range.end_date
-
 type GroupOnDayParams = {
   group: LessonGroup
   day: string
@@ -76,8 +66,8 @@ const byStart = (a: Slot, b: Slot) => a.start_time.localeCompare(b.start_time)
 
 /** Why the weekly schedule doesn't run on the day, if so: outside the group's term or year, or on a holiday */
 export const getOffScheduleReason = ({ group, day }: GroupOnDayParams) => {
-  if (!isWithin({ range: group.period, day })) return 'OUTSIDE_PERIOD'
-  if (group.holidays.some((range) => isWithin({ range, day }))) return 'HOLIDAY'
+  if (!isDayWithin({ range: group.period, day })) return 'OUTSIDE_PERIOD'
+  if (group.holidays.some((range) => isDayWithin({ range, day }))) return 'HOLIDAY'
   return null
 }
 
@@ -164,7 +154,7 @@ export const getSession = ({ startTime, ...params }: GetSessionParams) => getSes
 export const getPermanentLecturerId = ({ group, day }: GroupOnDayParams) => getLecturerIdOn({ rows: group.assignments, day })
 
 /** The substitution covering the day, if any */
-export const getSubstitution = ({ group, day }: GroupOnDayParams) => group.substitutions.find((substitution) => isWithin({ range: substitution, day })) ?? null
+export const getSubstitution = ({ group, day }: GroupOnDayParams) => group.substitutions.find((substitution) => isDayWithin({ range: substitution, day })) ?? null
 
 /** Who teaches the group on the day: the substitute covering it, otherwise the permanent lecturer */
 export const getTeachingLecturerId = ({ group, day }: GroupOnDayParams) => getSubstitution({ group, day })?.lecturer_id ?? getPermanentLecturerId({ group, day })

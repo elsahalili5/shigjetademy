@@ -1,4 +1,4 @@
-import { Award, BookOpen,Building2, CalendarClock, CalendarRange, ClipboardCheck, FileQuestion, GraduationCap, Layers, LayoutDashboard, MapPin, NotebookPen, Presentation, Settings, UserCog, Users, UsersRound } from 'lucide-react'
+import { Award, BookOpen,Building2, CalendarClock, CalendarRange, ClipboardCheck, FileQuestion, GraduationCap, Layers, LayoutDashboard, MapPin, NotebookPen, Presentation, Settings, TrendingUp, UserCog, Users, UsersRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ModuleSlug } from './modules'
 
@@ -26,6 +26,7 @@ export type OwnerNavItem =
         | '/dashboard/assignments'
         | '/dashboard/grades'
         | '/dashboard/tests'
+        | '/dashboard/performance'
       label: string
       icon: LucideIcon
     }
@@ -70,6 +71,7 @@ export const OWNER_NAV_SECTIONS: OwnerNavSection[] = [
       { kind: 'page', to: '/dashboard/tests', label: 'Tests', icon: FileQuestion },
       { kind: 'page', to: '/dashboard/attendance', label: 'Attendance', icon: ClipboardCheck },
       { kind: 'page', to: '/dashboard/grades', label: 'Grades', icon: Award },
+      { kind: 'page', to: '/dashboard/performance', label: 'Reports', icon: TrendingUp },
     ],
   },
   {
@@ -77,7 +79,6 @@ export const OWNER_NAV_SECTIONS: OwnerNavSection[] = [
     items: [
       { kind: 'module', slug: 'payments', label: 'Payments' },
       { kind: 'module', slug: 'financial-records' },
-      { kind: 'module', slug: 'performance', label: 'Reports' },
     ],
   },
 ]

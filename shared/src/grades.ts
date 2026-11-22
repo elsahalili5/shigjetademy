@@ -1,11 +1,25 @@
 // Grades: a read-only gradebook filled in from marked assignment hand-ins and recorded test results. Nothing is stored for it; each cell and average is worked out when it is read.
 import { z } from 'zod'
+import type { AcademicTerm } from './academic-periods.ts'
 
 export const gradeGroupQuerySchema = z.object({
   group_id: z.uuid('Choose a group.'),
 })
 
 export type GradeGroupQuery = z.infer<typeof gradeGroupQuerySchema>
+
+/** A report covers one term; without one it covers the term that holds today */
+export const gradeReportQuerySchema = z.object({
+  term_id: z.uuid('Choose a term.').optional(),
+})
+
+export type GradeReportQuery = z.infer<typeof gradeReportQuerySchema>
+
+/** A whole: averages are points over max points times this */
+export const PERCENT = 100
+
+/** Students averaging under this percent are flagged in reports */
+export const PASS_MARK_PERCENT = 50
 
 /** A group the viewer reads grades for */
 export type GradeGroup = {
@@ -79,4 +93,51 @@ export type StudentGroupGrades = {
   group: GradeGroup
   grades: StudentGrade[]
   average: GradeAverage | null
+}
+
+/** A term a report can cover, with the name of its year, since terms of different years often share a name */
+export type ReportTerm = AcademicTerm & {
+  year_name: string
+}
+
+/** The terms to pick from, newest first, and the one the report covers; null when no terms are set up, so every date counts */
+export type ReportTerms = {
+  terms: ReportTerm[]
+  term: ReportTerm | null
+}
+
+/** The average over marked work, and how much work is marked or missing; only assignments are ever missing */
+export type Performance = {
+  average: GradeAverage | null
+  marked_count: number
+  missing_count: number
+}
+
+/** How one group did in the term: its actively enrolled students and all their work together */
+export type GroupPerformance = Performance & {
+  group: GradeGroup
+  student_count: number
+}
+
+/** Every group the viewer reaches, by name, for one term, and how many students average under the pass mark in at least one of them */
+export type GradeOverview = ReportTerms & {
+  groups: GroupPerformance[]
+  below_pass_count: number
+}
+
+/** How one student did in a group in the term */
+export type StudentPerformance = Performance & {
+  student: GradeStudent
+}
+
+/** One group's actively enrolled students, by name, for one term */
+export type GroupReport = ReportTerms & {
+  group: GradeGroup
+  students: StudentPerformance[]
+}
+
+/** One student's report for one term: their work and average in each group the viewer reaches and they are actively enrolled in, by group name */
+export type StudentReport = ReportTerms & {
+  student: GradeStudent
+  groups: StudentGroupGrades[]
 }

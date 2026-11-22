@@ -4,11 +4,17 @@ import type { AuthRequest, TypedRequest } from '@lib/types.ts'
 import type { SpaceViewer } from '@modules/groups/space-access.ts'
 import type { OrganizationIdParam } from '@modules/organization/organization.types.ts'
 import { GradeService } from './grades.service.ts'
-import type { GradeGroupQuery } from './grades.types.ts'
+import type { GradeGroupParam, GradeGroupQuery, GradeReportQuery, GradeStudentParam } from './grades.types.ts'
 
 type OrganizationRequest = AuthRequest & TypedRequest<unknown, OrganizationIdParam>
 
 type GradebookRequest = AuthRequest & TypedRequest<unknown, OrganizationIdParam, GradeGroupQuery>
+
+type OverviewRequest = AuthRequest & TypedRequest<unknown, OrganizationIdParam, GradeReportQuery>
+
+type GroupReportRequest = AuthRequest & TypedRequest<unknown, GradeGroupParam, GradeReportQuery>
+
+type StudentReportRequest = AuthRequest & TypedRequest<unknown, GradeStudentParam, GradeReportQuery>
 
 /** The caller's seat in the organization of the path; the route already checked they may read grades there */
 const findViewer = (req: AuthRequest): SpaceViewer | null => {
@@ -37,6 +43,39 @@ export const GradeController = {
       return res.status(200).json({ data: gradebook })
     } catch (error) {
       return sendError({ res, error, fallback: 'Failed to fetch the gradebook' })
+    }
+  },
+
+  getOverview: async (req: OverviewRequest, res: Response) => {
+    try {
+      const viewer = findViewer(req)
+      if (!viewer) return res.status(401).json({ error: 'Unauthorized' })
+      const overview = await GradeService.getOverview({ organizationId: req.params.organizationId, viewer, termId: req.query.term_id })
+      return res.status(200).json({ data: overview })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to fetch the grades overview' })
+    }
+  },
+
+  getGroupReport: async (req: GroupReportRequest, res: Response) => {
+    try {
+      const viewer = findViewer(req)
+      if (!viewer) return res.status(401).json({ error: 'Unauthorized' })
+      const report = await GradeService.getGroupReport({ organizationId: req.params.organizationId, viewer, groupId: req.params.groupId, termId: req.query.term_id })
+      return res.status(200).json({ data: report })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to fetch the group’s report' })
+    }
+  },
+
+  getStudentReport: async (req: StudentReportRequest, res: Response) => {
+    try {
+      const viewer = findViewer(req)
+      if (!viewer) return res.status(401).json({ error: 'Unauthorized' })
+      const report = await GradeService.getStudentReport({ organizationId: req.params.organizationId, viewer, studentId: req.params.studentId, termId: req.query.term_id })
+      return res.status(200).json({ data: report })
+    } catch (error) {
+      return sendError({ res, error, fallback: 'Failed to fetch the student’s report' })
     }
   },
 
