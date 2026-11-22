@@ -21,13 +21,6 @@ export function ProfilePage({ user }: ProfilePageProps) {
 
   return (
     <div className="flex h-full min-w-0 flex-col overflow-y-auto">
-      <div className="px-[clamp(20px,3.4vw,44px)] pt-5">
-        <Link to="/dashboard" className="inline-flex items-center gap-1.5 text-[0.95rem] font-semibold text-ink-2 no-underline hover:text-ink">
-          <ArrowLeft size={16} strokeWidth={2} aria-hidden="true" />
-          Back
-        </Link>
-      </div>
-
       <div className="bg-linear-to-b from-green-wash to-white px-[clamp(20px,3.4vw,44px)] pt-6 pb-16" aria-hidden="true" />
 
       <div className="-mt-12 grid max-w-[760px] gap-5 px-[clamp(20px,3.4vw,44px)] pb-10">
@@ -41,6 +34,11 @@ export function ProfilePage({ user }: ProfilePageProps) {
             </p>
           </div>
         </div>
+
+        <Link to="/dashboard" className="button button--ghost min-h-11 w-fit px-4 text-base">
+          <ArrowLeft size={17} strokeWidth={2.2} aria-hidden="true" />
+          Back
+        </Link>
 
         <section className="rounded-card border border-rule p-[clamp(20px,2.4vw,28px)]">
           <h2 id="profile-details-title" className="mb-5 text-[1.2rem] font-[650]">

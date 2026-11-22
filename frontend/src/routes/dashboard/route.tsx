@@ -22,6 +22,7 @@ import { isOrganizationGuardian, isOrganizationLecturer, isOrganizationOwner, is
 import type { SessionMembership } from '#/modules/auth/utils/session-user'
 import { ROLE_LABELS } from '#/modules/auth/utils/role-labels'
 import { CommunicationNavGroup } from '#/modules/communication/components/communication-nav-group'
+import { FocusNavLink } from '#/modules/focus/components/focus-nav-link'
 import { OrganizationSuspended } from '#/modules/organization/components/organization-suspended'
 import { OrganizationDeactivated } from '#/modules/organization-settings/components/organization-deactivated'
 import { OrganizationMark } from '#/modules/organization/components/organization-mark'
@@ -342,7 +343,7 @@ function SidebarNavigation({ membership, isAdmin }: SidebarNavigationProps) {
   return <ModuleNavigation isAdmin={isAdmin} hiddenSlugs={getHiddenModuleSlugs(membership)} />
 }
 
-/** Students have My school, Learning materials, Assignments, Tests, Grades and Communication; their profile is at the bottom of the sidebar like everyone's */
+/** Students have My school, Learning materials, Assignments, Tests, Grades, Focus and Communication; their profile is at the bottom of the sidebar like everyone's */
 function StudentNavigation() {
   const sidebar = useSidebarRail()
   return (
@@ -359,6 +360,7 @@ function StudentNavigation() {
       <AssignmentsLink />
       <TestsLink />
       <GradesLink />
+      <FocusNavLink className={SIDEBAR_LINK_CLASS} />
       <CommunicationNavGroup linkClassName={SIDEBAR_LINK_CLASS} />
     </>
   )
