@@ -317,14 +317,23 @@ model UserRole {
 model RefreshTokens {
   id      String   @id @default(uuid()) @db.Uuid
   user_id String   @db.Uuid
+  /// SHA-256 hex digest of the refresh token, never the token itself
   token   String   @unique
   expires DateTime
   created DateTime @default(now())
   revoked Boolean  @default(false)
 
+  /// One login session: every token issued from it rotates within the same family
+  family_id          String    @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Set at login and copied unchanged on every rotation, so the session cap counts from the original login
+  session_started_at DateTime  @default(now())
+  revoked_at         DateTime?
+
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
+  @@index([family_id])
+  @@index([expires])
 }
 
 /// One-time tokens for password reset and email verification, stored hashed
