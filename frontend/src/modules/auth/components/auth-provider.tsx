@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { LoginUserResponse } from '@shigjetademy/shared/auth'
@@ -7,7 +7,7 @@ import type { AuthContextValue } from './auth-context'
 import { authApi } from '../api/auth-api'
 import { ME_QUERY_KEY, useMeQuery } from '../hooks/use-me-query'
 import { clearActiveOrganizationId } from '../utils/active-organization-storage'
-import { clearStoredTokens, readStoredTokens, storeTokens } from '../utils/auth-storage'
+import { clearStoredTokens, hasStoredTokensSnapshot, readStoredTokens, storeTokens, subscribeToStoredTokens } from '../utils/auth-storage'
 import { LoadingUser } from './loading-user'
 import { LoadUserError } from './load-user-error'
 
@@ -17,21 +17,32 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const queryClient = useQueryClient()
-  const [hasStoredTokens, setHasStoredTokens] = useState(() => readStoredTokens() !== null)
+  // Whatever signs this tab out (another tab, the interceptor, logout) must also drop the previous user's data
+  // Stable per query client, so useSyncExternalStore does not resubscribe on every render
+  const subscribeToTokenChanges = useCallback(
+    (onChange: () => void) =>
+      subscribeToStoredTokens(() => {
+        if (!hasStoredTokensSnapshot()) {
+          queryClient.clear()
+          clearActiveOrganizationId()
+        }
+        onChange()
+      }),
+    [queryClient],
+  )
+  const hasStoredTokens = useSyncExternalStore(subscribeToTokenChanges, hasStoredTokensSnapshot)
   const meQuery = useMeQuery(hasStoredTokens)
 
   const setSession = (session: LoginUserResponse) => {
-    storeTokens(session)
+    // The user goes in first so the tokens showing up never triggers a fetch of `me`
     queryClient.setQueryData(ME_QUERY_KEY, session.user)
-    setHasStoredTokens(true)
+    storeTokens(session)
   }
 
   const logout = async () => {
     const tokens = readStoredTokens()
+    // The subscriber clears the cached data and the active organization once the tokens are gone
     clearStoredTokens()
-    clearActiveOrganizationId()
-    setHasStoredTokens(false)
-    queryClient.clear()
     if (!tokens) return
     try {
       await authApi.logout(tokens.refreshToken)

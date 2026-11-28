@@ -1,9 +1,10 @@
 import bcrypt from 'bcrypt'
+import type { Prisma } from '@generated/prisma/client.ts'
 import { prisma } from '@lib/prisma.ts'
 import { deleteAvatarFile, saveAvatarFile } from '@lib/avatar-storage.ts'
 import { SALT_ROUNDS, safeUserSelect } from '@lib/constants.ts'
 import { HttpError } from '@lib/httpError.ts'
-import { generateAccessToken, generateRefreshToken, REFRESH_TOKEN_EXPIRY_MS, verifyRefreshToken } from '@lib/jwt.ts'
+import { generateAccessToken, generateRefreshToken, getRefreshExpiry, hashRefreshToken, REUSE_GRACE_MS, SESSION_MAX_MS, verifyRefreshToken } from '@lib/jwt.ts'
 import { getMaintenanceRefusal } from '@lib/maintenance.ts'
 import { toSessionUser } from '@lib/session-user.ts'
 import type { SessionUser } from '@lib/session-user.ts'
@@ -30,16 +31,53 @@ const lockedMessage = (lockedUntil: Date | null) => {
   return `Too many failed attempts. Try again in ${minutesLeft} ${minutesLeft === 1 ? 'minute' : 'minutes'}.`
 }
 
-const issueTokens = async (userId: string): Promise<AuthTokens> => {
-  const accessToken = generateAccessToken(userId)
-  const refreshToken = generateRefreshToken(userId)
+type Session = {
+  familyId: string
+  startedAt: Date
+}
 
-  await prisma.refreshTokens.create({
-    data: { user_id: userId, token: refreshToken, expires: new Date(Date.now() + REFRESH_TOKEN_EXPIRY_MS) },
+type IssueTokensParams = {
+  userId: string
+  session: Session
+  db?: Pick<Prisma.TransactionClient, 'refreshTokens'>
+}
+
+const startSession = (): Session => ({ familyId: crypto.randomUUID(), startedAt: new Date() })
+
+const issueTokens = async ({ userId, session, db = prisma }: IssueTokensParams): Promise<AuthTokens> => {
+  const expires = getRefreshExpiry({ now: new Date(), sessionStartedAt: session.startedAt })
+  const accessToken = generateAccessToken(userId)
+  const refreshToken = generateRefreshToken({ userId, expires })
+
+  await db.refreshTokens.create({
+    data: { user_id: userId, token: hashRefreshToken(refreshToken), expires, family_id: session.familyId, session_started_at: session.startedAt },
   })
 
   return { accessToken, refreshToken }
 }
+
+// Only expired rows go: a revoked row that has not expired is still needed to detect a replayed token
+const deleteExpiredTokens = async () => {
+  try {
+    await prisma.refreshTokens.deleteMany({ where: { expires: { lt: new Date() } } })
+  } catch (error) {
+    console.error('Failed to delete expired refresh tokens', error)
+  }
+}
+
+// One lock per user serializes rotation, logout, reuse revocation and password change, so a revoke can never
+// miss a row that a rotation inserts a moment later. The lock is released when the transaction ends.
+const withUserLock = <Result>(userId: string, run: (tx: Prisma.TransactionClient) => Promise<Result>) =>
+  prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${userId}))`
+    return run(tx)
+  })
+
+const revokeFamily = ({ tx, familyId }: { tx: Prisma.TransactionClient; familyId: string }) =>
+  tx.refreshTokens.updateMany({ where: { family_id: familyId, revoked: false }, data: { revoked: true, revoked_at: new Date() } })
+
+// A refresh ends in new tokens or in the error to throw; the error is thrown after the commit so a revoke made on the way is kept
+type RotationOutcome = { tokens: AuthTokens; error?: undefined } | { error: HttpError; tokens?: undefined }
 
 type UpdateProfileParams = {
   userId: string
@@ -76,7 +114,7 @@ export const AuthService = {
       select: safeUserSelect,
     })
 
-    return { user: toSessionUser(user), ...(await issueTokens(user.id)) }
+    return { user: toSessionUser(user), ...(await issueTokens({ userId: user.id, session: startSession() })) }
   },
 
   loginUser: async ({ email, password }: LoginUserInput): Promise<LoginUserResponse> => {
@@ -143,7 +181,8 @@ export const AuthService = {
     if (maintenanceMessage) {
       throw new HttpError(503, maintenanceMessage)
     }
-    return { user: toSessionUser(safeUser), ...(await issueTokens(user.id)) }
+    await deleteExpiredTokens()
+    return { user: toSessionUser(safeUser), ...(await issueTokens({ userId: user.id, session: startSession() })) }
   },
 
   // Each refresh token works once: it is revoked and replaced by a new pair
@@ -155,44 +194,60 @@ export const AuthService = {
       throw new HttpError(401, 'Invalid refresh token')
     }
 
-    const storedToken = await prisma.refreshTokens.findUnique({ where: { token: refreshToken } })
-    if (!storedToken || storedToken.user_id !== userId) {
-      throw new HttpError(401, 'Invalid refresh token')
-    }
-    if (storedToken.revoked) {
-      throw new HttpError(401, 'Token revoked')
-    }
-    if (storedToken.expires < new Date()) {
-      throw new HttpError(401, 'Refresh token expired')
-    }
+    const outcome = await withUserLock(userId, async (tx): Promise<RotationOutcome> => {
+      // Read again under the lock: a logout or a rotation may have run since the token was verified
+      const storedToken = await tx.refreshTokens.findUnique({ where: { token: hashRefreshToken(refreshToken) } })
+      if (!storedToken || storedToken.user_id !== userId) {
+        return { error: new HttpError(401, 'Invalid refresh token') }
+      }
+      if (storedToken.revoked) {
+        // The grace window runs from the fixed revoked_at, so replays never extend it
+        const isRace = !!storedToken.revoked_at && Date.now() - storedToken.revoked_at.getTime() <= REUSE_GRACE_MS
+        if (!isRace) {
+          await revokeFamily({ tx, familyId: storedToken.family_id })
+        }
+        return { error: new HttpError(401, 'Token revoked') }
+      }
+      if (storedToken.expires < new Date()) {
+        return { error: new HttpError(401, 'Refresh token expired') }
+      }
 
-    const user = await prisma.user.findUnique({ where: { id: userId } })
-    if (!user) {
-      throw new HttpError(401, 'User not found')
-    }
-    if (user.status !== 'ACTIVE') {
-      throw new HttpError(403, 'Account not allowed to refresh token')
-    }
+      const user = await tx.user.findUnique({ where: { id: userId } })
+      if (!user) {
+        return { error: new HttpError(401, 'User not found') }
+      }
+      if (user.status !== 'ACTIVE') {
+        return { error: new HttpError(403, 'Account not allowed to refresh token') }
+      }
 
-    // Only the request that flips revoked gets a new pair; a concurrent refresh with the same token finds nothing left to revoke
-    const { count } = await prisma.refreshTokens.updateMany({ where: { token: refreshToken, revoked: false }, data: { revoked: true } })
-    if (count === 0) {
-      throw new HttpError(401, 'Token revoked')
-    }
-    return issueTokens(user.id)
+      if (Date.now() > storedToken.session_started_at.getTime() + SESSION_MAX_MS) {
+        await revokeFamily({ tx, familyId: storedToken.family_id })
+        return { error: new HttpError(401, 'Session expired') }
+      }
+
+      // The flip and the new row commit together, so a failed insert leaves the old token usable
+      await tx.refreshTokens.update({ where: { id: storedToken.id }, data: { revoked: true, revoked_at: new Date() } })
+      const tokens = await issueTokens({
+        userId: user.id,
+        session: { familyId: storedToken.family_id, startedAt: storedToken.session_started_at },
+        db: tx,
+      })
+      return { tokens }
+    })
+
+    if (outcome.error) throw outcome.error
+    return outcome.tokens
   },
 
+  // The family is always revoked, even for a token that was already rotated: its live sibling must die too
   logoutUser: async ({ refreshToken }: LogoutInput) => {
-    const tokenRecord = await prisma.refreshTokens.findUnique({ where: { token: refreshToken } })
+    const tokenRecord = await prisma.refreshTokens.findUnique({ where: { token: hashRefreshToken(refreshToken) } })
     if (!tokenRecord) {
       throw new HttpError(401, 'Invalid token')
     }
-    if (tokenRecord.revoked) {
-      return { message: 'Already logged out' }
-    }
 
-    await prisma.refreshTokens.update({ where: { token: refreshToken }, data: { revoked: true } })
-    return { message: 'Logged out successfully' }
+    await withUserLock(tokenRecord.user_id, (tx) => revokeFamily({ tx, familyId: tokenRecord.family_id }))
+    return { message: tokenRecord.revoked ? 'Already logged out' : 'Logged out successfully' }
   },
 
   getCurrentUser: async (userId: string): Promise<SessionUser> => {
@@ -232,13 +287,14 @@ export const AuthService = {
       throw new HttpError(400, 'Choose a password you haven’t used here')
     }
 
-    await prisma.$transaction([
-      prisma.user.update({ where: { id: userId }, data: { password_hash: await bcrypt.hash(data.new_password, SALT_ROUNDS) } }),
-      prisma.refreshTokens.updateMany({ where: { user_id: userId, revoked: false }, data: { revoked: true } }),
-      prisma.activityLog.create({ data: { actor_id: userId, action: 'PASSWORD_CHANGED', target_user_id: userId } }),
-    ])
+    const passwordHash = await bcrypt.hash(data.new_password, SALT_ROUNDS)
+    await withUserLock(userId, async (tx) => {
+      await tx.user.update({ where: { id: userId }, data: { password_hash: passwordHash } })
+      await tx.refreshTokens.updateMany({ where: { user_id: userId, revoked: false }, data: { revoked: true, revoked_at: new Date() } })
+      await tx.activityLog.create({ data: { actor_id: userId, action: 'PASSWORD_CHANGED', target_user_id: userId } })
+    })
 
-    return issueTokens(userId)
+    return issueTokens({ userId, session: startSession() })
   },
 
   // Replacing a photo removes the old file only once the DB points at the new one, so a failed update never
